@@ -8,7 +8,7 @@ build/
 status.txt
 diff_output.txt
 diff.txt
-ACIS Version 5.0.code-workspace
+/ACIS Version 5.0.code-workspace
 
 # ACIS Version 5.0 Build Exhaust & Dummy Files
 dist/
