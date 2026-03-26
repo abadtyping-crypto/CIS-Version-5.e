@@ -1,0 +1,421 @@
+.desktop-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  overflow: hidden; /* Main shell shouldn't scroll */
+  min-height: 24rem;
+  min-width: 22rem;
+}
+
+.desktop-shell .desktop-frame {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+}
+
+.desktop-shell .desktop-main {
+  min-height: 0;
+  min-width: 0;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+.desktop-shell .desktop-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  overflow-x: hidden; /* Prevent horizontal spill in main content area */
+}
+
+.desktop-shell .desktop-footer {
+  z-index: 10;
+  min-height: var(--d-shell-footer-h);
+}
+
+.desktop-shell .desktop-sidebar-footer {
+  min-height: var(--d-shell-footer-h);
+  background: transparent;
+}
+
+.desktop-shell .desktop-sidebar {
+  width: var(--d-sidebar-w);
+}
+
+.desktop-shell .desktop-sidebar.desktop-sidebar-collapsed {
+  width: var(--d-sidebar-w-collapsed);
+}
+
+.desktop-shell .brand-button,
+.desktop-shell .brand-button * {
+  text-decoration: none !important;
+}
+
+/* --- Responsive Sidebar Overlay --- */
+.desktop-sidebar-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 45;
+  background: rgba(0, 0, 0, 0.4);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  cursor: pointer;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.desktop-sidebar-overlay {
+  transition: transform 300ms cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* --- Overflow Safety Utility --- */
+.desktop-table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  min-width: 0;
+  width: 100%;
+  margin-bottom: 0.35rem;
+  scrollbar-width: thin;
+}
+
+/* Force flex children to be able to shrink below content size */
+.desktop-shell * {
+  min-width: 0;
+}
+
+.desktop-main > .compact-page {
+  min-height: 100%;
+}
+
+/* Currency/amount inputs — suppress browser up/down spinner arrows */
+.no-spinner::-webkit-inner-spin-button,
+.no-spinner::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.no-spinner {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+/* Page transition loader */
+@keyframes pageTransitionSlide {
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-pageTransitionSlide {
+  animation: pageTransitionSlide 1.2s ease-in-out infinite;
+}
+
+@keyframes pageTransitionOrbit {
+  0% {
+    transform: rotate(0deg) translateX(80px) rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg) translateX(80px) rotate(-360deg);
+  }
+}
+
+@keyframes pageTransitionShieldPulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scale(1.04);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+}
+
+.page-transition-shield {
+  position: absolute;
+  inset: 0;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  border-radius: 42% 42% 36% 36% / 40% 40% 60% 60%;
+  box-shadow: 0 0 0 10px rgba(255, 255, 255, 0.12);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  animation: pageTransitionShieldPulse 1.6s ease-in-out infinite;
+}
+
+.page-transition-orbit {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 12px;
+  height: 12px;
+  margin: -6px 0 0 -6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.4);
+}
+
+.page-transition-orbit-1 {
+  animation: pageTransitionOrbit 1.7s linear infinite;
+}
+
+.page-transition-orbit-2 {
+  animation: pageTransitionOrbit 2.2s linear infinite reverse;
+}
+
+/* Global PDF Loader Styles */
+.ultra-container { 
+  width: 100%; 
+  max-width: min(90vw, 1200px); 
+  min-width: 600px;
+  height: auto; 
+  aspect-ratio: 2.2 / 1; 
+  display: flex; 
+  justify-content: center; 
+  align-items: center; 
+  margin: 0 auto;
+}
+
+/* Responsive adjustments for larger displays */
+@media (min-width: 1440px) {
+  .ultra-container {
+    max-width: min(85vw, 1400px);
+  }
+}
+
+@media (min-width: 1920px) {
+  .ultra-container {
+    max-width: min(80vw, 1600px);
+  }
+}
+.system-status {
+  margin-top: -20px; 
+  color: #00f0ff; 
+  font-size: clamp(14px, 2vw, 20px); 
+  font-weight: 600;
+  letter-spacing: 2px; 
+  text-transform: uppercase;
+  filter: drop-shadow(0 0 8px rgba(0, 240, 255, 0.6));
+  animation: textPulse 2s infinite;
+}
+.net-link { fill: none; stroke: rgba(52, 143, 244, 0.2); stroke-width: 2; }
+.net-packet-out { fill: none; stroke: #00f0ff; stroke-width: 3; stroke-linecap: round; filter: drop-shadow(0 0 8px #00f0ff); stroke-dasharray: 15 300; animation: dataOut 2s linear infinite; }
+.net-packet-in { fill: none; stroke: var(--c-accent); stroke-width: 3; stroke-linecap: round; filter: drop-shadow(0 0 8px var(--c-accent)); stroke-dasharray: 15 300; animation: dataIn 2.5s linear infinite; }
+.sat-bg { fill: #001233; stroke: var(--c-accent); stroke-width: 2; }
+.sat-ring { fill: none; stroke: var(--c-accent-2); stroke-width: 1.5; stroke-dasharray: 4 6; transform-origin: center; animation: spin 6s linear infinite; }
+.sat-ring.reverse { animation-direction: reverse; animation-duration: 8s; }
+.sat-icon { fill: none; stroke: #00f0ff; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.sat-text { font-family: 'Segoe UI', sans-serif; font-size: 11px; font-weight: 700; fill: #E0EBF8; letter-spacing: 1.5px; }
+.core-breathe { animation: breathe 4s ease-in-out infinite; transform-origin: center; }
+.tech-base { fill: none; stroke: rgba(1, 80, 200, 0.4); stroke-width: 2; }
+.laser-scanner { fill: url(#laserGrad); opacity: 0; animation: scanDoc 2.5s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
+.pulse-arrow { animation: arrowPulse 2s ease-in-out infinite; }
+.badge-ring { transform-origin: 155px 150px; animation: spin 4s linear infinite; }
+.badge-check { stroke-dasharray: 50; stroke-dashoffset: 50; animation: drawCheck 2.5s cubic-bezier(0.65, 0, 0.35, 1) infinite; }
+.pill-shine { animation: sweepShine 3s linear infinite; }
+@keyframes breathe { 0%, 100% { transform: scale(1); filter: drop-shadow(0 10px 20px rgba(0,0,0,0.5)); } 50% { transform: scale(1.02); filter: drop-shadow(0 15px 30px rgba(1, 80, 200, 0.6)); } }
+@keyframes spin { 100% { transform: rotate(360deg); } }
+@keyframes dataOut { 0% { stroke-dashoffset: 315; } 100% { stroke-dashoffset: 0; } }
+@keyframes dataIn { 0% { stroke-dashoffset: 0; } 100% { stroke-dashoffset: 315; } }
+@keyframes scanDoc { 0% { transform: translateY(50px); opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { transform: translateY(145px); opacity: 0; } }
+@keyframes drawCheck { 0%, 20% { stroke-dashoffset: 50; opacity: 0; } 40%, 80% { stroke-dashoffset: 0; opacity: 1; filter: drop-shadow(0 0 5px #fff); } 100% { stroke-dashoffset: 0; opacity: 0; } }
+@keyframes arrowPulse { 0% { opacity: 0.5; transform: translateY(3px) scale(0.98); } 50% { opacity: 1; filter: drop-shadow(0 6px 12px rgba(52,143,244,0.8)); transform: translateY(-3px) scale(1.02); } 100% { opacity: 0.5; transform: translateY(3px) scale(0.98); } }
+@keyframes sweepShine { 0%, 20% { transform: translateX(-100%); } 60%, 100% { transform: translateX(200%); } }
+@keyframes textPulse { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
+
+/* Themed action overlays */
+.acis-action-loader-ambient {
+  position: absolute;
+  inset: 16%;
+  border-radius: 999px;
+  filter: blur(18px);
+  animation: acisLoaderAmbient 3.2s ease-in-out infinite alternate;
+}
+
+.acis-loader-tech-bg {
+  fill: none;
+  stroke: color-mix(in srgb, var(--c-accent) 22%, white 14%);
+  stroke-width: 2;
+  opacity: 0.52;
+}
+
+.acis-loader-tech-glow {
+  fill: none;
+  stroke-width: 2.6;
+  stroke-dasharray: 92 188;
+  filter: drop-shadow(0 0 8px currentColor);
+  animation: acisLoaderTrace 2.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.acis-loader-doc-float {
+  animation: acisLoaderFloat 3s ease-in-out infinite alternate;
+  transform-origin: center;
+}
+
+.acis-loader-doc-line {
+  stroke: var(--c-accent);
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-dasharray: 40;
+  stroke-dashoffset: 40;
+  animation: acisLoaderDraw 1.9s cubic-bezier(0.25, 1, 0.5, 1) infinite alternate;
+}
+
+.acis-loader-scanner {
+  opacity: 0;
+  fill: url(#acisActionAccent);
+  animation: acisLoaderScan 2.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.acis-loader-doc-fade {
+  animation: acisLoaderDocFade 3.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  transform-origin: center;
+}
+
+.acis-loader-envelope {
+  opacity: 0;
+  transform-origin: center;
+  animation: acisLoaderEnvelope 3.5s cubic-bezier(0.34, 1.56, 0.64, 1) infinite;
+}
+
+.acis-loader-trail {
+  fill: none;
+  stroke-width: 4;
+  stroke-linecap: round;
+  opacity: 0;
+  stroke-dasharray: 20 50;
+  animation: acisLoaderTrail 3.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.acis-loader-check {
+  fill: none;
+  stroke-width: 6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 50;
+  stroke-dashoffset: 50;
+  animation: acisLoaderCheck 3.5s cubic-bezier(0.34, 1.56, 0.64, 1) infinite;
+}
+
+.acis-loader-data-stream {
+  fill: none;
+  stroke-width: 2;
+  stroke-dasharray: 6 15;
+  opacity: 0.75;
+  animation: acisLoaderFlow 1s linear infinite;
+}
+
+.acis-loader-gear-primary {
+  fill: none;
+  stroke-width: 4;
+  stroke-dasharray: 12 10;
+  transform-origin: 110px 106px;
+  animation: acisLoaderSpin 6s linear infinite;
+}
+
+.acis-loader-gear-secondary {
+  fill: none;
+  stroke-width: 2;
+  stroke-dasharray: 4 6;
+  transform-origin: 110px 106px;
+  opacity: 0.7;
+  animation: acisLoaderSpin 4s linear infinite reverse;
+}
+
+.acis-loader-server-stack {
+  transform-origin: center;
+  animation: acisLoaderFloat 4s ease-in-out infinite alternate;
+}
+
+.acis-loader-server-light {
+  filter: drop-shadow(0 0 6px currentColor);
+  animation: acisLoaderBlink 1.5s step-end infinite;
+}
+
+.acis-loader-pill-shine {
+  animation: acisLoaderShine 3s cubic-bezier(0.25, 1, 0.5, 1) infinite;
+  transform: skewX(-20deg);
+}
+
+.acis-loader-status {
+  animation: textPulse 2s infinite;
+  filter: drop-shadow(0 0 10px color-mix(in srgb, currentColor 34%, transparent));
+}
+
+@keyframes acisLoaderAmbient {
+  0% { transform: scale(0.9); opacity: 0.55; }
+  100% { transform: scale(1.18); opacity: 0.95; }
+}
+
+@keyframes acisLoaderTrace {
+  0% { stroke-dashoffset: 280; }
+  100% { stroke-dashoffset: 0; }
+}
+
+@keyframes acisLoaderFloat {
+  0% { transform: translateY(3px); }
+  100% { transform: translateY(-4px); }
+}
+
+@keyframes acisLoaderDraw {
+  0%, 20% { stroke-dashoffset: 40; }
+  80%, 100% { stroke-dashoffset: 0; }
+}
+
+@keyframes acisLoaderScan {
+  0% { transform: translateY(54px) scaleY(0.55); opacity: 0; }
+  14% { opacity: 1; transform: translateY(68px) scaleY(1); }
+  86% { opacity: 1; transform: translateY(142px) scaleY(1); }
+  100% { transform: translateY(156px) scaleY(0.55); opacity: 0; }
+}
+
+@keyframes acisLoaderDocFade {
+  0%, 15% { opacity: 1; transform: scale(1); filter: blur(0); }
+  25%, 100% { opacity: 0; transform: scale(0.8); filter: blur(4px); }
+}
+
+@keyframes acisLoaderEnvelope {
+  0%, 15% { opacity: 0; transform: scale(0.82) translateY(15px); }
+  25%, 45% { opacity: 1; transform: scale(1.12) translateY(-5px); }
+  55%, 100% { opacity: 0; transform: scale(0.42) translate(120px, -120px) rotate(12deg); }
+}
+
+@keyframes acisLoaderTrail {
+  0%, 45% { opacity: 0; stroke-dashoffset: 50; }
+  48%, 55% { opacity: 1; stroke-dashoffset: 0; }
+  60%, 100% { opacity: 0; stroke-dashoffset: -50; }
+}
+
+@keyframes acisLoaderCheck {
+  0%, 60% { stroke-dashoffset: 50; opacity: 0; transform: scale(0.5) translateY(0); }
+  70%, 90% { stroke-dashoffset: 0; opacity: 1; transform: scale(1.2) translateY(-11px); }
+  100% { stroke-dashoffset: 0; opacity: 0; transform: scale(1) translateY(-11px); }
+}
+
+@keyframes acisLoaderFlow {
+  100% { stroke-dashoffset: -21; }
+}
+
+@keyframes acisLoaderSpin {
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes acisLoaderBlink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0.34; filter: none; }
+}
+
+@keyframes acisLoaderShine {
+  0%, 15% { transform: translateX(-100%) skewX(-20deg); }
+  50%, 100% { transform: translateX(280%) skewX(-20deg); }
+}

@@ -1,0 +1,21 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --c-panel: #fff5e6;
+    --c-surface: #ffffff;
+    --c-border: #e6d5bc;
+    --c-text: #33261a;
+    --c-muted: #735c45;
+    --c-accent: #e67e22;
+    --c-bg: #fffbf2;
+  }
+  
+  body {
+    background-color: var(--c-bg);
+    color: var(--c-text);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+}

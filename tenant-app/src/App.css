@@ -1,0 +1,16 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+
+#root {
+  margin: 0;
+  width: 100%;
+}
+
+.font-title {
+  font-family: 'Outfit', 'Segoe UI', sans-serif;
+}
+
+html,
+body {
+  font-family: var(--app-font-family, 'Plus Jakarta Sans', 'Segoe UI', sans-serif);
+  text-rendering: geometricPrecision;
+}

@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="600" height="320" viewBox="0 0 600 320" fill="none">
+  <defs>
+    <linearGradient id="ringGradient" x1="201" y1="31" x2="399" y2="229" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#66B5FF" stop-opacity="0.95" />
+      <stop offset="1" stop-color="#1170F7" stop-opacity="0.95" />
+    </linearGradient>
+    <radialGradient id="glowGradient" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(300 130) rotate(90) scale(110)">
+      <stop offset="0" stop-color="#2F88FF" stop-opacity="0.35" />
+      <stop offset="1" stop-color="#2F88FF" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+
+  <circle cx="300" cy="130" r="110" fill="url(#glowGradient)">
+    <animate attributeName="opacity" values="0.72;1;0.72" dur="3s" repeatCount="indefinite" />
+    <animateTransform attributeName="transform" type="scale" additive="sum" values="1 1;1.06 1.06;1 1" dur="3s" repeatCount="indefinite" />
+  </circle>
+
+  <g transform="translate(300 130)">
+    <g>
+      <circle cx="0" cy="0" r="91" stroke="url(#ringGradient)" stroke-width="6" stroke-linecap="round" stroke-dasharray="126 446" fill="none" />
+      <animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="3s" repeatCount="indefinite" />
+    </g>
+    <g opacity="0.55">
+      <circle cx="0" cy="0" r="99" stroke="#7BC1FF" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="93 529" fill="none" />
+      <animateTransform attributeName="transform" type="rotate" from="360" to="0" dur="3s" repeatCount="indefinite" />
+      <animate attributeName="opacity" values="0.45;0.65;0.45" dur="3s" repeatCount="indefinite" />
+    </g>
+  </g>
+
+  <image x="238.5" y="68.5" width="123" height="123" xlink:href="appIconx512.png">
+    <animateTransform attributeName="transform" type="scale" additive="sum" values="1 1 300 130;1.05 1.05 300 130;1 1 300 130" dur="3s" repeatCount="indefinite" />
+  </image>
+
+  <image x="170.4" y="211.8" width="259.2" height="86.4" xlink:href="waterMark.png" opacity="0.84">
+    <animate attributeName="opacity" values="0.84;1;0.84" dur="3s" repeatCount="indefinite" />
+    <animateTransform attributeName="transform" type="translate" additive="sum" values="0 0;4 0;0 0" dur="3s" repeatCount="indefinite" />
+  </image>
+</svg>

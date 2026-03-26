@@ -1,0 +1,50 @@
+/* Pulsing glow ring animation */
+@keyframes botPulseRing {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--c-accent) 70%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 10px color-mix(in srgb, var(--c-accent) 0%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--c-accent) 0%, transparent);
+  }
+}
+
+/* Chat dots breathing animation */
+@keyframes botDotBounce {
+  0%, 100% {
+    opacity: 0.4;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.bot-pulse-ring {
+  animation: botPulseRing 2.5s infinite;
+  border: 1px solid color-mix(in srgb, var(--c-accent) 20%, transparent);
+}
+
+.bot-dot {
+  animation: botDotBounce 1.4s infinite ease-in-out;
+}
+
+.bot-floating-button {
+  transition: opacity 200ms ease;
+}
+
+.bot-floating-button:hover {
+  opacity: 0.9;
+}
+
+.bot-chat-dots {
+  opacity: 0.8;
+  transition: opacity 200ms ease;
+}
+
+.bot-floating-button:hover .bot-chat-dots {
+  opacity: 1;
+}

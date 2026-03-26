@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ACIS Global PDF Loader</title>
+    <style>
+        /* --- Base App Styles (For Demo) --- */
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background-color: #f4f7f9;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        .demo-panel {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+            text-align: center;
+        }
+
+        .demo-panel h2 {
+            color: #002B7F;
+            margin-top: 0;
+        }
+
+        .demo-panel p {
+            color: #666;
+            margin-bottom: 25px;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        button {
+            padding: 12px 24px;
+            font-size: 15px;
+            font-weight: 600;
+            color: white;
+            background: linear-gradient(135deg, #0150C8, #348FF4);
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(1, 80, 200, 0.3);
+        }
+
+        /* =========================================================
+           GLOBAL PROGRESS VIEW COMPONENT STYLES
+           Copy everything below this line into your app's global CSS
+           ========================================================= */
+
+        /* --- Premium Glassmorphism Overlay --- */
+        .acis-pdf-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at center, rgba(0, 15, 45, 0.90) 0%, rgba(0, 5, 15, 0.98) 100%);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s ease;
+        }
+
+        .acis-pdf-overlay.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        /* --- Container & Text --- */
+        .ultra-container {
+            width: 100%;
+            max-width: 800px;
+            height: auto;
+            aspect-ratio: 2.2 / 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .system-status {
+            margin-top: -20px;
+            color: #00f0ff;
+            font-size: 16px;
+            font-weight: 600;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            filter: drop-shadow(0 0 8px rgba(0, 240, 255, 0.6));
+            animation: textPulse 2s infinite;
+        }
+
+        /* --- SVG Animations --- */
+        .net-link {
+            fill: none;
+            stroke: rgba(52, 143, 244, 0.2);
+            stroke-width: 2;
+        }
+
+        .net-packet-out {
+            fill: none;
+            stroke: #00f0ff;
+            stroke-width: 3;
+            stroke-linecap: round;
+            filter: drop-shadow(0 0 8px #00f0ff);
+            stroke-dasharray: 15 300;
+            animation: dataOut 2s linear infinite;
+        }
+
+        .net-packet-in {
+            fill: none;
+            stroke: #348FF4;
+            stroke-width: 3;
+            stroke-linecap: round;
+            filter: drop-shadow(0 0 8px #348FF4);
+            stroke-dasharray: 15 300;
+            animation: dataIn 2.5s linear infinite;
+        }
+
+        .sat-bg {
+            fill: #001233;
+            stroke: #0150C8;
+            stroke-width: 2;
+        }
+
+        .sat-ring {
+            fill: none;
+            stroke: #4FB0FF;
+            stroke-width: 1.5;
+            stroke-dasharray: 4 6;
+            transform-origin: center;
+            animation: spin 6s linear infinite;
+        }
+
+        .sat-ring.reverse {
+            animation-direction: reverse;
+            animation-duration: 8s;
+        }
+
+        .sat-icon {
+            fill: none;
+            stroke: #00f0ff;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .sat-text {
+            font-family: 'Segoe UI', sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+            fill: #E0EBF8;
+            letter-spacing: 1.5px;
+        }
+
+        .core-breathe {
+            animation: breathe 4s ease-in-out infinite;
+            transform-origin: center;
+        }
+
+        .tech-base {
+            fill: none;
+            stroke: rgba(1, 80, 200, 0.4);
+            stroke-width: 2;
+        }
+
+        .laser-scanner {
+            fill: url(#laserGrad);
+            opacity: 0;
+            animation: scanDoc 2.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        }
+
+        .pulse-arrow {
+            animation: arrowPulse 2s ease-in-out infinite;
+        }
+
+        .badge-ring {
+            transform-origin: 155px 150px;
+            animation: spin 4s linear infinite;
+        }
+
+        .badge-check {
+            stroke-dasharray: 50;
+            stroke-dashoffset: 50;
+            animation: drawCheck 2.5s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+        }
+
+        .pill-shine {
+            animation: sweepShine 3s linear infinite;
+        }
+
+        /* --- Keyframes --- */
+        @keyframes breathe {
+
+            0%,
+            100% {
+                transform: scale(1);
+                filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.5));
+            }
+
+            50% {
+                transform: scale(1.02);
+                filter: drop-shadow(0 15px 30px rgba(1, 80, 200, 0.6));
+            }
+        }
+
+        @keyframes spin {
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes dataOut {
+            0% {
+                stroke-dashoffset: 315;
+            }
+
+            100% {
+                stroke-dashoffset: 0;
+            }
+        }
+
+        @keyframes dataIn {
+            0% {
+                stroke-dashoffset: 0;
+            }
+
+            100% {
+                stroke-dashoffset: 315;
+            }
+        }
+
+        @keyframes scanDoc {
+            0% {
+                transform: translateY(50px);
+                opacity: 0;
+            }
+
+            10% {
+                opacity: 1;
+            }
+
+            90% {
+                opacity: 1;
+            }
+
+            100% {
+                transform: translateY(145px);
+                opacity: 0;
+            }
+        }
+
+        @keyframes drawCheck {
+
+            0%,
+            20% {
+                stroke-dashoffset: 50;
+                opacity: 0;
+            }
+
+            40%,
+            80% {
+                stroke-dashoffset: 0;
+                opacity: 1;
+                filter: drop-shadow(0 0 5px #fff);
+            }
+
+            100% {
+                stroke-dashoffset: 0;
+                opacity: 0;
+            }
+        }
+
+        @keyframes arrowPulse {
+            0% {
+                opacity: 0.5;
+                transform: translateY(3px) scale(0.98);
+            }
+
+            50% {
+                opacity: 1;
+                filter: drop-shadow(0 6px 12px rgba(52, 143, 244, 0.8));
+                transform: translateY(-3px) scale(1.02);
+            }
+
+            100% {
+                opacity: 0.5;
+                transform: translateY(3px) scale(0.98);
+            }
+        }
+
+        @keyframes sweepShine {
+
+            0%,
+            20% {
+                transform: translateX(-100%);
+            }
+
+            60%,
+            100% {
+                transform: translateX(200%);
+            }
+        }
+
+        @keyframes textPulse {
+
+            0%,
+            100% {
+                opacity: 0.6;
+            }
+
+            50% {
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Demo UI -->
+    <div class="demo-panel">
+        <h2>Global PDF Generator</h2>
+        <p>Test the universal loading overlay across different document types.</p>
+        <div class="btn-group">
+            <button onclick="triggerPDFLoader('Invoice')">Generate Invoice PDF</button>
+            <button onclick="triggerPDFLoader('Quotation')">Generate Quotation PDF</button>
+            <button onclick="triggerPDFLoader('Proforma')">Generate Proforma PDF</button>
+        </div>
+    </div>
+
+    <!-- =========================================================
+         GLOBAL PROGRESS VIEW HTML
+         Mount this once in your App.js or root layout component.
+         ========================================================= -->
+    <div class="acis-pdf-overlay" id="globalPdfOverlay">
+        <div class="ultra-container">
+            <svg viewBox="0 0 700 300" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <linearGradient id="docGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stop-color="#FFFFFF" />
+                        <stop offset="100%" stop-color="#D0E3F7" />
+                    </linearGradient>
+                    <linearGradient id="arrowGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+                        <stop offset="0%" stop-color="#0150C8" />
+                        <stop offset="100%" stop-color="#4FB0FF" />
+                    </linearGradient>
+                    <linearGradient id="laserGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stop-color="rgba(0, 240, 255, 0)" />
+                        <stop offset="80%" stop-color="rgba(0, 240, 255, 0.2)" />
+                        <stop offset="100%" stop-color="rgba(0, 240, 255, 1)" />
+                    </linearGradient>
+                    <linearGradient id="shineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stop-color="rgba(255,255,255,0)" />
+                        <stop offset="50%" stop-color="rgba(255,255,255,0.9)" />
+                        <stop offset="100%" stop-color="rgba(255,255,255,0)" />
+                    </linearGradient>
+                    <filter id="proShadow" x="-20%" y="-20%" width="140%" height="140%">
+                        <feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#000000" flood-opacity="0.5" />
+                    </filter>
+                    <filter id="glowNode" x="-30%" y="-30%" width="160%" height="160%">
+                        <feGaussianBlur stdDeviation="4" result="blur" />
+                        <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                    </filter>
+                </defs>
+
+                <!-- Network Links -->
+                <g id="networkLinks">
+                    <path class="net-link" d="M 290 105 L 230 105 L 180 75 L 155 75" />
+                    <path class="net-packet-out" style="animation-delay: 0s;"
+                        d="M 290 105 L 230 105 L 180 75 L 155 75" />
+                    <path class="net-packet-in" style="animation-delay: 1.2s;"
+                        d="M 290 105 L 230 105 L 180 75 L 155 75" />
+                    <path class="net-link" d="M 290 195 L 230 195 L 180 225 L 155 225" />
+                    <path class="net-packet-out" style="animation-delay: 0.5s;"
+                        d="M 290 195 L 230 195 L 180 225 L 155 225" />
+                    <path class="net-link" d="M 410 105 L 470 105 L 520 75 L 545 75" />
+                    <path class="net-packet-out" style="animation-delay: 0.8s;"
+                        d="M 410 105 L 470 105 L 520 75 L 545 75" />
+                    <path class="net-packet-in" style="animation-delay: 0.2s;"
+                        d="M 410 105 L 470 105 L 520 75 L 545 75" />
+                    <path class="net-link" d="M 410 195 L 470 195 L 520 225 L 545 225" />
+                    <path class="net-packet-out" style="animation-delay: 0.3s;"
+                        d="M 410 195 L 470 195 L 520 225 L 545 225" />
+                </g>
+
+                <!-- Nodes -->
+                <g transform="translate(120, 75)">
+                    <circle cx="0" cy="0" r="30" class="sat-bg" filter="url(#glowNode)" />
+                    <circle cx="0" cy="0" r="36" class="sat-ring" />
+                    <circle cx="0" cy="-6" r="7" class="sat-icon" />
+                    <path d="M -12 12 C -12 2 12 2 12 12" class="sat-icon" /><text x="0" y="55" text-anchor="middle"
+                        class="sat-text">CLIENTS</text>
+                </g>
+                <g transform="translate(120, 225)">
+                    <circle cx="0" cy="0" r="30" class="sat-bg" filter="url(#glowNode)" />
+                    <circle cx="0" cy="0" r="36" class="sat-ring reverse" />
+                    <rect x="-10" y="-12" width="20" height="24" rx="2" class="sat-icon" /><text x="0" y="4"
+                        font-size="20" fill="#00f0ff" font-family="serif" font-weight="bold"
+                        text-anchor="middle">"</text><text x="0" y="55" text-anchor="middle"
+                        class="sat-text">QUOTATIONS</text>
+                </g>
+                <g transform="translate(580, 75)">
+                    <circle cx="0" cy="0" r="30" class="sat-bg" filter="url(#glowNode)" />
+                    <circle cx="0" cy="0" r="36" class="sat-ring reverse" />
+                    <rect x="-10" y="-12" width="20" height="24" rx="2" class="sat-icon" />
+                    <circle cx="0" cy="0" r="5" class="sat-icon" />
+                    <path d="M 0 -3 L 0 0 L 2 2" stroke="#00f0ff" stroke-width="1.5" fill="none" /><text x="0" y="55"
+                        text-anchor="middle" class="sat-text">PROFORMA</text>
+                </g>
+                <g transform="translate(580, 225)">
+                    <circle cx="0" cy="0" r="30" class="sat-bg" filter="url(#glowNode)" />
+                    <circle cx="0" cy="0" r="36" class="sat-ring" />
+                    <rect x="-10" y="-12" width="20" height="24" rx="2" class="sat-icon" />
+                    <path d="M -4 2 L -1 5 L 5 -2" class="sat-icon" /><text x="0" y="55" text-anchor="middle"
+                        class="sat-text">INVOICES</text>
+                </g>
+
+                <!-- Center Hub -->
+                <g transform="translate(250, 50)" class="core-breathe">
+                    <path class="tech-base" d="M100 20 L160 55 L160 145 L100 180 L40 145 L40 55 Z" />
+                    <path class="tech-base" d="M100 40 L140 65 L140 135 L100 160 L60 135 L60 65 Z" />
+                    <path class="tech-base"
+                        d="M40 55 L60 65 M160 55 L140 65 M160 145 L140 135 M40 145 L60 135 M100 20 L100 40 M100 180 L100 160" />
+                    <g transform="translate(0, 0)">
+                        <path d="M70 50 L115 50 L135 70 L135 150 L70 150 Z" fill="url(#docGrad)"
+                            filter="url(#proShadow)" />
+                        <path d="M115 50 L115 70 L135 70 Z" fill="#A8C9ED" />
+                        <rect x="80" y="80" width="40" height="4" rx="2" fill="#0150C8" opacity="0.3" />
+                        <rect x="80" y="95" width="40" height="4" rx="2" fill="#0150C8" opacity="0.3" />
+                        <rect x="80" y="110" width="30" height="4" rx="2" fill="#0150C8" opacity="0.3" />
+                        <rect x="70" y="0" width="65" height="15" class="laser-scanner" />
+                        <path class="pulse-arrow" d="M102 10 L120 30 L108 30 L108 45 L96 45 L96 30 L84 30 Z"
+                            fill="url(#arrowGrad)" />
+                        <path class="pulse-arrow" style="animation-delay: 0.5s;" d="M90 140 L155 75 L155 105 L120 140 Z"
+                            fill="url(#arrowGrad)" filter="url(#proShadow)" />
+                    </g>
+                    <g transform="translate(0, 0)">
+                        <circle cx="155" cy="150" r="20" fill="#002B7F" stroke="#0150C8" stroke-width="3"
+                            filter="url(#proShadow)" />
+                        <path class="badge-ring" d="M155 130 A20 20 0 0 1 175 150" fill="none" stroke="#00f0ff"
+                            stroke-width="4" stroke-linecap="round" />
+                        <path class="badge-ring" style="animation-direction: reverse; animation-duration: 3s;"
+                            d="M155 170 A20 20 0 0 1 135 150" fill="none" stroke="#348FF4" stroke-width="2"
+                            stroke-linecap="round" />
+                        <path class="badge-check" d="M145 150 L152 157 L165 142" fill="none" stroke="#FFFFFF"
+                            stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+                    </g>
+                    <g transform="translate(25, 135)">
+                        <rect width="80" height="34" rx="12" fill="#FFFFFF" stroke="#0150C8" stroke-width="2"
+                            filter="url(#proShadow)" /><text x="40" y="18" text-anchor="middle"
+                            dominant-baseline="middle" font-family="system-ui, sans-serif" font-weight="900"
+                            font-size="18" fill="#002B7F" letter-spacing="1">ACIS</text>
+                        <clipPath id="pillClip">
+                            <rect width="80" height="34" rx="12" />
+                        </clipPath>
+                        <rect width="40" height="40" y="-5" fill="url(#shineGrad)" clip-path="url(#pillClip)"
+                            class="pill-shine" transform="skewX(-20)" />
+                    </g>
+                </g>
+            </svg>
+        </div>
+
+        <!-- Dynamic Status Field -->
+        <div class="system-status" id="pdfStatusText">Initializing...</div>
+    </div>
+
+    <!-- =========================================================
+         GLOBAL PROGRESS VIEW JAVASCRIPT
+         ========================================================= -->
+    <script>
+        let pdfStatusInterval;
+
+        /**
+         * Global function to trigger the PDF Loading overlay.
+         * @param {string} documentType - e.g., 'Invoice', 'Quotation', 'Proforma'
+         */
+        function triggerPDFLoader(documentType = "Document") {
+            const overlay = document.getElementById('globalPdfOverlay');
+            const statusText = document.getElementById('pdfStatusText');
+
+            // Show the overlay
+            overlay.classList.add('active');
+
+            // Set up dynamic PDF-generation phases
+            const pdfPhases = [
+                "Compiling Database Records...",
+                "Retrieving Client Information...",
+                "Formatting Document Layout...",
+                `Generating ${documentType} PDF...`,
+                "Applying Security Encryption...",
+                "Finalizing Download..."
+            ];
+
+            let phaseIndex = 0;
+            statusText.innerText = pdfPhases[0];
+
+            // Cycle through the text phases to show progress
+            pdfStatusInterval = setInterval(() => {
+                phaseIndex++;
+                if (phaseIndex >= pdfPhases.length) {
+                    phaseIndex = pdfPhases.length - 1; // Hold on the final message
+                }
+                statusText.innerText = pdfPhases[phaseIndex];
+            }, 1200);
+
+            // SIMULATION ONLY: Auto-hide after 7 seconds. 
+            // In your real app, you would call hidePDFLoader() when your PDF API returns success.
+            setTimeout(() => {
+                hidePDFLoader();
+            }, 7000);
+        }
+
+        /**
+         * Global function to hide the overlay once the PDF is ready.
+         */
+        function hidePDFLoader() {
+            const overlay = document.getElementById('globalPdfOverlay');
+            clearInterval(pdfStatusInterval);
+            overlay.classList.remove('active');
+        }
+    </script>
+</body>
+
+</html>

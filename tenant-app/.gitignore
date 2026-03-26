@@ -1,0 +1,16 @@
+node_modules
+dist
+dist-electron
+release
+
+# ACIS Version 5.0 Build Exhaust & Dummy Files
+dist/
+release/
+out/
+build/
+electron/dist/
+developer-app/dist/
+tenant-app/dist/
+.env
+.env.local
+

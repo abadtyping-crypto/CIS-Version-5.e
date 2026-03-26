@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ACIS Premium Loaders</title>
+    <style>
+        /* --- Base App Styles (For Demo) --- */
+        body {
+            margin: 0; font-family: 'Segoe UI', system-ui, sans-serif;
+            background-color: #f4f7f9; display: flex; flex-direction: column; 
+            align-items: center; justify-content: center; min-height: 100vh;
+        }
+
+        .demo-panel {
+            background: white; padding: 40px; border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.08); text-align: center; max-width: 650px;
+            border-top: 4px solid #0150C8;
+        }
+
+        .demo-panel h2 { color: #002B7F; margin-top: 0; font-size: 26px; }
+        .demo-panel p { color: #666; margin-bottom: 30px; line-height: 1.6; font-size: 15px; }
+
+        .btn-group { display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; }
+        
+        button {
+            padding: 14px 24px; font-size: 15px; font-weight: 700; color: white;
+            border: none; border-radius: 8px; cursor: pointer; transition: all 0.2s cubic-bezier(0.25, 1, 0.5, 1);
+            display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        button.btn-pdf { background: linear-gradient(135deg, #0150C8, #348FF4); }
+        button.btn-email { background: linear-gradient(135deg, #008080, #00C9A7); }
+        button.btn-backend { background: linear-gradient(135deg, #4B0082, #8A2BE2); }
+        
+        button:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2); filter: brightness(1.1); }
+
+        /* =========================================================
+           GLOBAL PROGRESS VIEW COMPONENT STYLES
+           ========================================================= */
+           
+        /* --- Premium Glassmorphism Overlay --- */
+        .acis-loader-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle at center, rgba(0, 15, 45, 0.85) 0%, rgba(0, 5, 15, 0.98) 100%);
+            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 9999; opacity: 0; pointer-events: none; transition: opacity 0.5s ease;
+        }
+        .acis-loader-overlay.active { opacity: 1; pointer-events: all; }
+
+        /* --- Premium Compact Container & Ambient Glow --- */
+        .compact-container { 
+            width: 220px; height: 220px; display: flex; justify-content: center; align-items: center; position: relative; 
+            animation: containerFloat 4s ease-in-out infinite alternate;
+        }
+        
+        .ambient-glow {
+            position: absolute; width: 140px; height: 140px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(52, 143, 244, 0.2) 0%, transparent 70%);
+            animation: pulseAmbient 3s ease-in-out infinite alternate;
+            z-index: 0;
+        }
+
+        .system-status {
+            margin-top: 30px; color: #00f0ff; font-size: 15px; font-weight: 600;
+            letter-spacing: 2px; text-transform: uppercase;
+            filter: drop-shadow(0 0 10px rgba(0, 240, 255, 0.6));
+            animation: textPulse 2s infinite;
+        }
+
+        /* --- Shared SVG Core (Shield & ACIS Pill) --- */
+        svg { z-index: 1; overflow: visible; }
+        .tech-bg { fill: none; stroke: rgba(52, 143, 244, 0.15); stroke-width: 2; }
+        .tech-glow { 
+            stroke: #348FF4; filter: drop-shadow(0 0 8px #348FF4); 
+            stroke-dasharray: 80 180; animation: traceShield 3s cubic-bezier(0.4, 0, 0.2, 1) infinite; 
+        }
+        
+        /* Premium Sweeping Shine on Pill */
+        .acis-pill { filter: drop-shadow(0 8px 16px rgba(0,0,0,0.6)); }
+        .pill-shine { animation: sweepShine 3s cubic-bezier(0.25, 1, 0.5, 1) infinite; }
+
+        /* --- 1. PDF GENERATION ANIMATIONS --- */
+        .pdf-doc { animation: pdfHover 3s ease-in-out infinite alternate; transform-origin: center; }
+        .pdf-scanner { fill: url(#laserGrad); opacity: 0; animation: scanDoc 2.5s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
+        /* Premium line drawing effect instead of just fading */
+        .pdf-lines { stroke-dasharray: 40; stroke-dashoffset: 40; stroke: #0150C8; stroke-width: 4; stroke-linecap: round; animation: drawLines 2s cubic-bezier(0.25, 1, 0.5, 1) infinite alternate; }
+
+        /* --- 2. EMAIL FLYING ANIMATIONS --- */
+        .email-envelope { opacity: 0; transform-origin: center; }
+        .acis-loader-overlay.active .email-envelope { animation: assembleAndFly 3.5s cubic-bezier(0.34, 1.56, 0.64, 1) infinite; }
+        .acis-loader-overlay.active .email-doc-fade { animation: fadeDocToEmail 3.5s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
+        .motion-trail { fill: none; stroke: url(#trailGrad); stroke-width: 4; stroke-linecap: round; opacity: 0; stroke-dasharray: 20 50; }
+        .acis-loader-overlay.active .motion-trail { animation: trailShoot 3.5s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
+        /* Ultra premium bouncy checkmark */
+        .email-check { stroke-dasharray: 50; stroke-dashoffset: 50; stroke: #00C9A7; stroke-width: 6; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+        .acis-loader-overlay.active .email-check { animation: drawSuccessCheck 3.5s cubic-bezier(0.34, 1.56, 0.64, 1) infinite; }
+
+        /* --- 3. BACKEND TRANSACTION (GEARS/SERVERS) ANIMATIONS --- */
+        .gear-primary { stroke-dasharray: 12 10; animation: spinRotate 6s linear infinite; transform-origin: 100px 95px; }
+        .gear-secondary { stroke-dasharray: 4 6; animation: spinRotate 4s linear infinite reverse; transform-origin: 100px 95px; }
+        .server-stack { animation: serverHover 4s ease-in-out infinite alternate; transform-origin: center; }
+        .server-light { fill: #00f0ff; filter: drop-shadow(0 0 6px #00f0ff); animation: blinkLight 1.5s step-end infinite; }
+        .data-stream { stroke: #00f0ff; stroke-width: 2; stroke-dasharray: 6 15; animation: flowData 1s linear infinite; opacity: 0.6; }
+
+        /* --- KEYFRAMES (Premium Curves) --- */
+        @keyframes containerFloat { 0% { transform: translateY(3px); } 100% { transform: translateY(-3px); } }
+        @keyframes pulseAmbient { 0% { transform: scale(0.9); opacity: 0.5; } 100% { transform: scale(1.2); opacity: 1; } }
+        @keyframes textPulse { 0%, 100% { opacity: 0.5; filter: drop-shadow(0 0 5px rgba(0, 240, 255, 0.3)); } 50% { opacity: 1; filter: drop-shadow(0 0 15px rgba(0, 240, 255, 0.9)); } }
+        @keyframes traceShield { 0% { stroke-dashoffset: 260; } 100% { stroke-dashoffset: 0; } }
+        @keyframes sweepShine { 0%, 15% { transform: translateX(-100%) skewX(-20deg); } 50%, 100% { transform: translateX(250%) skewX(-20deg); } }
+        
+        /* PDF specific */
+        @keyframes pdfHover { 0% { transform: translateY(1px); } 100% { transform: translateY(-3px); } }
+        @keyframes scanDoc { 0% { transform: translateY(45px) scaleY(0.5); opacity: 0; } 15% { opacity: 1; transform: translateY(60px) scaleY(1); } 85% { opacity: 1; transform: translateY(130px) scaleY(1); } 100% { transform: translateY(145px) scaleY(0.5); opacity: 0; } }
+        @keyframes drawLines { 0%, 20% { stroke-dashoffset: 40; } 80%, 100% { stroke-dashoffset: 0; } }
+        
+        /* Email specific */
+        @keyframes fadeDocToEmail { 0%, 15% { opacity: 1; transform: scale(1); filter: blur(0px); } 25%, 100% { opacity: 0; transform: scale(0.8); filter: blur(4px); } }
+        @keyframes assembleAndFly { 0%, 15% { opacity: 0; transform: scale(0.8) translateY(15px); } 25%, 45% { opacity: 1; transform: scale(1.15) translateY(-5px); filter: drop-shadow(0 15px 25px rgba(0,0,0,0.6)); } 55%, 100% { opacity: 0; transform: scale(0.4) translate(250px, -250px) rotate(15deg); filter: drop-shadow(0 2px 4px transparent); } }
+        @keyframes trailShoot { 0%, 45% { opacity: 0; stroke-dashoffset: 50; } 48%, 55% { opacity: 1; stroke-dashoffset: 0; } 60%, 100% { opacity: 0; stroke-dashoffset: -50; } }
+        @keyframes drawSuccessCheck { 0%, 60% { stroke-dashoffset: 50; opacity: 0; transform: scale(0.5) translateY(0px); } 70%, 90% { stroke-dashoffset: 0; opacity: 1; filter: drop-shadow(0 0 12px rgba(0, 201, 167, 0.9)); transform: scale(1.3) translateY(-15px); } 100% { stroke-dashoffset: 0; opacity: 0; transform: scale(1) translateY(-15px); } }
+
+        /* Backend specific */
+        @keyframes spinRotate { 100% { transform: rotate(360deg); } }
+        @keyframes serverHover { 0% { transform: translateY(2px); } 100% { transform: translateY(-2px); } }
+        @keyframes blinkLight { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0.3; filter: none; } }
+        @keyframes flowData { 100% { stroke-dashoffset: -21; } }
+    </style>
+</head>
+<body>
+
+    <!-- Demo UI -->
+    <div class="demo-panel">
+        <h2>Premium ACIS Loaders</h2>
+        <p>Three incredibly smooth, distinct animations matching your exact theme. Perfect for triggering during specific backend actions across your portal.</p>
+        <div class="btn-group">
+            <button class="btn-pdf" onclick="triggerLoader('pdfOverlay', 'Rendering PDF...')">📄 Generate Document</button>
+            <button class="btn-email" onclick="triggerLoader('emailOverlay', 'Sending Email...')">✉️ Send to Client</button>
+            <button class="btn-backend" onclick="triggerLoader('backendOverlay', 'Processing Transaction...')">⚙️ Save / Process</button>
+        </div>
+    </div>
+
+    <!-- =========================================================
+         LOADER 1: PDF GENERATION (HOLOGRAPHIC SCAN)
+         ========================================================= -->
+    <div class="acis-loader-overlay" id="pdfOverlay">
+        <div class="ambient-glow"></div>
+        <div class="compact-container">
+            <svg viewBox="0 0 200 200" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <linearGradient id="docGrad" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#FFFFFF" /><stop offset="100%" stop-color="#D0E3F7" /></linearGradient>
+                    <linearGradient id="laserGrad" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="rgba(0, 240, 255, 0)" /><stop offset="50%" stop-color="rgba(0, 240, 255, 0.4)" /><stop offset="100%" stop-color="rgba(0, 240, 255, 1)" /></linearGradient>
+                    <filter id="pdfShadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="8" stdDeviation="6" flood-color="#000000" flood-opacity="0.5"/></filter>
+                </defs>
+                <path class="tech-bg" d="M100 20 L160 55 L160 145 L100 180 L40 145 L40 55 Z" />
+                <path class="tech-bg tech-glow" d="M100 20 L160 55 L160 145 L100 180 L40 145 L40 55 Z" />
+                
+                <g class="pdf-doc">
+                    <path d="M70 50 L115 50 L135 70 L135 150 L70 150 Z" fill="url(#docGrad)" filter="url(#pdfShadow)"/>
+                    <path d="M115 50 L115 70 L135 70 Z" fill="#A8C9ED" />
+                    <!-- Premium Animated Lines -->
+                    <line x1="80" y1="85" x2="115" y2="85" class="pdf-lines" style="animation-delay: 0.1s;" />
+                    <line x1="80" y1="100" x2="120" y2="100" class="pdf-lines" style="animation-delay: 0.3s;" />
+                    <line x1="80" y1="115" x2="105" y2="115" class="pdf-lines" style="animation-delay: 0.5s;" />
+                    
+                    <rect x="62" y="0" width="76" height="20" class="pdf-scanner" />
+                    <rect x="90" y="125" width="28" height="14" rx="4" fill="#D32F2F" />
+                    <text x="104" y="135" text-anchor="middle" font-family="sans-serif" font-weight="900" font-size="8" fill="#FFF">PDF</text>
+                </g>
+                <g transform="translate(25, 135)" class="acis-pill">
+                    <rect width="80" height="34" rx="12" fill="#FFFFFF" stroke="#0150C8" stroke-width="2" />
+                    <text x="40" y="18" text-anchor="middle" dominant-baseline="middle" font-family="system-ui, sans-serif" font-weight="900" font-size="18" fill="#002B7F" letter-spacing="1">ACIS</text>
+                    <clipPath id="pillClip1"><rect width="80" height="34" rx="12" /></clipPath>
+                    <rect width="40" height="40" fill="rgba(255,255,255,0.8)" clip-path="url(#pillClip1)" class="pill-shine" />
+                </g>
+            </svg>
+        </div>
+        <div class="system-status" id="pdfStatusText">Rendering PDF...</div>
+    </div>
+
+    <!-- =========================================================
+         LOADER 2: EMAIL SENDING (FLYING ENVELOPE)
+         ========================================================= -->
+    <div class="acis-loader-overlay" id="emailOverlay">
+        <div class="ambient-glow" style="background: radial-gradient(circle, rgba(0, 201, 167, 0.2) 0%, transparent 70%);"></div>
+        <div class="compact-container">
+            <svg viewBox="0 0 200 200" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <linearGradient id="envGrad" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#F4F7F9" /><stop offset="100%" stop-color="#FFFFFF" /></linearGradient>
+                    <linearGradient id="envFlapGrad" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#FFFFFF" /><stop offset="100%" stop-color="#D0E3F7" /></linearGradient>
+                    <linearGradient id="trailGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="rgba(0, 240, 255, 0)" /><stop offset="100%" stop-color="#00f0ff" /></linearGradient>
+                    <filter id="emailShadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="10" stdDeviation="8" flood-color="#000000" flood-opacity="0.4"/></filter>
+                </defs>
+                <path class="tech-bg" d="M100 20 L160 55 L160 145 L100 180 L40 145 L40 55 Z" />
+                <path class="tech-bg tech-glow" stroke="#00C9A7" filter="drop-shadow(0 0 8px #00C9A7)" d="M100 20 L160 55 L160 145 L100 180 L40 145 L40 55 Z" />
+
+                <g class="email-doc-fade">
+                    <path d="M70 50 L115 50 L135 70 L135 150 L70 150 Z" fill="#D0E3F7" />
+                    <rect x="80" y="80" width="40" height="4" rx="2" fill="#0150C8" opacity="0.3" />
+                </g>
+
+                <g class="email-envelope" filter="url(#emailShadow)">
+                    <path d="M 45 75 L 155 75 L 155 145 L 45 145 Z" fill="url(#envGrad)" stroke="#0150C8" stroke-width="2.5" stroke-linejoin="round"/>
+                    <rect x="65" y="60" width="70" height="30" fill="#FFFFFF" stroke="#0150C8" stroke-width="1.5" />
+                    <path d="M 45 75 L 100 115 L 155 75" fill="url(#envFlapGrad)" stroke="#0150C8" stroke-width="2.5" stroke-linejoin="round"/>
+                    <path d="M 45 145 L 95 110 M 155 145 L 105 110" fill="none" stroke="#0150C8" stroke-width="2" opacity="0.4" stroke-linecap="round"/>
+                </g>
+
+                <path d="M 110 110 L 40 180" class="motion-trail" style="animation-delay: 0.0s;" />
+                <path d="M 130 90 L 60 160" class="motion-trail" style="animation-delay: 0.15s;" />
+
+                <path d="M 80 100 L 95 115 L 125 80" class="email-check" />
+
+                <g transform="translate(25, 135)" class="acis-pill">
+                    <rect width="80" height="34" rx="12" fill="#FFFFFF" stroke="#0150C8" stroke-width="2" />
+                    <text x="40" y="18" text-anchor="middle" dominant-baseline="middle" font-family="system-ui, sans-serif" font-weight="900" font-size="18" fill="#002B7F" letter-spacing="1">ACIS</text>
+                    <clipPath id="pillClip2"><rect width="80" height="34" rx="12" /></clipPath>
+                    <rect width="40" height="40" fill="rgba(255,255,255,0.8)" clip-path="url(#pillClip2)" class="pill-shine" />
+                </g>
+            </svg>
+        </div>
+        <div class="system-status" id="emailStatusText" style="color: #00C9A7; filter: drop-shadow(0 0 8px rgba(0, 201, 167, 0.5));">Sending Email...</div>
+    </div>
+
+    <!-- =========================================================
+         LOADER 3: BACKEND TRANSACTION (GEARS & SERVERS)
+         ========================================================= -->
+    <div class="acis-loader-overlay" id="backendOverlay">
+        <div class="ambient-glow" style="background: radial-gradient(circle, rgba(138, 43, 226, 0.2) 0%, transparent 70%);"></div>
+        <div class="compact-container">
+            <svg viewBox="0 0 200 200" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <filter id="serverShadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#000000" flood-opacity="0.5"/></filter>
+                </defs>
+                <path class="tech-bg" d="M100 20 L160 55 L160 145 L100 180 L40 145 L40 55 Z" />
+                <path class="tech-bg tech-glow" stroke="#8A2BE2" filter="drop-shadow(0 0 8px #8A2BE2)" d="M100 20 L160 55 L160 145 L100 180 L40 145 L40 55 Z" />
+
+                <!-- Flowing Data Lines -->
+                <path d="M 40 100 L 70 100" class="data-stream" style="animation-delay: 0s;" />
+                <path d="M 160 100 L 130 100" class="data-stream" style="animation-delay: 0.5s;" />
+                <path d="M 100 20 L 100 50" class="data-stream" style="animation-delay: 0.2s;" />
+
+                <!-- The Settings Gear / Tech Ring -->
+                <circle cx="100" cy="95" r="38" fill="none" stroke="#00f0ff" stroke-width="4" class="gear-primary" opacity="0.8" />
+                <circle cx="100" cy="95" r="46" fill="none" stroke="#0150C8" stroke-width="2" class="gear-secondary" opacity="0.6" />
+
+                <!-- The Server Stack / Document Center -->
+                <g class="server-stack" filter="url(#serverShadow)">
+                    <!-- Base Document Backdrop -->
+                    <path d="M70 45 L130 45 L130 145 L70 145 Z" fill="#FAFCFF" stroke="#0150C8" stroke-width="2" />
+                    <!-- Server Blades -->
+                    <rect x="75" y="60" width="50" height="14" rx="3" fill="#D0E3F7" stroke="#0150C8" stroke-width="1.5" />
+                    <rect x="75" y="85" width="50" height="14" rx="3" fill="#D0E3F7" stroke="#0150C8" stroke-width="1.5" />
+                    <rect x="75" y="110" width="50" height="14" rx="3" fill="#D0E3F7" stroke="#0150C8" stroke-width="1.5" />
+                    <!-- Server Blinking Lights -->
+                    <circle cx="83" cy="67" r="2.5" class="server-light" style="animation-delay: 0s" />
+                    <circle cx="83" cy="92" r="2.5" class="server-light" style="animation-delay: 0.4s" />
+                    <circle cx="83" cy="117" r="2.5" class="server-light" style="animation-delay: 0.8s" />
+                    <!-- Small tech lines on blades -->
+                    <line x1="95" y1="67" x2="115" y2="67" stroke="#0150C8" stroke-width="2" stroke-linecap="round" />
+                    <line x1="95" y1="92" x2="110" y2="92" stroke="#0150C8" stroke-width="2" stroke-linecap="round" />
+                    <line x1="95" y1="117" x2="120" y2="117" stroke="#0150C8" stroke-width="2" stroke-linecap="round" />
+                </g>
+
+                <g transform="translate(25, 135)" class="acis-pill">
+                    <rect width="80" height="34" rx="12" fill="#FFFFFF" stroke="#0150C8" stroke-width="2" />
+                    <text x="40" y="18" text-anchor="middle" dominant-baseline="middle" font-family="system-ui, sans-serif" font-weight="900" font-size="18" fill="#002B7F" letter-spacing="1">ACIS</text>
+                    <clipPath id="pillClip3"><rect width="80" height="34" rx="12" /></clipPath>
+                    <rect width="40" height="40" fill="rgba(255,255,255,0.8)" clip-path="url(#pillClip3)" class="pill-shine" />
+                </g>
+            </svg>
+        </div>
+        <div class="system-status" id="backendStatusText" style="color: #c980ff; filter: drop-shadow(0 0 8px rgba(138, 43, 226, 0.6));">Processing Data...</div>
+    </div>
+
+    <!-- =========================================================
+         JAVASCRIPT CONTROLLERS
+         ========================================================= -->
+    <script>
+        let currentInterval;
+
+        /**
+         * Triggers the specific premium loader overlay.
+         * @param {string} overlayId - 'pdfOverlay', 'emailOverlay', or 'backendOverlay'
+         * @param {string} initialText - The starting text
+         */
+        function triggerLoader(overlayId, initialText) {
+            const overlay = document.getElementById(overlayId);
+            let statusTextId;
+            let phases = [];
+            let speed = 1200;
+
+            if(overlayId === 'pdfOverlay') {
+                statusTextId = 'pdfStatusText';
+                phases = ["Compiling Data...", "Rendering Layout...", "Applying Security...", "Finalizing PDF..."];
+            } else if (overlayId === 'emailOverlay') {
+                statusTextId = 'emailStatusText';
+                phases = ["Securing Route...", "Attaching Documents...", "Sending to Client...", "Sent Successfully!"];
+                speed = 900;
+            } else if (overlayId === 'backendOverlay') {
+                statusTextId = 'backendStatusText';
+                phases = ["Syncing Database...", "Processing Transaction...", "Encrypting Data...", "Save Successful."];
+                speed = 1000;
+            }
+
+            const statusText = document.getElementById(statusTextId);
+            overlay.classList.add('active');
+            
+            let i = 0; statusText.innerText = phases[0];
+            currentInterval = setInterval(() => {
+                i = Math.min(i + 1, phases.length - 1);
+                statusText.innerText = phases[i];
+            }, speed);
+
+            // SIMULATION: Auto hide after 5 seconds
+            setTimeout(() => {
+                clearInterval(currentInterval);
+                overlay.classList.remove('active');
+            }, 4500);
+        }
+    </script>
+</body>
+</html>

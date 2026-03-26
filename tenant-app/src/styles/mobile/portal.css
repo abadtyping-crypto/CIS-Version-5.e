@@ -1,0 +1,31 @@
+.portal-mobile-page .portal-mobile-focus section > header p {
+  display: none;
+}
+
+.portal-mobile-page .portal-mobile-focus section > header h3 {
+  font-size: 0.88rem;
+  letter-spacing: 0.02em;
+}
+
+.portal-mobile-page .portal-mobile-focus section > header {
+  padding: 0.68rem 0.85rem;
+}
+
+.portal-mobile-page .portal-mobile-focus section > div {
+  border-top-width: 0;
+}
+
+@keyframes portalWorkspaceFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.portal-workspace-fade {
+  animation: portalWorkspaceFadeIn 220ms ease-out;
+}

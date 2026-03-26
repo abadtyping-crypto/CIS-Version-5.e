@@ -1,0 +1,34 @@
+node_modules
+.idea/
+.vscode/
+dist-electron/
+dist/
+build/
+*.log
+status.txt
+diff_output.txt
+diff.txt
+ACIS Version 5.0.code-workspace
+
+# ACIS Version 5.0 Build Exhaust & Dummy Files
+dist/
+release/
+out/
+build/
+electron/dist/
+developer-app/dist/
+tenant-app/dist/
+.env
+.env.local
+
+# Windows Explorer noise (prevent refs/desktop.ini issues)
+desktop.ini
+**/desktop.ini
+Thumbs.db
+**/Thumbs.db
+
+# Local scratch folders
+Plan/
+temp_dir/
+**/my_plan/
+

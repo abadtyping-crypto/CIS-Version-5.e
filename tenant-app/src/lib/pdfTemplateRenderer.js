@@ -1,0 +1,179 @@
+export const PDF_DOCUMENT_TYPES = [
+  { key: 'paymentReceipt', label: 'Payment Receipt' },
+  { key: 'nextInvoice', label: 'Next Invoice' },
+  { key: 'quotation', label: 'Quotation' },
+  { key: 'performerInvoice', label: 'Performer Invoice' },
+  { key: 'statement', label: 'Statements' },
+  { key: 'portalStatement', label: 'Portal Statement' },
+];
+
+export const DEFAULT_QUOTATION_TERMS = [
+  '1. This quotation is valid until {{expiryDate}}.',
+  '2. Government-related application fees are based on current government charges and may change without prior notice. Any change in government pricing will be reflected in the final billing.',
+].join('\n');
+
+export const PORTAL_STATEMENT_DISCLAIMER_TEXT =
+  'This statement is generated for internal reference only and is not valid for official government use.';
+
+// Renderer integration contract:
+// 1) Fetch document-type template doc via fetchTenantPdfTemplates().
+// 2) Resolve active template using resolvePdfTemplateForRenderer().
+// 3) Pass returned "template" to the PDF renderer.
+// 4) Asset URLs are versioned with ?tv={templateVersion} to force cache refresh after edits.
+export const PDF_DEFAULT_TEMPLATE = Object.freeze({
+  templateId: 'default',
+  name: 'Default',
+  logoSlotId: '',
+  logoUrl: '',
+  logoPosition: 'left',
+  titleText: '',
+  headerText: '',
+  headerBackground: '#0f172a',
+  footerText: '',
+  footerLink: '',
+  footerAlignment: 'left',
+  paperSize: 'A4',
+  orientation: 'portrait',
+  margins: { top: 24, right: 24, bottom: 24, left: 24 },
+  rowPadding: 8,
+  bodyLayout: 'standard',
+  accentColor: '#e67e22',
+  backgroundType: 'solid',
+  backgroundColor: '#ffffff',
+  backgroundImageUrl: '',
+  gradientStart: '#fff6e8',
+  gradientEnd: '#f7d8a8',
+  coverPageEnabled: false,
+  showCompanyName: true,
+  showCompanyAddress: true,
+  showBankDetails: false,
+  showContactInfo: true,
+  billingAddressPosition: 'right',
+  portalLogoEnabled: true,
+  portalTableEnabled: true,
+  portalTableLayout: 'horizontal',
+  internalStatementDisclaimer: PORTAL_STATEMENT_DISCLAIMER_TEXT,
+  bankAccountsVisibility: [],
+  contactVisibilityMap: {},
+  notes: '',
+  termsAndConditions: '',
+});
+
+const ensurePositiveNumber = (value, fallback, max) => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) return fallback;
+  if (Number.isFinite(max)) return Math.min(parsed, max);
+  return parsed;
+};
+
+const coerceMargins = (margins) => {
+  const safe = margins && typeof margins === 'object' ? margins : {};
+  return {
+    top: ensurePositiveNumber(safe.top, PDF_DEFAULT_TEMPLATE.margins.top, 120),
+    right: ensurePositiveNumber(safe.right, PDF_DEFAULT_TEMPLATE.margins.right, 120),
+    bottom: ensurePositiveNumber(safe.bottom, PDF_DEFAULT_TEMPLATE.margins.bottom, 120),
+    left: ensurePositiveNumber(safe.left, PDF_DEFAULT_TEMPLATE.margins.left, 120),
+  };
+};
+
+export const normalizePdfTemplatePayload = (template) => {
+  const raw = template && typeof template === 'object' ? template : {};
+  return {
+    templateId: String(raw.templateId || PDF_DEFAULT_TEMPLATE.templateId),
+    name: String(raw.name || PDF_DEFAULT_TEMPLATE.name).trim() || PDF_DEFAULT_TEMPLATE.name,
+    logoSlotId: String(raw.logoSlotId || '').trim(),
+    logoUrl: String(raw.logoUrl || ''),
+    logoPosition: ['left', 'center', 'right'].includes(raw.logoPosition)
+      ? raw.logoPosition
+      : PDF_DEFAULT_TEMPLATE.logoPosition,
+    titleText: String(raw.titleText || ''),
+    headerText: String(raw.headerText || ''),
+    headerBackground: String(raw.headerBackground || PDF_DEFAULT_TEMPLATE.headerBackground),
+    footerText: String(raw.footerText || ''),
+    footerLink: String(raw.footerLink || ''),
+    footerAlignment: ['left', 'center', 'right'].includes(raw.footerAlignment)
+      ? raw.footerAlignment
+      : PDF_DEFAULT_TEMPLATE.footerAlignment,
+    paperSize: ['A4', 'Letter'].includes(raw.paperSize) ? raw.paperSize : PDF_DEFAULT_TEMPLATE.paperSize,
+    orientation: ['portrait', 'landscape'].includes(raw.orientation)
+      ? raw.orientation
+      : PDF_DEFAULT_TEMPLATE.orientation,
+    margins: coerceMargins(raw.margins),
+    rowPadding: ensurePositiveNumber(raw.rowPadding, PDF_DEFAULT_TEMPLATE.rowPadding, 48),
+    bodyLayout: ['standard', 'compact'].includes(raw.bodyLayout)
+      ? raw.bodyLayout
+      : PDF_DEFAULT_TEMPLATE.bodyLayout,
+    accentColor: String(raw.accentColor || PDF_DEFAULT_TEMPLATE.accentColor),
+    backgroundType: ['solid', 'gradient', 'image'].includes(raw.backgroundType)
+      ? raw.backgroundType
+      : PDF_DEFAULT_TEMPLATE.backgroundType,
+    backgroundColor: String(raw.backgroundColor || PDF_DEFAULT_TEMPLATE.backgroundColor),
+    backgroundImageUrl: String(raw.backgroundImageUrl || ''),
+    gradientStart: String(raw.gradientStart || PDF_DEFAULT_TEMPLATE.gradientStart),
+    gradientEnd: String(raw.gradientEnd || PDF_DEFAULT_TEMPLATE.gradientEnd),
+    coverPageEnabled: Boolean(raw.coverPageEnabled),
+    showCompanyName: raw.showCompanyName !== undefined ? Boolean(raw.showCompanyName) : PDF_DEFAULT_TEMPLATE.showCompanyName,
+    showCompanyAddress: raw.showCompanyAddress !== undefined ? Boolean(raw.showCompanyAddress) : PDF_DEFAULT_TEMPLATE.showCompanyAddress,
+    showBankDetails: raw.showBankDetails !== undefined ? Boolean(raw.showBankDetails) : PDF_DEFAULT_TEMPLATE.showBankDetails,
+    showContactInfo: raw.showContactInfo !== undefined ? Boolean(raw.showContactInfo) : PDF_DEFAULT_TEMPLATE.showContactInfo,
+    billingAddressPosition: ['left', 'right', 'bottom'].includes(raw.billingAddressPosition)
+      ? raw.billingAddressPosition
+      : PDF_DEFAULT_TEMPLATE.billingAddressPosition,
+    portalLogoEnabled: raw.portalLogoEnabled !== undefined
+      ? Boolean(raw.portalLogoEnabled)
+      : PDF_DEFAULT_TEMPLATE.portalLogoEnabled,
+    portalTableEnabled: raw.portalTableEnabled !== undefined
+      ? Boolean(raw.portalTableEnabled)
+      : PDF_DEFAULT_TEMPLATE.portalTableEnabled,
+    portalTableLayout: ['horizontal', 'vertical'].includes(raw.portalTableLayout)
+      ? raw.portalTableLayout
+      : PDF_DEFAULT_TEMPLATE.portalTableLayout,
+    internalStatementDisclaimer: String(raw.internalStatementDisclaimer || PDF_DEFAULT_TEMPLATE.internalStatementDisclaimer),
+    bankAccountsVisibility: Array.isArray(raw.bankAccountsVisibility) ? raw.bankAccountsVisibility : [],
+    contactVisibilityMap: raw.contactVisibilityMap && typeof raw.contactVisibilityMap === 'object' ? raw.contactVisibilityMap : {},
+    notes: String(raw.notes || ''),
+    termsAndConditions: String(raw.termsAndConditions || ''),
+  };
+};
+
+const withVersionCacheBuster = (url, templateVersion) => {
+  const source = String(url || '').trim();
+  if (!source) return '';
+  const version = Number(templateVersion) || 1;
+  try {
+    const parsed = new URL(source);
+    parsed.searchParams.set('tv', String(version));
+    return parsed.toString();
+  } catch {
+    const separator = source.includes('?') ? '&' : '?';
+    return `${source}${separator}tv=${version}`;
+  }
+};
+
+export const resolvePdfTemplateForRenderer = ({ documentType, templateDoc, fallbackTemplate }) => {
+  const fallback = normalizePdfTemplatePayload(fallbackTemplate || PDF_DEFAULT_TEMPLATE);
+  const doc = templateDoc && typeof templateDoc === 'object' ? templateDoc : null;
+  if (!doc || doc.documentType !== documentType || doc.isTemplateEnabled === false) {
+    return {
+      template: fallback,
+      templateVersion: 1,
+      templateEnabled: false,
+    };
+  }
+
+  const templates = Array.isArray(doc.templates) ? doc.templates.map(normalizePdfTemplatePayload) : [];
+  const activeId = String(doc.activeTemplateId || 'default');
+  const activeTemplate = templates.find((item) => item.templateId === activeId) || templates[0] || fallback;
+  const templateVersion = Number(doc.templateVersion) || 1;
+  const resolved = {
+    ...activeTemplate,
+    logoUrl: withVersionCacheBuster(activeTemplate.logoUrl, templateVersion),
+    backgroundImageUrl: withVersionCacheBuster(activeTemplate.backgroundImageUrl, templateVersion),
+  };
+
+  return {
+    template: resolved,
+    templateVersion,
+    templateEnabled: true,
+  };
+};
