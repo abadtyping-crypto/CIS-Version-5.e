@@ -80,6 +80,7 @@ const setupSovereignPdfViewer = () => {
             if (!isSafePdfPath(decodedPath)) return callback({ error: -6 });
             callback({ path: decodedPath });
         } catch (error) {
+            console.error('[acis-pdf] Protocol error:', error);
             callback({ error: -2 });
         }
     });
@@ -229,6 +230,47 @@ ipcMain.on('satellite-copy-action', (_event, payload) => {
         }
     }
 });
+
+ipcMain.on('pdf-detected', (_event, data) => {
+    if (satelliteWindow && !satelliteWindow.isDestroyed()) {
+        satelliteWindow.show();
+        satelliteWindow.setAlwaysOnTop(true, 'screen-saver');
+        satelliteWindow.webContents.send('sync-event', { type: 'PDF_DETECTED', ...data });
+    }
+});
+
+ipcMain.handle('start-scraping', async (_event, { filePath }) => {
+    console.log('[Sovereign] Scraping started for:', filePath);
+    // Groundwork for PDF scraping engine.
+    return { ok: true, message: 'Scraping initialized.' };
+});
+
+const setupDownloadsWatcher = () => {
+    try {
+        const downloadsPath = app.getPath('downloads');
+        if (!existsSync(downloadsPath)) return;
+
+        const { watch } = require('fs');
+        watch(downloadsPath, (eventType, filename) => {
+            if (eventType === 'rename' && filename?.toLowerCase()?.endsWith('.pdf')) {
+                const fullPath = join(downloadsPath, filename);
+                if (existsSync(fullPath)) {
+                    console.log('[Sovereign] New PDF detected in Downloads:', filename);
+                    if (satelliteWindow && !satelliteWindow.isDestroyed()) {
+                        satelliteWindow.show();
+                        satelliteWindow.webContents.send('sync-event', { 
+                            type: 'PDF_DETECTED', 
+                            filePath: fullPath, 
+                            fileName: filename 
+                        });
+                    }
+                }
+            }
+        });
+    } catch (error) {
+        console.warn('Failed to initialize downloads watcher:', error);
+    }
+};
 
 function createWindow() {
     const state = getSavedState();
@@ -548,6 +590,7 @@ function createWindow() {
 
 app.whenReady().then(() => {
     setupSovereignPdfViewer();
+    setupDownloadsWatcher();
     createWindow();
 
     app.on('activate', () => {

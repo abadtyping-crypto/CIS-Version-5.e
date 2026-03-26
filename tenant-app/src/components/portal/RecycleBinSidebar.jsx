@@ -4,15 +4,24 @@ import { useTenant } from '../../context/useTenant';
 import { useRecycleBin } from '../../context/useRecycleBin';
 import { useAuth } from '../../context/useAuth';
 import { canUserPerformAction } from '../../lib/userControlPreferences';
+import {
+    ClientOnboardingIcon,
+    PortalManagementIcon,
+    DailyTransactionsIcon,
+    ReceivePaymentsIcon,
+    QuotationsIcon,
+    InvoiceManagementIcon,
+    TasksTrackingIcon
+} from '../icons/AppIcons';
 
 const domains = [
-    { id: 'clients', label: 'Clients', badge: 'Onboarding', icon: 'M15 19a4 4 0 00-8 0m8 0a4 4 0 01-8 0m8 0v-2a2 2 0 00-2-2H9a2 2 0 00-2 2v2m10-10a4 4 0 11-8 0 4 4 0 018 0z' },
-    { id: 'portals', label: 'Portals', badge: 'Portal', icon: 'M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10' },
-    { id: 'transactions', label: 'Transactions', badge: 'Payments', icon: 'M12 8c-1.657 0-3 .895-3 2 0 1.105 1.343 2 3 2s3 .895 3 2c0 1.105-1.343 2-3 2m0-8V6m0 10v2m-7-6h14' },
-    { id: 'loanPersons', label: 'Loan Persons', badge: 'Loans', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z' },
-    { id: 'paymentReceipts', label: 'Payment Receipts', badge: 'Payments', icon: 'M9 14l2-2 4 4m0 0l4-4m-4 4V4m-7 4h10' },
-    { id: 'invoices', label: 'Invoices & Quotations', badge: 'Invoices', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h7l5 5v11a2 2 0 01-2 2z' },
-    { id: 'statements', label: 'Statements', badge: 'Statements', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h10a2 2 0 012 2v14a2 2 0 01-2 2z' },
+    { id: 'clients', label: 'Clients', badge: 'Onboarding', Icon: ClientOnboardingIcon },
+    { id: 'portals', label: 'Portals', badge: 'Portal', Icon: PortalManagementIcon },
+    { id: 'transactions', label: 'Transactions', badge: 'Payments', Icon: DailyTransactionsIcon },
+    { id: 'loanPersons', label: 'Loan Persons', badge: 'Loans', Icon: TasksTrackingIcon },
+    { id: 'paymentReceipts', label: 'Payment Receipts', badge: 'Payments', Icon: ReceivePaymentsIcon },
+    { id: 'invoices', label: 'Invoices & Quotations', badge: 'Invoices', Icon: QuotationsIcon },
+    { id: 'statements', label: 'Statements', badge: 'Statements', Icon: InvoiceManagementIcon },
 ];
 
 const RecycleBinSidebar = () => {
@@ -64,14 +73,13 @@ const RecycleBinSidebar = () => {
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-[100] flex justify-end overflow-hidden">
+        <div className="fixed inset-0 z-[100] flex justify-end overflow-hidden pt-[3.7rem]">
             {/* Overlay Backdrop */}
             <div
                 className="absolute inset-0 bg-[color:color-mix(in_srgb,var(--c-bg)_42%,rgba(2,6,23,0.58))] backdrop-blur-sm transition-opacity animate-in fade-in duration-300"
                 onClick={closeRecycleBin}
             />
 
-            {/* Sidebar Panel */}
             <div className="glass relative flex h-full w-full max-w-md flex-col overflow-hidden border-l border-[var(--c-border)] animate-in slide-in-from-right duration-300 sm:max-w-md">
                 <header className="flex items-center justify-between border-b border-[var(--c-border)] p-4 sm:p-5">
                     <div>
@@ -94,12 +102,10 @@ const RecycleBinSidebar = () => {
                         <button
                             key={d.id}
                             onClick={() => setActiveDomain(d.id)}
-                            className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-2 py-2 text-[10px] font-bold transition ${activeDomain === d.id ? 'bg-[var(--c-surface)] text-[var(--c-accent)] shadow-sm' : 'text-[var(--c-muted)] hover:text-[var(--c-text)]'}`}
+                            className={`flex flex-1 flex-col sm:flex-row h-14 items-center justify-center gap-1.5 rounded-xl px-2 text-[10px] font-bold transition ${activeDomain === d.id ? 'bg-[var(--c-surface)] text-[var(--c-accent)] shadow-sm ring-1 ring-[var(--c-accent)]/20' : 'text-[var(--c-muted)] hover:bg-[var(--c-surface)]/40 hover:text-[var(--c-text)]'}`}
                         >
-                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={d.icon} />
-                            </svg>
-                            <span className="hidden sm:inline">{d.label}</span>
+                            <d.Icon className="h-5 w-5 shrink-0" />
+                            <span className="hidden leading-none sm:inline">{d.label}</span>
                         </button>
                     ))}
                 </div>

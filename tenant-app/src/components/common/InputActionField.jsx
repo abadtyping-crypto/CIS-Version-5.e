@@ -1,7 +1,7 @@
 import { useState, useRef, useLayoutEffect } from 'react';
 import { ClipboardPaste, Copy, Check, Plus } from 'lucide-react';
 
-const baseWrapperClass = 'compact-field relative flex min-h-[3.5rem] items-center overflow-hidden rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)] text-[var(--c-text)] shadow-sm transition focus-within:border-[var(--c-accent)] focus-within:ring-4 focus-within:ring-[var(--c-accent)]/5 disabled:opacity-50';
+const baseWrapperClass = 'relative flex h-14 items-center overflow-hidden rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)] text-[var(--c-text)] shadow-sm transition focus-within:border-[var(--c-accent)] focus-within:ring-4 focus-within:ring-[var(--c-accent)]/5 disabled:opacity-50';
 const baseInputClass = 'h-full min-w-0 flex-1 bg-transparent px-4 text-sm font-semibold normal-case text-[var(--c-text)] outline-none placeholder:text-[var(--c-muted)] placeholder:font-medium';
 
 const InputActionField = ({
@@ -189,11 +189,11 @@ const InputActionField = ({
                 <button
                     type="button"
                     onClick={onAppend}
-                    className="flex h-14 shrink-0 items-center gap-1 border-l border-[var(--c-border)] bg-[var(--c-panel)] px-4 text-[11px] font-bold uppercase tracking-wide text-[var(--c-muted)] transition hover:bg-[color:color-mix(in_srgb,var(--c-accent)_10%,var(--c-panel))] hover:text-[var(--c-accent)]"
+                    className="flex h-14 w-14 shrink-0 items-center justify-center border-l border-[var(--c-border)] bg-[var(--c-panel)] text-[var(--c-muted)] transition hover:bg-[color:color-mix(in_srgb,var(--c-accent)_10%,var(--c-panel))] hover:text-[var(--c-accent)]"
                     aria-label={appendLabel}
+                    title={appendLabel}
                 >
                     <Plus className="h-4 w-4" />
-                    {appendLabel && <span>{appendLabel}</span>}
                 </button>
             ) : null}
         </div>

@@ -320,8 +320,10 @@ textarea {
 }
 
 :root[data-theme='light'] .glass {
+  border-color: var(--glass-border); /* Fallback */
   border-color: color-mix(in srgb, var(--glass-border) 70%, var(--c-accent) 30%);
   box-shadow:
+    0 26px 60px -34px rgba(15, 23, 42, 0.1), /* Fallback */
     0 26px 60px -34px color-mix(in srgb, var(--c-accent) 26%, transparent),
     0 14px 28px -22px rgba(15, 23, 42, 0.16),
     inset 0 1px 0 rgba(255, 255, 255, 0.88),
@@ -338,6 +340,9 @@ textarea {
   inset: 0;
   border-radius: inherit;
   pointer-events: none;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.38), rgba(255, 255, 255, 0.08) 42%, transparent 68%),
+    radial-gradient(circle at top right, rgba(15, 23, 42, 0.05) 0%, transparent 36%); /* Fallback */
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.38), rgba(255, 255, 255, 0.08) 42%, transparent 68%),
     radial-gradient(circle at top right, color-mix(in srgb, var(--c-accent) 14%, transparent) 0%, transparent 36%);
@@ -369,6 +374,15 @@ textarea {
 
 .dirham-icon {
   filter: var(--dirham-filter);
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  filter: var(--calendar-filter, none);
+}
+
+:root[data-theme='dark'] {
+  --calendar-filter: invert(1) brightness(1.5);
 }
 
 .scrollbar-hide {

@@ -4,6 +4,7 @@ import { RefreshCcw, Wallet, Calendar, FileText, CheckCircle2, AlertCircle } fro
 import PageShell from '../components/layout/PageShell';
 import ClientSearchField from '../components/dailyTransaction/ClientSearchField';
 import PortalTransactionSelector from '../components/common/PortalTransactionSelector';
+import GenericSelectField from '../components/common/GenericSelectField';
 import CurrencyValue from '../components/common/CurrencyValue';
 import InputActionField from '../components/common/InputActionField';
 import ActionProgressOverlay from '../components/common/ActionProgressOverlay';
@@ -38,7 +39,6 @@ const ReceivePaymentsPage = () => {
 
   const [portals, setPortals] = useState([]);
   const [proformas, setProformas] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [status, setStatus] = useState('');
   const [statusType, setStatusType] = useState('info');
@@ -50,7 +50,6 @@ const ReceivePaymentsPage = () => {
 
   const loadData = useCallback(async () => {
     if (!tenantId) return;
-    setIsLoading(true);
     const [nextRef, clientsRes, portalsRes, proformaRes] = await Promise.all([
       generateDisplayDocumentRef(tenantId, 'clientPayment'),
       fetchTenantClients(tenantId),
@@ -71,7 +70,6 @@ const ReceivePaymentsPage = () => {
       setProformas(proformaRes.rows || []);
       if (prefillProformaId) setSelectedProformaId(prefillProformaId);
     }
-    setIsLoading(false);
   }, [tenantId, prefillClientId, prefillProformaId]);
 
   useEffect(() => {
@@ -152,7 +150,7 @@ const ReceivePaymentsPage = () => {
   return (
     <PageShell
       title="Receive Payments"
-      icon={Wallet}
+      iconKey="receivePayments"
       widthPreset="form"
     >
       <div className="flex flex-col gap-6" style={{ marginTop: 'var(--d-shell-header-h)' }}>
@@ -205,23 +203,18 @@ const ReceivePaymentsPage = () => {
             <div className="animate-in fade-in slide-in-from-top-4 duration-300 space-y-5">
               <div className="space-y-1.5">
                 <label className="text-[10px] font-black uppercase tracking-widest text-[var(--c-muted)]">Select Pending Proforma</label>
-                <div className="relative">
-                  <select 
-                    className="w-full appearance-none rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] px-4 py-3 text-sm font-bold text-[var(--c-text)] outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20 transition"
-                    value={selectedProformaId}
-                    onChange={(e) => setSelectedProformaId(e.target.value)}
-                  >
-                    <option value="">-- Choose a Proforma --</option>
-                    {availableProformas.map(p => (
-                      <option key={p.id} value={p.id}>
-                        {p.displayRef || p.id} (Due: AED {p.balanceDue?.toLocaleString()})
-                      </option>
-                    ))}
-                  </select>
-                  <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[var(--c-muted)]">
-                    <FileText size={18} />
-                  </div>
-                </div>
+                <GenericSelectField
+                  label="Pending Proforma"
+                  placeholder="-- Choose a Proforma --"
+                  icon={FileText}
+                  value={selectedProformaId}
+                  onChange={setSelectedProformaId}
+                  options={availableProformas.map((p) => ({
+                    value: p.id,
+                    label: `${p.displayRef || p.id} (Due: AED ${p.balanceDue?.toLocaleString()})`,
+                  }))}
+                  className="w-full"
+                />
               </div>
 
               {activeProforma && (
@@ -275,12 +268,13 @@ const ReceivePaymentsPage = () => {
 
           <div className="space-y-1.5">
             <label className="text-[10px] font-black uppercase tracking-widest text-[var(--c-muted)]">Payment Reference / Note</label>
-            <textarea
-              className="w-full rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] p-4 text-sm font-bold text-[var(--c-text)] outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20 transition"
+            <InputActionField
+              multiline={true}
               rows={2}
               value={note}
-              onChange={(e) => setNote(e.target.value)}
+              onValueChange={setNote}
               placeholder="e.g. Cheque #12345 or Bank Transfer ID..."
+              className="w-full"
             />
           </div>
 

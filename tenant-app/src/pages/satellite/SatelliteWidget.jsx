@@ -1,36 +1,64 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ClipboardCopy, Target } from 'lucide-react';
-
-const CLIENTS = [
-  { id: 'acme', name: 'Acme International', recency: 0.94, frequency: 0.81, status: 'Live • 2m ago', icon: '/signature/acme.png' },
-  { id: 'solace', name: 'Solace Banking', recency: 0.88, frequency: 0.79, status: 'Live • 6m ago', icon: '/signature/solace.png' },
-  { id: 'haven', name: 'Haven Energy', recency: 0.72, frequency: 0.86, status: 'Queued • 11m ago', icon: '/signature/haven.png' },
-  { id: 'aurora', name: 'Aurora Shipping', recency: 0.64, frequency: 0.74, status: 'Syncing • 18m ago', icon: '/signature/aurora.png' },
-  { id: 'atlas', name: 'Atlas Logistics', recency: 0.58, frequency: 0.77, status: 'Idle • 34m ago', icon: '/signature/atlas.png' },
-];
-
-const computeUsageScore = (client) => client.recency * 0.7 + client.frequency * 0.3;
+import { useTenant } from '../../context/useTenant';
+import { useAuth } from '../../context/useAuth';
+import { subscribeToSystemCache } from '../../lib/systemCache';
+import { computeUsageScore } from '../../lib/satelliteLogic';
+import { db, writeBatch, serverTimestamp, increment, doc } from '../../lib/backendStore';
 
 const SatelliteWidget = () => {
-  const sortedClients = useMemo(() => 
-    [...CLIENTS]
-      .sort((a, b) => computeUsageScore(b) - computeUsageScore(a))
-      .slice(0, 5),
-    []
-  );
+  const { tenantId } = useTenant();
+  const { user } = useAuth();
+  const [cache, setCache] = useState({ clients: [] });
 
-  const handleCopy = (client) => {
-    window.electron?.satellite?.copy?.({ value: client.id });
+  useEffect(() => {
+    if (!tenantId) return undefined;
+    const unsubscribe = subscribeToSystemCache(tenantId, setCache);
+    return () => unsubscribe();
+  }, [tenantId]);
+
+  const sortedClients = useMemo(() => {
+    return [...cache.clients]
+      .sort((a, b) => computeUsageScore(b) - computeUsageScore(a))
+      .slice(0, 5)
+      .map(client => ({
+        ...client,
+        name: client.tradeName || client.fullName || 'Unknown Client',
+        statusText: `${client.status || 'Live'} • ${client.lastAccessed ? 'Active' : 'Idle'}`,
+        icon: client.photoURL || client.logoUrl || '/signature/placeholder.png'
+      }));
+  }, [cache.clients]);
+
+  const recordActivity = async (clientId) => {
+    if (!tenantId || !user?.uid || !clientId) return;
+    try {
+      const batch = writeBatch(db);
+      const clientRef = doc(db, 'tenants', tenantId, 'clients', clientId);
+      batch.update(clientRef, {
+        hitCount: increment(1),
+        lastAccessed: serverTimestamp(),
+        updatedBy: user.uid // UID Supremacy: Only raw UID
+      });
+      await batch.commit();
+    } catch (error) {
+      console.warn('[Satellite] Failed to record activity:', error);
+    }
   };
 
-  const handleTrack = (client) => {
+  const handleCopy = async (client) => {
+    window.electron?.satellite?.copy?.({ value: client.displayClientId || client.id });
+    await recordActivity(client.id);
+  };
+
+  const handleTrack = async (client) => {
     window.electron?.satellite?.track?.(client.id);
+    await recordActivity(client.id);
   };
 
   return (
-    <div className="w-[320px] rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)]/80 backdrop-blur-xl shadow-2xl">
+    <div className="w-[320px] overflow-hidden rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)]/80 backdrop-blur-xl shadow-2xl">
       <div
-        className="flex h-10 items-center justify-between rounded-t-2xl px-3 text-xs font-semibold text-[var(--c-text)]"
+        className="flex h-10 items-center justify-between px-3 text-xs font-semibold text-[var(--c-text)]"
         style={{ WebkitAppRegion: 'drag' }}
       >
         <span className="text-[var(--c-muted)]">Frequency List</span>
@@ -38,17 +66,22 @@ const SatelliteWidget = () => {
       </div>
 
       <div className="space-y-1 border-t border-[var(--c-border)] px-2 pb-3 pt-2">
+        {sortedClients.length === 0 ? (
+          <div className="flex h-10 items-center justify-center text-[10px] text-[var(--c-muted)]">
+            No active clients in cache
+          </div>
+        ) : null}
         {sortedClients.map((client) => (
           <div
             key={client.id}
-            className="flex h-10 items-center gap-2 rounded-2xl px-2 text-[var(--c-text)]"
+            className="flex h-10 items-center gap-2 rounded-2xl px-2 text-[var(--c-text)] transition hover:bg-[var(--c-accent)]/5"
           >
             <div className="relative h-10 w-10 flex-shrink-0 overflow-hidden rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)]">
               <img src={client.icon} alt={client.name} className="h-full w-full object-cover" />
             </div>
             <div className="flex flex-1 flex-col justify-center truncate">
-              <span className="text-xs font-bold truncate">{client.name}</span>
-              <span className="text-[11px] text-[var(--c-muted)] truncate">{client.status}</span>
+              <span className="text-xs font-bold truncate leading-none">{client.name}</span>
+              <span className="mt-0.5 text-[10px] text-[var(--c-muted)] truncate leading-none">{client.statusText}</span>
             </div>
             <div className="flex gap-1">
               <button

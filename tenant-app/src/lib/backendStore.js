@@ -17,6 +17,7 @@ import {
   startAfter,
   updateDoc,
   where,
+  writeBatch,
 } from 'firebase/firestore';
 import { db, auth } from './firebaseConfig';
 import { sendPasswordResetEmail } from 'firebase/auth';
@@ -25,7 +26,7 @@ import { buildSequenceKey, formatDisplayId, normalizeIdRule } from './idFormat';
 import { buildNotificationPayload, generateNotificationId } from './notificationTemplate';
 import { fetchGlobalPortalLogoMap } from './portalLogoLibraryStore';
 import { normalizePageID } from '../../../developer-app/src/pages/HeaderControlCenterPage.jsx';
-export { db, getDoc, doc };
+export { db, getDoc, doc, writeBatch, query };
 
 
 const toSafeError = (error) => {

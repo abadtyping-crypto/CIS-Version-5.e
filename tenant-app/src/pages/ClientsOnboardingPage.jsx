@@ -209,18 +209,18 @@ const ClientsOnboardingPage = () => {
                                 </p>
                             ) : null}
 
-                            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                            <div className="mt-4 flex flex-wrap gap-3">
                                 {onboardingTypeConfig.map(type => (
                                     <button
                                         key={type.id}
                                         onClick={() => canCreateClient && setActiveType(type.id)}
                                         disabled={!canCreateClient}
-                                        className="group flex min-h-[96px] items-center gap-3 rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] px-3 py-3 text-left transition hover:border-[var(--c-accent)] hover:bg-[var(--c-accent)]/5 disabled:cursor-not-allowed disabled:opacity-50 md:min-h-[122px] md:flex-col md:justify-center md:text-center"
+                                        className="group flex h-14 items-center gap-3 rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)] px-4 transition hover:border-[var(--c-accent)] hover:bg-[var(--c-accent)]/5 disabled:cursor-not-allowed disabled:opacity-50"
                                     >
-                                        <div className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#F8F9FA] ring-1 ring-slate-200/80 md:h-16 md:w-16">
+                                        <div className="relative flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#F8F9FA] ring-1 ring-slate-200/80">
                                             <img src={type.icon} alt={type.label} className="h-full w-full object-cover transition duration-300 group-hover:scale-105" />
                                         </div>
-                                        <span className="text-sm font-bold leading-tight text-[var(--c-text)]">{type.label}</span>
+                                        <span className="text-sm font-bold text-[var(--c-text)]">{type.label}</span>
                                     </button>
                                 ))}
                             </div>

@@ -30,10 +30,17 @@ contextBridge.exposeInMainWorld(
     },
     pdf: {
         resolveSovereignUrl: (localFilePath) => ipcRenderer.invoke('acis-pdf-resolve', { localFilePath }),
+        onPdfDetected: (callback) => {
+            const listener = (_event, data) => callback(data);
+            ipcRenderer.on('sync-event', listener);
+            return () => ipcRenderer.removeListener('sync-event', listener);
+        },
+        startScraping: (payload) => ipcRenderer.invoke('start-scraping', payload),
     },
     satellite: {
         copy: (payload) => ipcRenderer.send('satellite-copy-action', payload),
         track: (payload) => ipcRenderer.send('satellite-track-action', payload),
+        onSyncEvent: (callback) => ipcRenderer.on('sync-event', (event, data) => callback(data)),
     },
     onSyncEvent: (callback) => ipcRenderer.on('sync-event', (event, data) => callback(data))
 }

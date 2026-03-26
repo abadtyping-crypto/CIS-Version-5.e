@@ -1256,21 +1256,21 @@ const PortalDetailPage = () => {
                         type="button"
                         onClick={openTransfer}
                         disabled={!canUserPerformAction(tenantId, user, 'internalTransfer')}
-                        className="rounded-2xl border border-[var(--c-accent)] bg-[var(--c-accent)]/10 px-4 py-2 text-xs font-bold text-[var(--c-accent)] shadow-sm disabled:opacity-50 hover:bg-[var(--c-accent)]/20 transition-colors"
+                        className="flex h-14 items-center rounded-2xl border border-[var(--c-accent)] bg-[var(--c-accent)]/10 px-6 text-sm font-bold text-[var(--c-accent)] shadow-sm disabled:opacity-50 hover:bg-[var(--c-accent)]/20 transition-colors"
                       >
                         Internal Transfer
                       </button>
                       <button
                         type="button"
                         onClick={() => setIsStatementOpen(true)}
-                        className="rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)] px-4 py-2 text-xs font-bold text-[var(--c-text)] shadow-sm hover:border-[var(--c-accent)] transition-colors"
+                        className="flex h-14 items-center rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)] px-6 text-sm font-bold text-[var(--c-text)] shadow-sm hover:border-[var(--c-accent)] transition-colors"
                       >
                         Print Statement
                       </button>
                       <button
                         type="button"
                         onClick={() => setIsEditMode(true)}
-                        className="rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)] px-4 py-2 text-xs font-bold text-[var(--c-text)] shadow-sm hover:border-[var(--c-accent)] transition-colors"
+                        className="flex h-14 items-center rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)] px-6 text-sm font-bold text-[var(--c-text)] shadow-sm hover:border-[var(--c-accent)] transition-colors"
                       >
                         Edit Portal
                       </button>
@@ -1517,7 +1517,7 @@ const PortalDetailPage = () => {
                       type="button"
                       onClick={onDirectBalanceAdjust}
                       disabled={isBalanceAdjustSaving}
-                      className="rounded-xl bg-[var(--c-accent)] px-4 py-2 text-xs font-bold text-white disabled:opacity-60"
+                      className="flex h-14 items-center rounded-2xl bg-[var(--c-accent)] px-8 text-sm font-black text-white shadow-lg shadow-[var(--c-accent)]/25 transition hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60"
                     >
                       {isBalanceAdjustSaving ? 'Submitting...' : 'Submit Adjustment'}
                     </button>
@@ -1602,14 +1602,14 @@ const PortalDetailPage = () => {
                 <button
                   type="button"
                   onClick={handlePrintTx}
-                  className="rounded-lg border border-[var(--c-accent)] bg-[var(--c-accent)]/10 px-2 py-1 text-xs font-semibold text-[var(--c-accent)]"
+                  className="flex h-14 items-center rounded-2xl border border-[var(--c-accent)] bg-[var(--c-accent)]/10 px-6 text-sm font-bold text-[var(--c-accent)]"
                 >
                   Print Slip
                 </button>
                 <button
                   type="button"
                   onClick={() => setSelectedTx(null)}
-                  className="rounded-lg border border-[var(--c-border)] px-2 py-1 text-xs font-semibold text-[var(--c-text)]"
+                  className="flex h-14 items-center rounded-2xl border border-[var(--c-border)] px-6 text-sm font-bold text-[var(--c-text)]"
                 >
                   Close
                 </button>
