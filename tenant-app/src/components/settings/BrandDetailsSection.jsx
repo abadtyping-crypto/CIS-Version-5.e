@@ -22,7 +22,8 @@ import {
   LogoLibrarySection, 
   LogoUsageSection, 
   LogoEditorSection,
-  WhatsAppIcon
+  WhatsAppIcon,
+  TikTokIcon,
 } from './BrandingSubsections';
 
 const inputClass =
@@ -35,6 +36,8 @@ const SOCIAL_PLATFORMS = [
   { key: 'facebookUrl', label: 'Facebook', icon: Facebook },
   { key: 'twitterUrl', label: 'X (Twitter)', icon: Twitter },
   { key: 'linkedinUrl', label: 'LinkedIn', icon: Linkedin },
+  { key: 'tiktokUrl', label: 'TikTok', icon: TikTokIcon },
+  { key: 'whatsappUrl', label: 'WhatsApp UAE', icon: WhatsAppIcon },
 ];
 
 const LOGO_FUNCTIONS = [
@@ -115,8 +118,10 @@ const BrandDetailsSection = () => {
   const { tenant, tenantId } = useTenant();
   const { user } = useAuth();
   const [form, setForm] = useState({
-    companyName: toUpper(tenant?.name || ''),
+    companyName: '',
     brandName: '',
+    addressSource: 'tenant',
+    sameAsHeadOffice: true,
     landlines: [''],
     mobiles: [''],
     mobileContacts: [createMobileContact()],
@@ -138,6 +143,7 @@ const BrandDetailsSection = () => {
     instagramUrl: '',
     twitterUrl: '',
     linkedinUrl: '',
+    tiktokUrl: '',
     whatsappUrl: '',
   });
 
@@ -197,8 +203,10 @@ const BrandDetailsSection = () => {
 
       setForm((prev) => ({
         ...prev,
-        companyName: toUpper(data.companyName || prev.companyName),
+        companyName: toUpper(data.companyName || ''),
         brandName: toUpper(data.brandName || ''),
+        addressSource: String(data.addressSource || 'tenant'),
+        sameAsHeadOffice: String(data.addressSource || 'tenant') !== 'custom',
         landlines: Array.isArray(data.landlines) && data.landlines.length 
           ? data.landlines.map(normalizePhone) 
           : [normalizePhone(data.landline1 || '')].filter(Boolean).concat(data.landline2 ? [normalizePhone(data.landline2)] : []),
@@ -230,6 +238,7 @@ const BrandDetailsSection = () => {
         instagramUrl: toLower(data.instagramUrl || ''),
         twitterUrl: toLower(data.twitterUrl || ''),
         linkedinUrl: toLower(data.linkedinUrl || ''),
+        tiktokUrl: toLower(data.tiktokUrl || ''),
         whatsappUrl: toLower(data.whatsappUrl || ''),
       }));
       
@@ -238,6 +247,8 @@ const BrandDetailsSection = () => {
       if (data.facebookUrl) incomingSocials.push('facebookUrl');
       if (data.twitterUrl) incomingSocials.push('twitterUrl');
       if (data.linkedinUrl) incomingSocials.push('linkedinUrl');
+      if (data.tiktokUrl) incomingSocials.push('tiktokUrl');
+      if (data.whatsappUrl) incomingSocials.push('whatsappUrl');
       
       // Default to one empty slot if none exist
       setActiveSocialKeys(incomingSocials.length > 0 ? incomingSocials : [SOCIAL_PLATFORMS[0].key]);
@@ -544,6 +555,7 @@ const BrandDetailsSection = () => {
       mobiles: getFilledMobileContacts(form.mobileContacts).map((contact) => normalizePhone(contact.value)).filter(Boolean),
       mobileContacts: serializeMobileContacts(form.mobileContacts),
       addresses: form.addresses.map(toProperCase).filter(Boolean),
+      addressSource: form.sameAsHeadOffice ? 'tenant' : 'custom',
       emirate: form.emirate || '',
       poBoxNumber: normalizePoBox(form.poBoxNumber),
       poBoxEmirate: normalizePoBox(form.poBoxNumber) ? form.poBoxEmirate || '' : '',
@@ -561,6 +573,7 @@ const BrandDetailsSection = () => {
       instagramUrl: toLower(form.instagramUrl),
       twitterUrl: toLower(form.twitterUrl),
       linkedinUrl: toLower(form.linkedinUrl),
+      tiktokUrl: toLower(form.tiktokUrl),
       whatsappUrl: toLower(form.whatsappUrl),
       logoLibrary: normalizedLogoLibrary,
       logoUsage: normalizedLogoUsage,
@@ -575,6 +588,7 @@ const BrandDetailsSection = () => {
     if (normalized.mobiles.length) payload.mobiles = normalized.mobiles;
     if (normalized.mobileContacts.length) payload.mobileContacts = normalized.mobileContacts;
     if (normalized.addresses.length) payload.addresses = normalized.addresses;
+    if (normalized.addressSource) payload.addressSource = normalized.addressSource;
     if (normalized.emirate) payload.emirate = normalized.emirate;
     if (normalized.poBoxNumber) payload.poBoxNumber = normalized.poBoxNumber;
     if (normalized.poBoxNumber && normalized.poBoxEmirate) payload.poBoxEmirate = normalized.poBoxEmirate;
@@ -592,6 +606,7 @@ const BrandDetailsSection = () => {
     if (normalized.instagramUrl) payload.instagramUrl = normalized.instagramUrl;
     if (normalized.twitterUrl) payload.twitterUrl = normalized.twitterUrl;
     if (normalized.linkedinUrl) payload.linkedinUrl = normalized.linkedinUrl;
+    if (normalized.tiktokUrl) payload.tiktokUrl = normalized.tiktokUrl;
     if (normalized.whatsappUrl) payload.whatsappUrl = normalized.whatsappUrl;
     if (normalized.logoLibrary.length) payload.logoLibrary = normalized.logoLibrary;
     if (Object.keys(normalized.logoUsage).length) payload.logoUsage = normalized.logoUsage;
@@ -599,6 +614,7 @@ const BrandDetailsSection = () => {
     [
       'companyName',
       'brandName',
+      'addressSource',
       'emirate',
       'poBoxNumber',
       'poBoxEmirate',
@@ -614,6 +630,7 @@ const BrandDetailsSection = () => {
       'instagramUrl',
       'twitterUrl',
       'linkedinUrl',
+      'tiktokUrl',
       'whatsappUrl',
       // legacy fields to keep document clean after migration
       'landline1',
@@ -633,9 +650,28 @@ const BrandDetailsSection = () => {
 
     const nextErrors = {};
 
-    if (!normalized.companyName && !normalized.brandName) {
-      nextErrors.companyName = 'Provide Company Name or Brand Name.';
-      nextErrors.brandName = 'Provide Company Name or Brand Name.';
+    if (!normalized.companyName) {
+      nextErrors.companyName = 'Company Name is mandatory.';
+    }
+
+    if (!normalized.mobiles.length) {
+      nextErrors.phones = 'At least one mobile number is mandatory.';
+    }
+
+    if (!normalized.addresses.length) {
+      nextErrors.addresses = 'At least one address is mandatory.';
+    }
+
+    if (!normalized.emails.length) {
+      nextErrors.emails = 'At least one official email is mandatory.';
+    }
+
+    if (!primaryBank.bankAccountName) {
+      nextErrors.bankAccountName_0 = 'Account Name is mandatory.';
+    }
+
+    if (!primaryBank.bankAccountNumber) {
+      nextErrors.bankAccountNumber_0 = 'Account Number is mandatory.';
     }
 
     const allPhones = [...normalized.landlines, ...normalized.mobiles];
@@ -682,6 +718,8 @@ const BrandDetailsSection = () => {
         ? normalizeMobileContacts(normalized.mobileContacts)
         : [createMobileContact()],
       addresses: normalized.addresses.length ? normalized.addresses : [''],
+      addressSource: normalized.addressSource,
+      sameAsHeadOffice: normalized.addressSource !== 'custom',
       emails: normalized.emails.length 
           ? normalized.emails.map(v => ({ id: Math.random().toString(36).slice(2, 11), value: v })) 
           : [{ id: 'default', value: '' }],
@@ -698,6 +736,7 @@ const BrandDetailsSection = () => {
       instagramUrl: normalized.instagramUrl,
       twitterUrl: normalized.twitterUrl,
       linkedinUrl: normalized.linkedinUrl,
+      tiktokUrl: normalized.tiktokUrl,
       whatsappUrl: normalized.whatsappUrl,
     }));
 
@@ -816,6 +855,23 @@ const BrandDetailsSection = () => {
             setLogoUsage={setLogoUsage}
           />
 
+          <LogoEditorSection
+            activeLogoEditorSlotId={activeLogoEditorSlotId}
+            logoLibrary={logoLibrary}
+            logoSourceUrl={logoSourceUrl}
+            logoZoom={logoZoom}
+            setLogoZoom={setLogoZoom}
+            logoRotation={logoRotation}
+            setRotationWrapper={setRotationWrapper}
+            onCropComplete={onCropComplete}
+            onLogoEditorFileChange={onLogoEditorFileChange}
+            onLogoEditorReset={onLogoEditorReset}
+            applyLogoEditor={applyLogoEditor}
+            closeLogoEditor={closeLogoEditor}
+            logoUploading={logoUploading}
+            logoErrors={logoErrors}
+          />
+
           <div className="flex items-center justify-between border-t border-(--c-border) pt-8">
             <p className={`max-w-[70%] rounded-lg border px-3 py-2 text-xs font-semibold ${statusClass}`}>
               {statusMessage}
@@ -829,26 +885,8 @@ const BrandDetailsSection = () => {
           </div>
         </div>
       </SettingCard>
-
-      <LogoEditorSection
-        activeLogoEditorSlotId={activeLogoEditorSlotId}
-        logoLibrary={logoLibrary}
-        logoSourceUrl={logoSourceUrl}
-        logoZoom={logoZoom}
-        setLogoZoom={setLogoZoom}
-        logoRotation={logoRotation}
-        setRotationWrapper={setRotationWrapper}
-        onCropComplete={onCropComplete}
-        onLogoEditorFileChange={onLogoEditorFileChange}
-        onLogoEditorReset={onLogoEditorReset}
-        applyLogoEditor={applyLogoEditor}
-        closeLogoEditor={closeLogoEditor}
-        logoUploading={logoUploading}
-        logoErrors={logoErrors}
-      />
     </>
   );
 };
 
 export default BrandDetailsSection;
-

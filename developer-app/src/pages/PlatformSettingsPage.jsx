@@ -81,7 +81,9 @@ export const PlatformSettingsPage = () => {
 
     const [isUploadingHeader, setIsUploadingHeader] = useState(false);
     const [isUploadingFooter, setIsUploadingFooter] = useState(false);
+    const [isUploadingProfile, setIsUploadingProfile] = useState(false);
     const [isUploadingBroadcastImage, setIsUploadingBroadcastImage] = useState(false);
+    const [profilePageIcon, setProfilePageIcon] = useState('');
 
     // Cropper State
     const [showCropper, setShowCropper] = useState(false);
@@ -94,8 +96,12 @@ export const PlatformSettingsPage = () => {
     useEffect(() => {
         const fetchSettings = async () => {
             try {
-                const docRef = doc(db, 'acis_system_assets', 'electron_controller');
-                const docSnap = await getDoc(docRef);
+                const controllerRef = doc(db, 'acis_system_assets', 'electron_controller');
+                const profileIconRef = doc(db, 'acis_system_assets', 'icon_page_user');
+                const [docSnap, profileIconSnap] = await Promise.all([
+                    getDoc(controllerRef),
+                    getDoc(profileIconRef),
+                ]);
                 if (docSnap.exists()) {
                     const data = docSnap.data();
                     setFormData({
@@ -108,6 +114,9 @@ export const PlatformSettingsPage = () => {
                         termsAndConditions: data.termsAndConditions || '',
                         systemIconVariation: data.systemIconVariation || 'default',
                     });
+                }
+                if (profileIconSnap.exists()) {
+                    setProfilePageIcon(String(profileIconSnap.data()?.iconUrl || '').trim());
                 }
             } catch (err) {
                 console.error('Failed to load platform settings', err);
@@ -163,12 +172,14 @@ export const PlatformSettingsPage = () => {
         const fieldName = cropTargetField;
         const isHeader = fieldName === 'electronHeaderIcon';
         const isFooter = fieldName === 'electronFooterIcon';
+        const isProfile = fieldName === 'profilePageIcon';
         const isBroadcastImage = fieldName === 'broadcastImage';
         const outputWidth = isFooter ? 720 : 256;
         const outputHeight = isFooter ? 240 : 256;
         setShowCropper(false);
         if (isHeader) setIsUploadingHeader(true);
         else if (isFooter) setIsUploadingFooter(true);
+        else if (isProfile) setIsUploadingProfile(true);
         else if (isBroadcastImage) setIsUploadingBroadcastImage(true);
 
         try {
@@ -176,7 +187,9 @@ export const PlatformSettingsPage = () => {
             const croppedBlob = await getCroppedImg(cropImageSrc, croppedAreaPixels, outputWidth, outputHeight);
             
             // Cleanup old storage asset if replacing
-            const oldUrl = isBroadcastImage ? broadcastForm.imageUrl : formData[fieldName];
+            const oldUrl = isBroadcastImage
+                ? broadcastForm.imageUrl
+                : (isProfile ? profilePageIcon : formData[fieldName]);
             if (oldUrl && oldUrl.includes('firebasestorage')) {
                 try {
                     const decodedUrl = decodeURIComponent(oldUrl.split('/o/')[1].split('?alt=media')[0]);
@@ -190,6 +203,8 @@ export const PlatformSettingsPage = () => {
             // Upload the new perfectly-cropped snippet
             const fileId = isBroadcastImage
                 ? `acis_global_broadcast_images/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.png`
+                : isProfile
+                    ? `acis_system_assets/icon_page_user_${Date.now()}.png`
                 : `master_app_assets/${fieldName}_${Date.now()}.png`;
             const storageRef = ref(storage, fileId);
             await uploadBytes(storageRef, croppedBlob);
@@ -198,6 +213,14 @@ export const PlatformSettingsPage = () => {
             if (isBroadcastImage) {
                 setBroadcastForm((prev) => ({ ...prev, imageUrl: downloadURL }));
                 setSaveStatus('✅ Broadcast image cropped and uploaded.');
+            } else if (isProfile) {
+                await setDoc(doc(db, 'acis_system_assets', 'icon_page_user'), {
+                    iconLabel: 'Profile',
+                    iconUrl: downloadURL,
+                    lastUpdated: serverTimestamp(),
+                }, { merge: true });
+                setProfilePageIcon(downloadURL);
+                setSaveStatus('✅ Profile branding icon cropped and uploaded.');
             } else {
                 setFormData(prev => ({ ...prev, [fieldName]: downloadURL }));
                 setSaveStatus(`✅ ${isHeader ? 'Header' : 'Footer'} Icon cropped and successfully uploaded!`);
@@ -208,6 +231,7 @@ export const PlatformSettingsPage = () => {
         } finally {
             if (isHeader) setIsUploadingHeader(false);
             else if (isFooter) setIsUploadingFooter(false);
+            else if (isProfile) setIsUploadingProfile(false);
             else if (isBroadcastImage) setIsUploadingBroadcastImage(false);
             setCropImageSrc(null);
             setCropTargetField('');
@@ -520,6 +544,35 @@ export const PlatformSettingsPage = () => {
                                                     </button>
                                                 </div>
                                                 <p className="text-xs text-slate-500 font-medium">Select an image to open the visual cropping studio. You fully control the exact square slice!</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="md:col-span-2">
+                                        <label className="block text-xs font-black uppercase tracking-widest text-slate-500 mb-2">Profile Page Branding Icon</label>
+                                        <div className="flex gap-4 items-center">
+                                            {profilePageIcon ? (
+                                                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border border-blue-200 bg-white p-1.5 shadow-sm overflow-hidden bg-checkered">
+                                                    <img src={profilePageIcon} alt="Profile page icon preview" className="h-full w-full object-cover rounded-lg" />
+                                                </div>
+                                            ) : (
+                                                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-100 p-1 shadow-sm text-slate-400">
+                                                    No Image
+                                                </div>
+                                            )}
+                                            <div className="flex-1 space-y-1 text-sm">
+                                                <div className="relative inline-block">
+                                                    <input
+                                                        type="file"
+                                                        accept="image/*"
+                                                        onChange={(e) => onFileSelect(e, 'profilePageIcon')}
+                                                        disabled={isUploadingProfile}
+                                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+                                                    />
+                                                    <button type="button" disabled={isUploadingProfile} className="px-5 py-2.5 bg-slate-900 border border-slate-700 hover:bg-slate-800 text-white font-bold rounded-xl transition-all disabled:opacity-50 flex items-center gap-2 shadow-lg">
+                                                        {isUploadingProfile ? <Loader2 className="w-4 h-4 animate-spin" /> : <><UploadCloud size={16} /> Visual Manual Crop & Upload</>}
+                                                    </button>
+                                                </div>
+                                                <p className="text-xs text-slate-500 font-medium">Uploads the branded asset used by the tenant Profile page header for both `profile` and `user` keys.</p>
                                             </div>
                                         </div>
                                     </div>

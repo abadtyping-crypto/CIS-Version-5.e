@@ -8,7 +8,7 @@ import {
   upsertTenantUserMap,
 } from '../lib/backendStore';
 import { replaceTenantAvatar } from '../lib/avatarStorage';
-import { LayoutGrid, Maximize2, Minimize2, Monitor, Tablet, User } from 'lucide-react';
+import { LayoutGrid, Maximize2, Minimize2, Monitor, Tablet } from 'lucide-react';
 import ImageStudio from '../components/common/ImageStudio';
 import { getCroppedImg } from '../lib/imageStudioUtils';
 import useIsDesktopLayout from '../hooks/useIsDesktopLayout';
@@ -21,7 +21,9 @@ import useElectronLayoutMode, {
 import { useTheme } from '../context/useTheme';
 
 const inputClass =
-  'mt-1 w-full rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] px-3 py-2.5 text-sm text-[var(--c-text)] outline-none transition focus:border-[var(--c-accent)] focus:ring-2 focus:ring-[var(--c-ring)]';
+  'mt-1 h-14 w-full rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)] px-4 text-sm text-[var(--c-text)] outline-none transition focus:border-[var(--c-accent)] focus:ring-2 focus:ring-[var(--c-ring)]';
+const textareaClass =
+  'mt-1 min-h-[7rem] w-full rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)] px-4 py-3 text-sm text-[var(--c-text)] outline-none transition focus:border-[var(--c-accent)] focus:ring-2 focus:ring-[var(--c-ring)]';
 const statusVisibleClass =
   'rounded-full bg-[var(--c-success-soft)] px-2.5 py-0.5 text-[10px] font-bold tracking-wider text-[var(--c-success)] uppercase';
 const statusHiddenClass =
@@ -30,6 +32,11 @@ const statusEnabledButtonClass =
   'bg-[var(--c-success-soft)] text-[var(--c-success)]';
 const statusDisabledButtonClass =
   'bg-[var(--c-panel)] text-[var(--c-muted)]';
+const normalizeRoleLabel = (role) => {
+  const normalized = String(role || '').trim().toLowerCase();
+  if (normalized === 'superadmin' || normalized === 'super admin') return 'Owner';
+  return role || 'Staff';
+};
 const AVATAR_OUTPUT_SIZE = 512;
 const AVATAR_MAX_BYTES = 180 * 1024;
 const avatarFilterMap = {
@@ -429,7 +436,7 @@ const ProfilePage = () => {
       <PageShell
         title="Profile"
         subtitle="Customize your own public profile. Portal users can view only profiles marked public."
-        iconKey="user"
+        iconKey="profile"
       >
         {/* Desktop Workspace layout options were moved to TitleBar View Menu */}
 
@@ -443,7 +450,7 @@ const ProfilePage = () => {
               {!isEditing && (
                 <button
                   onClick={() => setIsEditing(true)}
-                  className="rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] px-4 py-2 text-sm font-semibold text-[var(--c-text)] transition hover:bg-[var(--c-surface)]"
+                  className="h-14 rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)] px-5 text-sm font-semibold text-[var(--c-text)] transition hover:bg-[var(--c-surface)]"
                 >
                   Edit Profile
                 </button>
@@ -463,7 +470,7 @@ const ProfilePage = () => {
                     </div>
                     <div className="text-center sm:text-left">
                       <h3 className="text-lg font-bold text-[var(--c-text)]">{form.displayName}</h3>
-                      <p className="text-sm text-[var(--c-accent)]">{form.headline || user.role || 'Staff'}</p>
+                      <p className="text-sm text-[var(--c-accent)]">{form.headline || normalizeRoleLabel(user.role) || 'Staff'}</p>
                       <div className="mt-2 flex items-center justify-center gap-2 sm:justify-start">
                         {form.publicProfile ? (
                           <span className={statusVisibleClass}>
@@ -560,7 +567,7 @@ const ProfilePage = () => {
                   <label className="text-sm text-[var(--c-muted)]">
                     Self Intro
                     <textarea
-                      className={inputClass}
+                      className={textareaClass}
                       value={form.selfIntro}
                       rows={2}
                       onChange={(event) => setForm((prev) => ({ ...prev, selfIntro: event.target.value }))}
@@ -571,7 +578,7 @@ const ProfilePage = () => {
                   <label className="text-sm text-[var(--c-muted)]">
                     Bio / Summary
                     <textarea
-                      className={inputClass}
+                      className={textareaClass}
                       value={form.bio}
                       rows={3}
                       onChange={(event) => setForm((prev) => ({ ...prev, bio: event.target.value }))}
@@ -613,7 +620,7 @@ const ProfilePage = () => {
                     <label className="text-sm text-[var(--c-muted)]">
                       Education
                       <textarea
-                        className={inputClass}
+                        className={textareaClass}
                         value={form.education}
                         rows={2}
                         onChange={(event) => setForm((prev) => ({ ...prev, education: event.target.value }))}
@@ -623,7 +630,7 @@ const ProfilePage = () => {
                     <label className="text-sm text-[var(--c-muted)]">
                       Work Experience
                       <textarea
-                        className={inputClass}
+                        className={textareaClass}
                         value={form.workExperience}
                         rows={2}
                         onChange={(event) => setForm((prev) => ({ ...prev, workExperience: event.target.value }))}
@@ -693,7 +700,7 @@ const ProfilePage = () => {
                     <button
                       type="button"
                       onClick={() => setForm((prev) => ({ ...prev, publicProfile: !prev.publicProfile }))}
-                      className={`rounded-lg px-4 py-1.5 text-xs font-bold transition ${form.publicProfile
+                      className={`h-14 rounded-2xl px-5 text-xs font-bold transition ${form.publicProfile
                         ? statusEnabledButtonClass
                         : statusDisabledButtonClass
                         }`}
@@ -707,7 +714,7 @@ const ProfilePage = () => {
                       type="button"
                       onClick={onSave}
                       disabled={isSaving}
-                      className="rounded-xl bg-[var(--c-accent)] px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-[var(--c-accent)]/20 transition hover:opacity-90 disabled:opacity-60"
+                      className="h-14 rounded-2xl bg-[var(--c-accent)] px-6 text-sm font-bold text-white shadow-lg shadow-[var(--c-accent)]/20 transition hover:opacity-90 disabled:opacity-60"
                     >
                       {isSaving ? 'Processing...' : 'Save Changes'}
                     </button>
@@ -715,7 +722,7 @@ const ProfilePage = () => {
                       type="button"
                       onClick={onCancel}
                       disabled={isSaving}
-                      className="rounded-xl border border-[var(--c-border)] bg-transparent px-6 py-2.5 text-sm font-bold text-[var(--c-text)] transition hover:bg-[var(--c-panel)]"
+                      className="h-14 rounded-2xl border border-[var(--c-border)] bg-transparent px-6 text-sm font-bold text-[var(--c-text)] transition hover:bg-[var(--c-panel)]"
                     >
                       Cancel
                     </button>

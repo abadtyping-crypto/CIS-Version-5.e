@@ -113,12 +113,12 @@ const ClientsOnboardingPage = () => {
                                         type="button"
                                         onClick={() => canCreateClient && setMobileView(type.id)}
                                         disabled={!canCreateClient}
-                                        className="flex h-14 items-center gap-3 rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)] px-4 text-left hover:border-[var(--c-accent)] disabled:cursor-not-allowed disabled:opacity-50"
+                                        className="flex h-20 overflow-hidden rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)] text-left hover:border-[var(--c-accent)] disabled:cursor-not-allowed disabled:opacity-50"
                                     >
-                                        <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#F8F9FA] shadow-sm">
-                                            <img src={type.icon} alt={type.label} className="h-full w-full object-cover" />
+                                        <div className="relative h-full w-20 shrink-0 overflow-hidden">
+                                            <img src={type.icon} alt={type.label} className="absolute inset-0 h-full w-full object-cover" />
                                         </div>
-                                        <span className="text-sm font-bold text-[var(--c-text)]">{type.label}</span>
+                                        <span className="px-4 text-sm font-bold text-[var(--c-text)]">{type.label}</span>
                                     </button>
                                 ))}
                                 <button
@@ -215,12 +215,12 @@ const ClientsOnboardingPage = () => {
                                         key={type.id}
                                         onClick={() => canCreateClient && setActiveType(type.id)}
                                         disabled={!canCreateClient}
-                                        className="group flex h-14 items-center gap-3 rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)] px-4 transition hover:border-[var(--c-accent)] hover:bg-[var(--c-accent)]/5 disabled:cursor-not-allowed disabled:opacity-50"
+                                        className="group flex h-24 min-w-[18rem] overflow-hidden rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)] transition hover:border-[var(--c-accent)] hover:bg-[var(--c-accent)]/5 disabled:cursor-not-allowed disabled:opacity-50"
                                     >
-                                        <div className="relative flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#F8F9FA] ring-1 ring-slate-200/80">
-                                            <img src={type.icon} alt={type.label} className="h-full w-full object-cover transition duration-300 group-hover:scale-105" />
+                                        <div className="relative h-full w-24 shrink-0 overflow-hidden">
+                                            <img src={type.icon} alt={type.label} className="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-105" />
                                         </div>
-                                        <span className="text-sm font-bold text-[var(--c-text)]">{type.label}</span>
+                                        <span className="flex items-center px-5 text-sm font-bold text-[var(--c-text)]">{type.label}</span>
                                     </button>
                                 ))}
                             </div>

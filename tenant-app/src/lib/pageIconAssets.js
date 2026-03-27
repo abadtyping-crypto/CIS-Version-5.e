@@ -13,6 +13,7 @@ export const PAGE_ICON_ASSET_MAP = Object.freeze({
   settings: 'icon_page_settings',
   notifications: 'icon_page_notifications',
   recycleBin: 'icon_page_recycle_bin',
+  profile: 'icon_page_user',
   sidebarToggle: 'icon_ui_sidebar_toggle',
   sidebarHamburger: 'icon_ui_sidebar_hamburger',
   search: 'icon_ui_search',
@@ -30,6 +31,8 @@ const PAGE_ICON_KEY_ALIASES = Object.freeze({
   'operation-expenses': 'operationExpenses',
   'portal-management': 'portalManagement',
   'document-calendar': 'documentCalendar',
+  profile: 'profile',
+  user: 'user',
   notifications: 'notifications',
   settings: 'settings',
 });

@@ -94,6 +94,30 @@ const renderNavIcon = (iconKey, customIconUrl = '', iconLabel = '') => {
   );
 };
 
+const renderSignatureNavLead = (iconKey, customIconUrl = '', iconLabel = '') => {
+  if (customIconUrl) {
+    return (
+      <span className="relative h-full w-12 shrink-0 overflow-hidden">
+        <img
+          src={customIconUrl}
+          alt={iconLabel || 'Navigation'}
+          className="absolute inset-0 h-full w-full object-cover"
+          onError={(event) => {
+            event.currentTarget.onerror = null;
+            event.currentTarget.src = '/appIcon.png';
+          }}
+        />
+      </span>
+    );
+  }
+
+  return (
+    <span className="flex h-full w-12 shrink-0 items-center justify-center bg-[linear-gradient(180deg,color-mix(in_srgb,var(--c-accent)_18%,transparent),color-mix(in_srgb,var(--c-accent)_6%,transparent))] text-[var(--c-accent)]">
+      <DynamicAppIcon iconKey={iconKey} className="h-5 w-5" />
+    </span>
+  );
+};
+
 const renderUtilityIcon = (IconComponent, accent = false, customIconUrl = '', iconLabel = '') => (
   <SidebarIconTile accent={accent} plain={Boolean(customIconUrl)}>
     {customIconUrl ? (
@@ -166,14 +190,16 @@ const AppSidebar = ({ isCollapsed, isHidden = false, isOverlay = false, layoutMo
                   to={`/t/${tenantId}/${item.path}`}
                   title={isCollapsed ? item.label : undefined}
                   className={({ isActive }) =>
-                    `compact-nav-item flex flex-1 items-center gap-3 rounded-xl px-3 text-[13px] font-semibold transition ${isActive
+                    `compact-nav-item flex flex-1 items-stretch gap-0 overflow-hidden rounded-xl text-[13px] font-semibold transition ${isActive
                       ? 'bg-[color:color-mix(in_srgb,var(--c-panel)_88%,transparent)] text-[var(--c-accent)] ring-1 ring-[var(--c-ring)]'
                       : 'text-[var(--c-muted)] hover:bg-[color:color-mix(in_srgb,var(--c-panel)_75%,transparent)] hover:text-[var(--c-accent)]'
                     } ${isCollapsed ? 'justify-center px-0' : 'justify-start'}`
                   }
                 >
-                  {renderNavIcon(item.icon, resolvePageIconUrl(systemAssets, item.key), item.label)}
-                  <span className={`transition-opacity duration-300 ${isCollapsed ? 'hidden' : 'inline'}`}>{item.label}</span>
+                  {isCollapsed
+                    ? renderNavIcon(item.icon, resolvePageIconUrl(systemAssets, item.key), item.label)
+                    : renderSignatureNavLead(item.icon, resolvePageIconUrl(systemAssets, item.key), item.label)}
+                  <span className={`transition-opacity duration-300 ${isCollapsed ? 'hidden' : 'inline flex items-center px-4'}`}>{item.label}</span>
                 </NavLink>
               </div>
             ))}

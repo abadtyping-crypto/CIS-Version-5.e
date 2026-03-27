@@ -1,10 +1,18 @@
 import { useEffect, useState } from 'react';
+import { useAuth } from '../../context/useAuth';
 import { useTenant } from '../../context/useTenant';
 import { fetchTenantUsersMap } from '../../lib/backendStore';
 import UserFunctionAccessSection from './UserFunctionAccessSection';
 
+const normalizeRoleLabel = (role) => {
+  const normalized = String(role || '').trim().toLowerCase();
+  if (normalized === 'superadmin' || normalized === 'super admin') return 'Owner';
+  return role || 'Staff';
+};
+
 const UserControlCenterSection = () => {
   const { tenantId } = useTenant();
+  const { user: currentUser } = useAuth();
   const [decoratedUsers, setDecoratedUsers] = useState([]);
   const [selectedUid, setSelectedUid] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -55,7 +63,7 @@ const UserControlCenterSection = () => {
                   {u.displayName || 'Unnamed'}
                 </p>
                 <p className="text-[10px] uppercase font-bold text-(--c-muted)">
-                  {u.role || 'Staff'}
+                  {normalizeRoleLabel(u.role)}
                 </p>
               </div>
             </button>
@@ -72,12 +80,12 @@ const UserControlCenterSection = () => {
             </div>
             <div className="hidden pr-4 sm:flex flex-col items-end">
               <p className="text-sm font-bold text-(--c-text)">{selectedUser.displayName}</p>
-              <p className="text-[10px] uppercase font-bold text-(--c-muted)">{selectedUser.email || selectedUser.role}</p>
+              <p className="text-[10px] uppercase font-bold text-(--c-muted)">{selectedUser.email || normalizeRoleLabel(selectedUser.role)}</p>
             </div>
           </div>
 
           <div className="grid gap-6">
-            <UserFunctionAccessSection tenantId={tenantId} selectedUser={selectedUser} />
+            <UserFunctionAccessSection tenantId={tenantId} selectedUser={selectedUser} currentUser={currentUser} />
           </div>
         </div>
       ) : (

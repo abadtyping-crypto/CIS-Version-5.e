@@ -21,6 +21,12 @@ const toDisplayName = (user) => {
   return 'User';
 };
 
+const toRoleLabel = (role) => {
+  const normalized = String(role || '').trim().toLowerCase();
+  if (normalized === 'superadmin' || normalized === 'super admin') return 'Owner';
+  return role || 'Staff';
+};
+
 const toDateLabel = (value) => {
   if (!value) return '';
   if (typeof value?.toDate === 'function') return value.toDate().toLocaleString();
@@ -447,7 +453,7 @@ const DesktopHeader = ({ tenant, user, onLogout, layoutMode = 'wide', onToggleSi
             />
             <span className="hidden text-left xl:block">
               <span className="block text-sm font-semibold text-[var(--c-text)]">{displayName}</span>
-              <span className="block text-xs text-[var(--c-muted)]">{user.role}</span>
+              <span className="block text-xs text-[var(--c-muted)]">{toRoleLabel(user.role)}</span>
             </span>
           </button>
 

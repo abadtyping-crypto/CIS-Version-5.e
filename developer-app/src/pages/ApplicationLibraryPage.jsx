@@ -105,6 +105,7 @@ const SYSTEM_ASSET_CATEGORIES = [
       { id: 'icon_page_document_calendar', label: 'Document Calendar' },
       { id: 'icon_page_settings', label: 'Settings' },
       { id: 'icon_page_notifications', label: 'Notifications' },
+      { id: 'icon_page_user', label: 'Profile' },
       { id: 'icon_page_recycle_bin', label: 'Recycle Bin' },
     ],
   },
@@ -1085,7 +1086,7 @@ export const ApplicationLibraryPage = () => {
                   {isDeletingApps ? 'Deleting...' : `Delete Selected (${selectedAppIds.length})`}
                 </button>
               )}
-              <button type="button" onClick={openNewAppModal} className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-bold text-white transition hover:opacity-90">New Application</button>
+              <button type="button" onClick={openNewAppModal} className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-bold text-white transition hover:opacity-90">Add Custom App</button>
             </div>
           </div>
           <div className="mt-4 overflow-x-auto rounded-2xl border border-slate-200">
@@ -1133,9 +1134,32 @@ export const ApplicationLibraryPage = () => {
                           />
                         </td>
                         <td colSpan={5} className="px-3 py-2">
-                           <div className="flex items-center gap-2">
+                           <div className="flex items-center justify-between gap-3">
+                             <div className="flex items-center gap-2">
                              {group.iconUrl ? <img src={group.iconUrl} alt={group.iconName} className="h-6 w-6 rounded border border-slate-200 object-contain bg-white" /> : null}
                              <span className="font-black uppercase tracking-wider text-slate-700">{group.iconName} ({group.apps.length} applications)</span>
+                             </div>
+                             <button
+                               type="button"
+                               disabled={isTogglingApp}
+                               onClick={async () => {
+                                 setIsTogglingApp(true);
+                                 const shouldDisable = group.apps.some((app) => app.isActive !== false);
+                                 for (const item of group.apps) {
+                                   if (Boolean(item.isActive !== false) === shouldDisable) {
+                                     await toggleApplicationActive(item);
+                                   }
+                                 }
+                                 setIsTogglingApp(false);
+                               }}
+                               className={`rounded-lg border px-3 py-1.5 text-[11px] font-bold transition ${
+                                 group.apps.some((app) => app.isActive !== false)
+                                   ? 'border-rose-300 bg-rose-50 text-rose-700 hover:bg-rose-100'
+                                   : 'border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                               }`}
+                             >
+                               {group.apps.some((app) => app.isActive !== false) ? 'Disable Group' : 'Enable Group'}
+                             </button>
                            </div>
                         </td>
                       </tr>
@@ -1163,12 +1187,25 @@ export const ApplicationLibraryPage = () => {
                           </td>
                           <td className="px-3 py-2">
                              <button type="button" disabled={isTogglingApp} onClick={() => toggleApplicationActive(app)} className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold ${app.isActive === false ? 'border-rose-300 bg-rose-50 text-rose-700' : 'border-emerald-300 bg-emerald-50 text-emerald-700'}`}>
-                               <Power className="h-3.5 w-3.5" />{app.isActive === false ? 'OFF' : 'ON'}
+                               <Power className="h-3.5 w-3.5" />{app.isActive === false ? 'DISABLED' : 'ENABLED'}
                              </button>
                           </td>
                           <td className="px-3 py-2">
                              <button type="button" onClick={() => openEditAppModal(app)} className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-[11px] font-bold text-slate-700 transition hover:border-blue-400 hover:text-blue-600">
                                <Edit3 className="h-3.5 w-3.5" />Edit
+                             </button>
+                             <button
+                               type="button"
+                               disabled={isTogglingApp}
+                               onClick={() => toggleApplicationActive(app)}
+                               className={`ml-2 inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-[11px] font-bold transition ${
+                                 app.isActive === false
+                                   ? 'border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                                   : 'border-rose-300 bg-rose-50 text-rose-700 hover:bg-rose-100'
+                               }`}
+                             >
+                               <Power className="h-3.5 w-3.5" />
+                               {app.isActive === false ? 'Enable' : 'Disable'}
                              </button>
                           </td>
                         </tr>

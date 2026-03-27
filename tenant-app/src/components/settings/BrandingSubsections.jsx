@@ -1,5 +1,4 @@
 import React from 'react';
-import { createPortal } from 'react-dom';
 import Cropper from 'react-easy-crop';
 import { Building2, Plus, Trash2, Share2, Banknote, Image, MessageSquare, Facebook, Instagram, Twitter, Linkedin, Layout, Library, ChevronDown, Phone, Mail, MapPin, X } from 'lucide-react';
 import IconSelect from '../common/IconSelect';
@@ -19,6 +18,17 @@ export const WhatsAppIcon = ({ className }) => (
   >
     <path d="M13.601 2.326A7.854 7.854 0 0 0 8.034 0C3.641 0 .067 3.574.065 7.965A7.902 7.902 0 0 0 1.141 12L0 16l4.111-1.074a7.9 7.9 0 0 0 3.923 1.007h.003c4.393 0 7.967-3.573 7.968-7.965a7.9 7.9 0 0 0-2.404-5.642zM8.037 14.54h-.003a6.49 6.49 0 0 1-3.312-.908l-.237-.14-2.438.637.651-2.373-.154-.243a6.51 6.51 0 0 1-1.007-3.496C1.539 4.43 4.459 1.51 8.038 1.51c1.73 0 3.356.674 4.578 1.896a6.44 6.44 0 0 1 1.895 4.576c-.002 3.58-2.922 6.498-6.474 6.498z" />
     <path d="M11.615 9.401c-.196-.098-1.16-.572-1.34-.638-.18-.066-.312-.098-.443.098-.131.196-.508.638-.623.77-.115.131-.23.147-.426.049-.195-.098-.824-.304-1.57-.97-.58-.517-.972-1.156-1.087-1.352-.115-.196-.012-.302.086-.4.088-.087.196-.23.295-.345.098-.114.131-.196.196-.327.066-.131.033-.245-.016-.344-.05-.098-.443-1.068-.607-1.463-.16-.386-.322-.333-.442-.339l-.377-.007a.727.727 0 0 0-.525.245c-.18.196-.689.672-.689 1.639s.705 1.902.803 2.033c.098.131 1.388 2.12 3.363 2.971.47.203.837.324 1.123.414.472.151.902.13 1.242.079.379-.057 1.16-.474 1.324-.932.163-.458.163-.85.114-.932-.05-.082-.18-.131-.377-.229z" />
+  </svg>
+);
+
+export const TikTokIcon = ({ className }) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    className={className || ''}
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path d="M14.5 3c.3 1.7 1.4 3.2 3 4 1 .5 2 .8 3.1.8v3a9 9 0 0 1-3.1-.6v5.8a6.5 6.5 0 1 1-6.5-6.5c.4 0 .8 0 1.2.1v3.1a3.5 3.5 0 1 0 2.3 3.3V3h3Z" />
   </svg>
 );
 
@@ -44,45 +54,64 @@ export const CompanyInfoSection = React.memo(({
     
     <div className="auto-fit-grid">
       <label className={labelClass}>
-        Company Name
-        <input
-          className={inputClass}
+        Company Name * (Mandatory)
+        <InputActionField
           value={form.companyName}
-          onChange={(event) => updateField('companyName', event.target.value.toUpperCase())}
-          placeholder="COMPANY NAME"
+          onValueChange={(val) => updateField('companyName', val.toUpperCase())}
+          placeholder=""
+          showPasteButton
+          className="mt-1"
         />
         {errors.companyName ? <p className="mt-1 text-xs text-rose-600">{errors.companyName}</p> : null}
       </label>
 
       <label className={labelClass}>
         Brand Name (Short)
-        <input
-          className={inputClass}
+        <InputActionField
           value={form.brandName}
-          onChange={(event) => updateField('brandName', event.target.value.toUpperCase())}
-          placeholder="BRAND NAME"
+          onValueChange={(val) => updateField('brandName', val.toUpperCase())}
+          placeholder=""
+          showPasteButton
+          className="mt-1"
         />
         {errors.brandName ? <p className="mt-1 text-xs text-rose-600">{errors.brandName}</p> : null}
       </label>
 
       <div className="auto-fit-span-full">
-        <label className="flex items-center gap-3 p-4 rounded-2xl bg-(--c-panel) border border-(--c-border) cursor-pointer transition hover:bg-(--c-surface)">
+        <div className="flex items-center gap-3 rounded-2xl bg-(--c-panel) border border-(--c-border) p-4 transition hover:bg-(--c-surface)">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-(--c-accent)/10 text-(--c-accent)">
             <MapPin strokeWidth={1.5} className="h-6 w-6" />
           </div>
           <div className="flex-1">
             <p className="text-xs font-bold uppercase tracking-widest text-(--c-text)">Branding Address Source</p>
             <p className="text-[10px] text-(--c-muted)">Choose if PDFs use the tenant profile address or a custom branding address.</p>
+            <label className="mt-3 flex items-center gap-3">
+              <input
+                type="checkbox"
+                checked={form.sameAsHeadOffice !== false}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  updateField('sameAsHeadOffice', checked);
+                  updateField('addressSource', checked ? 'tenant' : 'custom');
+                }}
+                className="h-4 w-4 rounded accent-[var(--c-accent)]"
+              />
+              <span className="text-[11px] font-bold uppercase tracking-wider text-(--c-text)">Same as Head Office</span>
+            </label>
           </div>
           <select 
-            value={form.addressSource || 'tenant'} 
-            onChange={(e) => updateField('addressSource', e.target.value)}
+            value={form.sameAsHeadOffice !== false ? 'tenant' : (form.addressSource || 'custom')} 
+            onChange={(e) => {
+              const nextValue = e.target.value;
+              updateField('addressSource', nextValue);
+              updateField('sameAsHeadOffice', nextValue !== 'custom');
+            }}
             className="rounded-xl bg-(--c-surface) border border-(--c-border) px-4 py-2 text-xs font-bold text-(--c-text) outline-none focus:ring-2 focus:ring-(--c-accent)/20 transition"
           >
             <option value="tenant">Tenant Profile</option>
             <option value="custom">Brand Specific Address</option>
           </select>
-        </label>
+        </div>
       </div>
 
       <div className="flex flex-col gap-2">
@@ -118,19 +147,19 @@ export const CompanyInfoSection = React.memo(({
             );
           })}
         </div>
-        {errors.phones ? <p className="mt-1 text-xs text-rose-600 font-bold uppercase">{errors.phones}</p> : null}
       </div>
 
       <MobileContactsField
-        label="Mobile Numbers"
+        label="Mobile Numbers * (Mandatory)"
         contacts={form.mobileContacts}
         onChange={updateMobileContacts}
         className="flex flex-col gap-2"
       />
+      {errors.phones ? <p className="mt-1 text-xs text-rose-600 font-bold uppercase">{errors.phones}</p> : null}
 
       <div className="auto-fit-span-full flex flex-col gap-2">
             <div className="flex items-center justify-between">
-              <span className={labelClass}>Company Addresses</span>
+              <span className={labelClass}>Company Addresses * (Mandatory)</span>
               <button type="button" onClick={() => addArrayField('addresses')} className="text-xs font-semibold text-(--c-accent) hover:underline flex items-center gap-1">
                 <Plus strokeWidth={1.5} className="w-3 h-3" /> Add Address
               </button>
@@ -145,6 +174,7 @@ export const CompanyInfoSection = React.memo(({
                   onValueChange={(v) => updateArrayField('addresses', idx, v)}
                   placeholder="Building, Street, Area..."
                   fieldClassName="h-[72px]"
+                  disabled={form.sameAsHeadOffice !== false}
                 />
               </div>
               {idx > 0 && (
@@ -159,6 +189,7 @@ export const CompanyInfoSection = React.memo(({
             </div>
           ))}
         </div>
+        {errors.addresses ? <p className="mt-1 text-xs text-rose-600 font-bold uppercase">{errors.addresses}</p> : null}
       </div>
 
       <div className="flex flex-col gap-1">
@@ -199,10 +230,11 @@ export const CompanyInfoSection = React.memo(({
 
       <div className="auto-fit-span-full">
         <EmailContactsField
-          label="Official Email Addresses"
+          label="Official Email Addresses * (Mandatory)"
           contacts={form.emails}
           onChange={(contacts) => updateField('emails', contacts)}
         />
+        {errors.emails ? <p className="mt-1 text-xs text-rose-600 font-bold uppercase">{errors.emails}</p> : null}
       </div>
 
       <label className={labelClass}>
@@ -258,21 +290,11 @@ export const SocialMediaSection = React.memo(({
   socialPlatforms
 }) => (
   <section className="space-y-4">
-    <div className="flex items-center justify-between gap-2 border-b border-(--c-border) pb-2 text-(--c-accent)">
+    <div className="flex items-center gap-2 border-b border-(--c-border) pb-2 text-(--c-accent)">
       <div className="flex items-center gap-2">
         <Share2 strokeWidth={1.5} className="h-5 w-5" />
         <span className="text-sm font-bold uppercase tracking-wider text-(--c-text)">Social Media</span>
       </div>
-      {activeSocialKeys.length < socialPlatforms.length ? (
-        <button
-          type="button"
-          onClick={addSocialPlatform}
-          className="flex items-center gap-1.5 rounded-lg bg-(--c-accent)/10 px-3 py-1.5 text-xs font-bold text-(--c-accent) transition hover:bg-(--c-accent)/20"
-        >
-          <Plus strokeWidth={1.5} className="h-3.5 w-3.5" />
-          Add Link
-        </button>
-      ) : null}
     </div>
     
     <div className="rounded-xl border border-(--c-border) bg-(--c-panel) p-4">
@@ -313,17 +335,31 @@ export const SocialMediaSection = React.memo(({
                 <label className="text-[10px] font-bold uppercase tracking-widest text-(--c-muted) opacity-70">
                   {platform?.label} Link
                 </label>
-                <input
-                  className="w-full rounded-xl border border-(--c-border)/60 bg-(--c-panel) px-4 py-3 text-sm text-(--c-text) outline-none focus:border-(--c-accent) focus:ring-4 focus:ring-(--c-accent)/10 transition placeholder:text-(--c-muted)/30 font-medium"
+                <InputActionField
                   value={form[key]}
-                  onChange={(event) => updateField(key, event.target.value.toLowerCase())}
-                  placeholder={`https://...`}
+                  onValueChange={(val) => updateField(key, val.toLowerCase())}
+                  placeholder=""
+                  showPasteButton
+                  className="mt-0"
                 />
               </div>
             </div>
           );
         })}
       </div>
+      {activeSocialKeys.length < socialPlatforms.length ? (
+        <div className="mt-4 flex justify-center">
+          <button
+            type="button"
+            onClick={addSocialPlatform}
+            className="flex h-12 w-12 items-center justify-center rounded-2xl border border-(--c-border) bg-(--c-accent)/10 text-(--c-accent) transition hover:bg-(--c-accent)/20"
+            aria-label="Add social link"
+            title="Add Link"
+          >
+            <Plus strokeWidth={1.5} className="h-5 w-5" />
+          </button>
+        </div>
+      ) : null}
     </div>
   </section>
 ));
@@ -393,24 +429,26 @@ export const BankDetailsSection = React.memo(({
                 />
               </label>
               <label className={labelClass}>
-                Account Name
+                Account Name * (Mandatory)
                 <InputActionField
                   value={bank.bankAccountName || ''}
                   onValueChange={(val) => updateBankDetailField(index, 'bankAccountName', val)}
-                  placeholder="E.g., ACIS AG AJMAN"
+                  placeholder=""
                   showPasteButton
                   className="mt-1"
                 />
+                {errors[`bankAccountName_${index}`] ? <p className="mt-1 text-xs text-rose-600">{errors[`bankAccountName_${index}`]}</p> : null}
               </label>
               <label className={labelClass}>
-                Account Number
+                Account Number * (Mandatory)
                 <InputActionField
                   value={bank.bankAccountNumber || ''}
                   onValueChange={(val) => updateBankDetailField(index, 'bankAccountNumber', val)}
-                  placeholder="Digits only"
+                  placeholder=""
                   showPasteButton
                   className="mt-1"
                 />
+                {errors[`bankAccountNumber_${index}`] ? <p className="mt-1 text-xs text-rose-600">{errors[`bankAccountNumber_${index}`]}</p> : null}
               </label>
               <label className={labelClass}>
                 IBAN
@@ -439,7 +477,7 @@ export const BankDetailsSection = React.memo(({
                 <InputActionField
                   value={bank.bankBranch || ''}
                   onValueChange={(val) => updateBankDetailField(index, 'bankBranch', val)}
-                  placeholder="E.g., Ajman Main Branch"
+                  placeholder=""
                   showPasteButton
                   className="mt-1"
                 />
@@ -562,7 +600,9 @@ export const LogoUsageSection = React.memo(({
   logoFunctions, 
   assignedOptions, 
   setLogoUsage
-}) => (
+}) => {
+  const usedSlotIds = new Set(Object.values(logoUsage || {}).filter(Boolean));
+  return (
   <section className="space-y-4">
     <div className="flex items-center gap-2 border-b border-(--c-border) pb-2 text-(--c-accent)">
       <Layout strokeWidth={1.5} className="h-5 w-5" />
@@ -579,23 +619,43 @@ export const LogoUsageSection = React.memo(({
           <div key={func.key} className="flex flex-col gap-2 rounded-xl border border-(--c-border) bg-(--c-surface) p-3 shadow-sm transition hover:shadow-md">
             <span className="text-[10px] font-bold uppercase tracking-widest text-(--c-muted)">{func.label}</span>
             <div className="relative">
+              {(() => {
+                const currentSlot = logoUsage[func.key] || 'logo_1';
+                const availableOptions = assignedOptions.filter((opt) => opt.slotId === currentSlot || !usedSlotIds.has(opt.slotId));
+                return (
               <select
                 className="w-full appearance-none rounded-lg border border-(--c-border) bg-(--c-panel) px-3 py-2 text-xs font-bold text-(--c-text) outline-none focus:ring-2 focus:ring-(--c-accent)/20 transition cursor-pointer pr-8"
-                value={logoUsage[func.key] || 'logo_1'}
-                onChange={(e) => setLogoUsage(prev => ({ ...prev, [func.key]: e.target.value }))}
+                value={currentSlot}
+                onChange={(e) => {
+                  const nextValue = e.target.value;
+                  setLogoUsage((prev) => {
+                    const next = { ...prev };
+                    Object.keys(next).forEach((key) => {
+                      if (key !== func.key && next[key] === nextValue) {
+                        next[key] = '';
+                      }
+                    });
+                    next[func.key] = nextValue;
+                    return next;
+                  });
+                }}
               >
-                {assignedOptions.map(opt => (
+                {availableOptions.map(opt => (
                   <option key={opt.slotId} value={opt.slotId}>{opt.name || `Logo Slot ${opt.slotId.split('_')[1]}`}</option>
                 ))}
               </select>
+                );
+              })()}
               <ChevronDown strokeWidth={1.5} className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-(--c-muted) pointer-events-none" />
             </div>
+            <p className="text-[10px] font-semibold text-(--c-muted)">Each logo slot can be assigned to only one output.</p>
           </div>
         ))}
       </div>
     </div>
   </section>
-));
+  );
+});
 
 LogoUsageSection.displayName = 'LogoUsageSection';
 
@@ -619,9 +679,8 @@ export const LogoEditorSection = React.memo(({
   if (!activeLogoEditorSlotId) return null;
   const targetSlot = logoLibrary.find(s => s.slotId === activeLogoEditorSlotId);
   
-  return createPortal(
-    <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/60 backdrop-blur-md p-3">
-      <div className="relative w-full max-w-[320px] overflow-hidden rounded-2xl border border-white/10 bg-[#0c0e12] shadow-[0_24px_48px_-12px_rgba(0,0,0,0.9)] transition-all">
+  return (
+    <section className="space-y-4 rounded-2xl border border-(--c-border) bg-[#0c0e12] shadow-[0_24px_48px_-12px_rgba(0,0,0,0.6)] transition-all">
         {/* Compact Tool Header */}
         <div className="flex items-center justify-between border-b border-white/5 bg-white/5 px-3 py-2.5">
           <div className="flex items-center gap-3">
@@ -705,9 +764,7 @@ export const LogoEditorSection = React.memo(({
             {logoUploading[activeLogoEditorSlotId] ? 'uploading...' : 'CONFIRM & SAVE'}
           </button>
         </div>
-      </div>
-    </div>,
-    document.body
+    </section>
   );
 });
 

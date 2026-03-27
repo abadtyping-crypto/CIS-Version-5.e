@@ -112,6 +112,7 @@ const CompanyRegistrationForm = ({ activeType, tenantId, user, onCancel, onSucce
         landline2: '',
         emailContacts: [{ id: 'init-1', value: '' }],
         address: '',
+        description: '',
         poBox: '',
         poBoxEmirate: '',
         openingBalance: '',
@@ -256,6 +257,7 @@ const CompanyRegistrationForm = ({ activeType, tenantId, user, onCancel, onSucce
                 emailContacts: normalizedEmailContacts,
                 sendWelcomeEmail: normalizedEmailContacts.length > 0 ? Boolean(form.sendWelcomeEmail) : false,
                 address: toTitleCase(form.address).trim(),
+                description: String(form.description || '').trim(),
                 openingBalance: parseFloat(form.openingBalance) || 0,
                 tenantId,
                 createdBy: user.uid,
@@ -565,6 +567,16 @@ const CompanyRegistrationForm = ({ activeType, tenantId, user, onCancel, onSucce
                         value={form.address}
                         onValueChange={handleAddressChange}
                     />
+                    <div className="space-y-2">
+                        <label className="text-xs font-bold uppercase tracking-wider text-[var(--c-muted)]">Description</label>
+                        <textarea
+                            value={form.description}
+                            onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
+                            rows={3}
+                            className="w-full rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)] px-4 py-3 text-sm font-semibold text-[var(--c-text)] outline-none transition focus:border-[var(--c-accent)]"
+                            placeholder="Optional notes about this company"
+                        />
+                    </div>
                 </div>
             </div>
 

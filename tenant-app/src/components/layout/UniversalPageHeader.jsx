@@ -8,6 +8,7 @@ import { DynamicAppIcon } from '../icons/AppIcons';
 import PageInstructionOverlay from './PageInstructionOverlay';
 
 const EMPTY_OBJ = Object.freeze({});
+const normalizeUiRoleLabel = (value) => String(value || '').replace(/\bSuperAdmin\b/g, 'Owner');
 
 /**
  * UniversalPageHeader Component
@@ -99,6 +100,8 @@ const UniversalPageHeader = ({
 
   const effectiveConfig = config || fallbackConfig;
   if (!effectiveConfig) return null;
+  const titleText = normalizeUiRoleLabel(effectiveConfig.titleText);
+  const descriptionText = normalizeUiRoleLabel(effectiveConfig.descriptionText);
 
   const instructionID = String(pageInstruction?.instructionUID || '').trim();
   const helpEnabled = pageInstruction?.isHelpEnabled === true;
@@ -112,7 +115,7 @@ const UniversalPageHeader = ({
             {effectiveConfig.iconUrl ? (
               <img
                 src={effectiveConfig.iconUrl}
-                alt={effectiveConfig.titleText || 'Page Icon'}
+                alt={titleText || 'Page Icon'}
                 className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
                 loading="lazy"
               />
@@ -130,7 +133,7 @@ const UniversalPageHeader = ({
             ) : (
               <div className="flex w-full items-center justify-center bg-[color:color-mix(in_srgb,var(--c-accent)_20%,var(--c-surface))] text-[var(--c-accent)] shadow-inner">
                 <span className="font-title text-2xl font-black uppercase tracking-tighter sm:text-3xl md:text-4xl">
-                  {(effectiveConfig.titleText || 'A')[0]}
+                  {(titleText || 'A')[0]}
                 </span>
               </div>
             )}
@@ -140,7 +143,7 @@ const UniversalPageHeader = ({
         <div className="flex min-w-0 flex-1 flex-col justify-center px-5 py-3 sm:px-8">
           <div className="flex items-center justify-between gap-3">
             <h1 className="truncate font-title text-xl font-black tracking-tight text-[var(--c-text)] sm:text-2xl md:text-[1.75rem] lg:text-[2.15rem]">
-              {effectiveConfig.titleText}
+              {titleText}
             </h1>
             {actionSlot || shouldRenderHelpButton ? (
               <div className="flex shrink-0 items-center gap-2">
@@ -160,9 +163,9 @@ const UniversalPageHeader = ({
             ) : null}
           </div>
 
-          {effectiveConfig.descriptionText && (
+          {descriptionText && (
             <p className="mt-0.5 line-clamp-1 text-[13px] font-semibold text-[var(--c-muted)] sm:mt-1 sm:text-sm lg:text-base">
-              {effectiveConfig.descriptionText}
+              {descriptionText}
             </p>
           )}
         </div>

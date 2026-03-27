@@ -10,6 +10,12 @@ import {
 } from '../../lib/tenantUsers';
 import SettingCard from './SettingCard';
 
+const normalizeRoleLabel = (role) => {
+  const normalized = String(role || '').trim().toLowerCase();
+  if (normalized === 'superadmin' || normalized === 'super admin') return 'Owner';
+  return role || 'Staff';
+};
+
 const inputClass =
   'mt-1 w-full rounded-xl border border-(--c-border) bg-(--c-panel) px-3 py-2.5 text-sm text-(--c-text) outline-none transition focus:border-(--c-accent) focus:ring-2 focus:ring-(--c-ring)';
 
@@ -38,7 +44,7 @@ const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
 const UserCustomizationSection = () => {
   const { tenantId } = useTenant();
-  const { user } = useAuth();
+  const { user: currentUser } = useAuth();
   const [form, setForm] = useState({
     displayName: '',
     email: '',
@@ -107,7 +113,7 @@ const UserCustomizationSection = () => {
 
     const next = addTenantUser(tenantId, {
       ...payload,
-      createdBy: user.uid,
+      createdBy: currentUser.uid,
       status: 'Invited',
     });
     setUsers(next);
@@ -120,15 +126,23 @@ const UserCustomizationSection = () => {
     setSaveMessage('User created with Invited status. On first successful login, status becomes Active.');
   };
 
-  if (!user) return null;
+  if (!currentUser) return null;
 
   const onToggleFreeze = (uid) => {
+    if (uid === currentUser.uid) {
+      setSaveMessage('Self-lock active. You cannot change your own status here.');
+      return;
+    }
     const next = toggleTenantUserFreeze(tenantId, uid);
     setUsers(next);
     setSaveMessage('User status updated.');
   };
 
   const onDelete = (uid) => {
+    if (uid === currentUser.uid) {
+      setSaveMessage('Self-lock active. You cannot delete your own user here.');
+      return;
+    }
     const next = deleteTenantUser(tenantId, uid);
     setUsers(next);
     setSaveMessage('User removed.');
@@ -225,38 +239,42 @@ const UserCustomizationSection = () => {
           </p>
         ) : (
           <div className="space-y-2">
-            {users.map((user) => {
-              const isFrozen = String(user.status || '').toLowerCase() === 'frozen';
-              const isSuperAdmin = String(user.role || '').toLowerCase() === 'super admin';
+            {users.map((member) => {
+              const isFrozen = String(member.status || '').toLowerCase() === 'frozen';
+              const normalizedRole = String(member.role || '').trim().toLowerCase();
+              const isSuperAdmin = normalizedRole === 'super admin' || normalizedRole === 'superadmin';
+              const isCurrentUser = member.uid === currentUser.uid;
               return (
                 <article
-                  key={user.uid}
+                  key={member.uid}
                   className="rounded-xl border border-(--c-border) bg-(--c-panel) p-3"
                 >
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-(--c-text)">{user.displayName}</p>
-                      <p className="truncate text-xs text-(--c-muted)">{user.email}</p>
+                      <p className="truncate text-sm font-semibold text-(--c-text)">{member.displayName}</p>
+                      <p className="truncate text-xs text-(--c-muted)">{member.email}</p>
                       <p className="mt-1 text-xs text-(--c-muted)">
-                        Role: <span className={isSuperAdmin ? 'font-bold text-(--c-accent)' : ''}>{user.role}</span> • Status: {user.status}
+                        Role: <span className={isSuperAdmin ? 'font-bold text-(--c-accent)' : ''}>{normalizeRoleLabel(member.role)}</span> • Status: {member.status}
                       </p>
                     </div>
                     {!isSuperAdmin && (
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
-                          onClick={() => onToggleFreeze(user.uid)}
+                          onClick={() => onToggleFreeze(member.uid)}
+                          disabled={isCurrentUser}
                           className={`${isFrozen
                               ? unfreezeActionClass
                               : freezeActionClass
-                            }`}
+                            } ${isCurrentUser ? 'cursor-not-allowed opacity-50' : ''}`}
                         >
                           {isFrozen ? 'Unfreeze' : 'Freeze'}
                         </button>
                         <button
                           type="button"
-                          onClick={() => onDelete(user.uid)}
-                          className={deleteActionClass}
+                          onClick={() => onDelete(member.uid)}
+                          disabled={isCurrentUser}
+                          className={`${deleteActionClass} ${isCurrentUser ? 'cursor-not-allowed opacity-50' : ''}`}
                         >
                           Delete
                         </button>
@@ -274,4 +292,3 @@ const UserCustomizationSection = () => {
 };
 
 export default UserCustomizationSection;
-
