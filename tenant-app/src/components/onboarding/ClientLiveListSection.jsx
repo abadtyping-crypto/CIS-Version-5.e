@@ -8,8 +8,18 @@ import {
 } from '../../lib/backendStore';
 import { getEmirateIcon } from '../../lib/clientIcons';
 import RelationSelect from '../common/RelationSelect';
+import IdentityDocumentField from '../common/IdentityDocumentField';
+import MobileContactsField from '../common/MobileContactsField';
+import EmailContactsField from '../common/EmailContactsField';
 import { getRelationIcon } from '../../lib/relationData';
 import { getCachedSystemAssetsSnapshot, getSystemAssets } from '../../lib/systemAssetsCache';
+import {
+  createMobileContact,
+  getPrimaryMobileContact,
+  getFilledMobileContacts,
+  normalizeMobileContacts,
+  serializeMobileContacts,
+} from '../../lib/mobileContactUtils';
 
 const resolveSystemIcon = (snapshot, key, fallback) => {
   return snapshot[key]?.iconUrl || fallback;
@@ -18,6 +28,10 @@ const resolveSystemIcon = (snapshot, key, fallback) => {
 const PAGE_SIZES = [50, 100];
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const createEmailContact = (value = '') => ({
+  id: Math.random().toString(36).slice(2, 11),
+  value: String(value || '').trim().toLowerCase(),
+});
 
 const normalizePhone = (value) => {
   const digits = String(value || '').replace(/\D/g, '');
@@ -118,6 +132,15 @@ const ClientLiveListSection = ({ tenantId, user, refreshKey = 0 }) => {
     setCurrentPage(1);
   }, [search, typeFilter, pageSize]);
 
+  useEffect(() => {
+    if (editingRow) {
+      document.body.classList.add('hide-desktop-footer');
+    } else {
+      document.body.classList.remove('hide-desktop-footer');
+    }
+    return () => document.body.classList.remove('hide-desktop-footer');
+  }, [editingRow]);
+
   const getTypeLabel = (item) => {
     const type = String(item.type || '').toLowerCase();
     if (type === 'company') return 'Company';
@@ -189,39 +212,71 @@ const ClientLiveListSection = ({ tenantId, user, refreshKey = 0 }) => {
     };
   };
 
+  const getAllowedIdTypes = (item) => {
+    const type = String(item?.type || '').toLowerCase();
+    if (type !== 'dependent') return ['emirates_id', 'passport'];
+    const parentType = parentById[item.parentId]?.type || item.parentClientType || 'individual';
+    return parentType === 'company'
+      ? ['emirates_id', 'passport', 'person_code', 'work_permit']
+      : ['emirates_id', 'passport'];
+  };
+
   const openEdit = (item) => {
+    const rawType = String(item?.type || '').toLowerCase();
+    const idType = String(item?.identificationMethod || item?.idType || '').trim()
+      || (item?.emiratesId ? 'emirates_id' : (item?.passportNumber ? 'passport' : 'emirates_id'));
+    const idNumber = String(
+      item?.idNumber
+      || (idType === 'passport' ? item?.passportNumber : item?.emiratesId)
+      || ''
+    ).trim();
+    const mobileContacts = normalizeMobileContacts(
+      item?.mobileContacts,
+      [item?.primaryMobile, item?.secondaryMobile].filter(Boolean),
+    );
+    const emailContactsSource = Array.isArray(item?.emailContacts) && item.emailContacts.length
+      ? item.emailContacts
+      : [item?.primaryEmail, item?.secondaryEmail].filter(Boolean).map((value) => ({ value }));
+    const emailContacts = emailContactsSource.length
+      ? emailContactsSource.map((contact) => ({
+        id: contact?.id || Math.random().toString(36).slice(2, 11),
+        value: String(contact?.value || '').trim().toLowerCase(),
+      }))
+      : [createEmailContact()];
     setEditingRow(item);
     setDraft({
       tradeName: item.tradeName || '',
       fullName: item.fullName || '',
       relationship: item.relationship || '',
+      idType,
+      idNumber,
+      mobileContacts,
+      emailContacts,
       registeredEmirate: item.registeredEmirate || '',
-      primaryMobile: item.primaryMobile || '',
-      secondaryMobile: item.secondaryMobile || '',
-      primaryEmail: item.primaryEmail || '',
-      secondaryEmail: item.secondaryEmail || '',
       address: item.address || '',
       poBox: item.poBox || '',
       poBoxEmirate: item.poBoxEmirate || '',
       nationality: item.nationality || '',
       gender: item.gender || '',
       dateOfBirth: item.dateOfBirth || '',
-      status: item.status || 'active',
-      trackingNumber: item.trackingNumber || '',
     });
   };
 
   const validateDraft = (item, formData) => {
-    const primaryMobile = normalizePhone(formData.primaryMobile);
-    const secondaryMobile = normalizePhone(formData.secondaryMobile);
+    const primaryMobile = normalizePhone(getPrimaryMobileContact(formData.mobileContacts || []).value);
+    const secondaryMobile = normalizePhone(getFilledMobileContacts(formData.mobileContacts || [])[1]?.value || '');
     if (primaryMobile && primaryMobile.length < 8) return 'Primary mobile must be at least 8 digits.';
     if (secondaryMobile && secondaryMobile.length < 8) return 'Secondary mobile must be at least 8 digits.';
-    if (formData.primaryEmail && !emailRegex.test(formData.primaryEmail)) return 'Primary email is invalid.';
-    if (formData.secondaryEmail && !emailRegex.test(formData.secondaryEmail)) return 'Secondary email is invalid.';
+    const emailContacts = Array.isArray(formData.emailContacts) ? formData.emailContacts : [];
+    const primaryEmail = String(emailContacts[0]?.value || '').trim();
+    const secondaryEmail = String(emailContacts[1]?.value || '').trim();
+    if (primaryEmail && !emailRegex.test(primaryEmail)) return 'Primary email is invalid.';
+    if (secondaryEmail && !emailRegex.test(secondaryEmail)) return 'Secondary email is invalid.';
 
     const type = String(item.type || '').toLowerCase();
     if (type === 'company' && !String(formData.tradeName || '').trim()) return 'Trade name is required.';
     if (type !== 'company' && !String(formData.fullName || '').trim()) return 'Full name is required.';
+    if (type !== 'company' && !String(formData.idNumber || '').trim()) return 'Identification number is required.';
     return '';
   };
 
@@ -234,23 +289,45 @@ const ClientLiveListSection = ({ tenantId, user, refreshKey = 0 }) => {
     }
 
     const type = String(editingRow.type || '').toLowerCase();
+    const emailContacts = Array.isArray(draft.emailContacts) ? draft.emailContacts : [];
+    const normalizedEmailContacts = emailContacts
+      .map((contact) => ({
+        id: contact?.id || Math.random().toString(36).slice(2, 11),
+        value: String(contact?.value || '').trim().toLowerCase(),
+      }))
+      .filter((contact) => contact.value);
+    const primaryEmail = normalizedEmailContacts[0]?.value || '';
+    const secondaryEmail = normalizedEmailContacts[1]?.value || '';
+    const filledMobileContacts = getFilledMobileContacts(draft.mobileContacts || []);
+    const primaryMobile = normalizePhone(getPrimaryMobileContact(draft.mobileContacts || []).value);
+    const secondaryMobile = normalizePhone(filledMobileContacts[1]?.value || '');
+
     const payload = {
       tradeName: type === 'company' ? String(draft.tradeName || '').toUpperCase().trim() : undefined,
       fullName: type !== 'company' ? String(draft.fullName || '').toUpperCase().trim() : undefined,
       relationship: type === 'dependent' ? String(draft.relationship || '').trim() : undefined,
+      identificationMethod: type === 'individual' ? String(draft.idType || '').trim() : undefined,
+      idType: type === 'dependent' ? String(draft.idType || '').trim() : undefined,
+      idNumber: type !== 'company' ? String(draft.idNumber || '').trim() : undefined,
+      emiratesId: type !== 'company' && String(draft.idType || '').trim() === 'emirates_id'
+        ? String(draft.idNumber || '').trim()
+        : '',
+      passportNumber: type !== 'company' && String(draft.idType || '').trim() === 'passport'
+        ? String(draft.idNumber || '').trim()
+        : '',
       registeredEmirate: String(draft.registeredEmirate || '').trim(),
-      primaryMobile: normalizePhone(draft.primaryMobile),
-      secondaryMobile: normalizePhone(draft.secondaryMobile),
-      primaryEmail: String(draft.primaryEmail || '').trim().toLowerCase(),
-      secondaryEmail: String(draft.secondaryEmail || '').trim().toLowerCase(),
+      primaryMobile,
+      secondaryMobile,
+      mobileContacts: serializeMobileContacts(draft.mobileContacts || []),
+      primaryEmail,
+      secondaryEmail,
+      emailContacts: normalizedEmailContacts,
       address: String(draft.address || '').trim(),
       poBox: String(draft.poBox || '').trim(),
       poBoxEmirate: String(draft.poBoxEmirate || '').trim(),
       nationality: String(draft.nationality || '').trim(),
       gender: String(draft.gender || '').trim(),
       dateOfBirth: String(draft.dateOfBirth || '').trim(),
-      status: String(draft.status || 'active').trim() || 'active',
-      trackingNumber: String(draft.trackingNumber || '').trim(),
       updatedBy: user?.uid || '',
     };
 
@@ -569,12 +646,11 @@ const ClientLiveListSection = ({ tenantId, user, refreshKey = 0 }) => {
       </div>
 
       {editingRow ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4 backdrop-blur-sm">
-          <div className="compact-dialog w-full rounded-2xl border border-[var(--c-border)] bg-[var(--c-surface)] p-4 shadow-xl">
+        <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-slate-900/45 p-4 backdrop-blur-sm">
+          <div className="compact-dialog w-full max-h-[80vh] overflow-y-auto rounded-2xl border border-[var(--c-border)] bg-[var(--c-surface)] p-4 shadow-xl">
             <div className="mb-4 flex items-center justify-between">
               <div>
-                <h3 className="text-base font-semibold text-[var(--c-text)]">Edit {editingRow.displayClientId || editingRow.id}</h3>
-                <p className="text-xs text-[var(--c-muted)]">System ID and financial fields are locked.</p>
+                <h3 className="text-base font-semibold text-[var(--c-text)]">Edit Client</h3>
               </div>
               <button type="button" onClick={() => setEditingRow(null)} className="compact-icon-action rounded-lg border border-[var(--c-border)]">
                 <X strokeWidth={1.5} size={16} />
@@ -614,68 +690,39 @@ const ClientLiveListSection = ({ tenantId, user, refreshKey = 0 }) => {
                 </label>
               ) : null}
 
-              <label>
-                <span className="mb-1 block text-xs font-semibold text-[var(--c-muted)]">Primary Mobile</span>
-                <input
-                  value={draft.primaryMobile || ''}
-                  onChange={(event) => setDraft((prev) => ({ ...prev, primaryMobile: event.target.value }))}
-                  className="w-full rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] px-3 py-2.5 text-sm"
+              {String(editingRow.type || '').toLowerCase() !== 'company' ? (
+                <label className="sm:col-span-2">
+                  <span className="mb-1 block text-xs font-semibold text-[var(--c-muted)]">Identification</span>
+                  <IdentityDocumentField
+                    type={draft.idType || 'emirates_id'}
+                    number={draft.idNumber || ''}
+                    onTypeChange={(nextType) => setDraft((prev) => ({ ...prev, idType: nextType, idNumber: '' }))}
+                    onNumberChange={(nextNumber) => setDraft((prev) => ({ ...prev, idNumber: nextNumber }))}
+                    allowedTypes={getAllowedIdTypes(editingRow)}
+                  />
+                </label>
+              ) : null}
+
+              <div className="sm:col-span-2">
+                <MobileContactsField
+                  label="Mobile Numbers"
+                  contacts={draft.mobileContacts || [createMobileContact()]}
+                  onChange={(contacts) => setDraft((prev) => ({ ...prev, mobileContacts: contacts }))}
                 />
-              </label>
-              <label>
-                <span className="mb-1 block text-xs font-semibold text-[var(--c-muted)]">Secondary Mobile</span>
-                <input
-                  value={draft.secondaryMobile || ''}
-                  onChange={(event) => setDraft((prev) => ({ ...prev, secondaryMobile: event.target.value }))}
-                  className="w-full rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] px-3 py-2.5 text-sm"
+              </div>
+              <div className="sm:col-span-2">
+                <EmailContactsField
+                  label="Email Addresses"
+                  contacts={draft.emailContacts || [createEmailContact()]}
+                  onChange={(list) => setDraft((prev) => ({ ...prev, emailContacts: list }))}
                 />
-              </label>
-              <label>
-                <span className="mb-1 block text-xs font-semibold text-[var(--c-muted)]">Primary Email</span>
-                <input
-                  value={draft.primaryEmail || ''}
-                  onChange={(event) => setDraft((prev) => ({ ...prev, primaryEmail: event.target.value }))}
-                  className="w-full rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] px-3 py-2.5 text-sm"
-                />
-              </label>
-              <label>
-                <span className="mb-1 block text-xs font-semibold text-[var(--c-muted)]">Secondary Email</span>
-                <input
-                  value={draft.secondaryEmail || ''}
-                  onChange={(event) => setDraft((prev) => ({ ...prev, secondaryEmail: event.target.value }))}
-                  className="w-full rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] px-3 py-2.5 text-sm"
-                />
-              </label>
+              </div>
               <label className="sm:col-span-2">
                 <span className="mb-1 block text-xs font-semibold text-[var(--c-muted)]">Address</span>
                 <input
                   value={draft.address || ''}
                   onChange={(event) => setDraft((prev) => ({ ...prev, address: event.target.value }))}
                   className="w-full rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] px-3 py-2.5 text-sm"
-                />
-              </label>
-
-              <label>
-                <span className="mb-1 block text-xs font-semibold text-[var(--c-muted)]">Application Status</span>
-                <select
-                  value={draft.status || 'active'}
-                  onChange={(event) => setDraft((prev) => ({ ...prev, status: event.target.value }))}
-                  className="w-full rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] px-3 py-2.5 text-sm font-bold"
-                >
-                  <option value="active">Active</option>
-                  <option value="pending">Pending</option>
-                  <option value="tracking">Tracking</option>
-                  <option value="blocked">Blocked</option>
-                  <option value="frozen">Frozen</option>
-                </select>
-              </label>
-              <label>
-                <span className="mb-1 block text-xs font-semibold text-[var(--c-muted)]">Reference / Tracking #</span>
-                <input
-                  value={draft.trackingNumber || ''}
-                  onChange={(event) => setDraft((prev) => ({ ...prev, trackingNumber: event.target.value }))}
-                  className="w-full rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] px-3 py-2.5 text-sm font-bold"
-                  placeholder="e.g. TX-123456"
                 />
               </label>
             </div>

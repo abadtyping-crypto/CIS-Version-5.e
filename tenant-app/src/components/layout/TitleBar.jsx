@@ -3,25 +3,14 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import useElectronLayoutMode from '../../hooks/useElectronLayoutMode';
 import { useTheme } from '../../context/useTheme';
-import { useAuth } from '../../context/useAuth';
 import { EMIRATE_OPTIONS } from '../../lib/emirateData';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../../lib/firebaseConfig';
-
-const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const toDisplayName = (user) => {
-    const raw = String(user?.displayName || '').trim();
-    if (raw && !emailRegex.test(raw)) return raw;
-    const email = String(user?.email || '').trim().toLowerCase();
-    if (emailRegex.test(email)) return email.split('@')[0];
-    return '';
-};
 
 const TitleBar = () => {
     const isElectron = typeof window !== 'undefined' && !!window.electron && !!window.electron.windowControls;
     const [isWindowMaximized, setIsWindowMaximized] = useState(false);
     const [globalConfig, setGlobalConfig] = useState({});
-    const { user } = useAuth();
 
     // Use a real-time socket (onSnapshot) to completely bypass the 6-hour systemAssets cache.
     // The moment the developer clicks "Save" in their portal, the Electron App globally updates in milliseconds.
@@ -36,9 +25,8 @@ const TitleBar = () => {
     }, []);
 
     const appLogoUrl = globalConfig.headerIcon || '/ACIS Icon/appIconx64.png';
-    const appName = globalConfig.title || 'ACIS';
+    const appName = String(globalConfig.title || '').trim() || 'ACIS';
     const appSubtitle = globalConfig.subtitle || 'Desktop Workspace';
-    const activeUserLabel = toDisplayName(user);
     const { setMode, overrideMode } = useElectronLayoutMode();
     const { theme, toggleTheme, appearance, updateAppearance, DESKTOP_WALLPAPERS, DESKTOP_FONT_FAMILIES, DESKTOP_FONT_SCALES } = useTheme();
     const [layoutMenuOpen, setLayoutMenuOpen] = useState(false);
@@ -446,7 +434,7 @@ const TitleBar = () => {
                             {appName}
                         </p>
                         <p className="truncate text-[10px] text-[var(--c-muted)]">
-                            {activeUserLabel ? `${appSubtitle} • ${activeUserLabel}` : appSubtitle}
+                            {appSubtitle}
                         </p>
                     </div>
 

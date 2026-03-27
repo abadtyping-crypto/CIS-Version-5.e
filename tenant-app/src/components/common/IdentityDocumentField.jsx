@@ -186,7 +186,7 @@ const IdentityDocumentField = ({
             if (isOpen) closeDropdown();
             else setIsOpen(true);
           }}
-          className="flex h-10 shrink-0 items-center border-r border-[var(--c-border)] bg-[var(--c-panel)] pl-0 pr-3 text-left outline-none transition hover:bg-[color:color-mix(in_srgb,var(--c-accent)_6%,var(--c-panel))] focus-visible:bg-[color:color-mix(in_srgb,var(--c-accent)_6%,var(--c-panel))]"
+          className="flex h-10 shrink-0 items-center border-r border-[var(--c-border)] bg-white shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] transition hover:bg-slate-50 focus-visible:bg-slate-50"
           aria-haspopup="listbox"
           aria-expanded={isOpen}
         >
@@ -195,14 +195,14 @@ const IdentityDocumentField = ({
               <img
                 src={activeIconUrl}
                 alt={activeConfig.label}
-                className="relative z-[1] h-full w-full object-cover scale-110"
+                className="relative z-[1] h-full w-full object-cover"
               />
             ) : (
-              <ActiveIconFallback className="relative z-[1] h-4 w-4 text-[var(--c-muted)]" />
+              <ActiveIconFallback strokeWidth={1.5} className="relative z-[1] h-4.5 w-4.5 text-[var(--c-accent)]" />
             )}
           </span>
-          <span className="pl-1">
-            <ChevronDown strokeWidth={1.5} className={`h-3 w-3 text-[var(--c-muted)] transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+          <span className="flex h-10 items-center px-1.5">
+            <ChevronDown strokeWidth={2.5} className={`h-2.5 w-2.5 text-[var(--c-muted)] transition-transform ${isOpen ? 'rotate-180' : ''}`} />
           </span>
         </button>
 

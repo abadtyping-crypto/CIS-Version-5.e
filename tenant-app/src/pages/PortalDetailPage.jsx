@@ -169,6 +169,7 @@ const PortalDetailPage = () => {
   const [messageType, setMessageType] = useState('info');
   const [confirmDialog, setConfirmDialog] = useState({ open: false });
   const [selectedTx, setSelectedTx] = useState(null);
+  const [isBalanceAdjustOpen, setIsBalanceAdjustOpen] = useState(false);
   const [transferForm, setTransferForm] = useState({
     fromPortalId: '',
     fromMethodId: '',
@@ -1224,26 +1225,28 @@ const PortalDetailPage = () => {
                   </div>
                 </div>
                 <div className="flex flex-col items-end gap-3">
-                  <div className="flex flex-wrap items-center gap-3 justify-end">
-                    <div className="flex items-center gap-3 rounded-2xl border border-[var(--c-border)] bg-[var(--c-surface)] p-1.5 pr-4 shadow-sm">
-                      {(() => {
-                        const typeCategory = resolvePortalCategory(portal.type, portal.customCategories);
-                        const typeIcon = typeCategory?.isCustom
-                          ? (typeCategory.icon || DEFAULT_PORTAL_ICON)
-                          : resolvePortalTypeAsset(portal.type, systemAssets);
-                        return (
-                          <img
-                            src={typeIcon}
-                            alt={portal.type || 'Portal'}
-                             className="h-12 w-12 rounded-2xl object-cover shrink-0"
-                            onError={(event) => {
-                              event.currentTarget.onerror = null;
-                              event.currentTarget.src = DEFAULT_PORTAL_ICON;
-                            }}
-                          />
-                        );
-                      })()}
-                      <div>
+                    <div className="flex flex-wrap items-center gap-3 justify-end">
+                    <div className="flex min-h-[56px] items-stretch overflow-hidden rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)] shadow-sm">
+                      <div className="flex w-16 shrink-0 items-center justify-center overflow-hidden border-r border-[var(--c-border)] bg-white">
+                        {(() => {
+                          const typeCategory = resolvePortalCategory(portal.type, portal.customCategories);
+                          const typeIcon = typeCategory?.isCustom
+                            ? (typeCategory.icon || DEFAULT_PORTAL_ICON)
+                            : resolvePortalTypeAsset(portal.type, systemAssets);
+                          return (
+                            <img
+                              src={typeIcon}
+                              alt={portal.type || 'Portal'}
+                            className="h-full w-full object-cover"
+                              onError={(event) => {
+                                event.currentTarget.onerror = null;
+                                event.currentTarget.src = DEFAULT_PORTAL_ICON;
+                              }}
+                            />
+                          );
+                        })()}
+                      </div>
+                      <div className="px-4 py-3">
                         <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--c-muted)]">Type</p>
                         <span className="text-sm font-bold text-[var(--c-text)]">{portal.type || EMPTY_LEDGER_CELL}</span>
                       </div>
@@ -1254,6 +1257,15 @@ const PortalDetailPage = () => {
                   </div>
                   {!isEditMode ? (
                     <div className="flex items-center gap-2">
+                      {canRequestDirectAdjustment ? (
+                        <button
+                          type="button"
+                          onClick={() => setIsBalanceAdjustOpen((prev) => !prev)}
+                          className="flex h-14 items-center rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)] px-6 text-sm font-bold text-[var(--c-text)] shadow-sm hover:border-[var(--c-accent)] transition-colors"
+                        >
+                          Direct Balance
+                        </button>
+                      ) : null}
                       <button
                         type="button"
                         onClick={openTransfer}
@@ -1328,9 +1340,9 @@ const PortalDetailPage = () => {
                     </div>
                   </div>
 
-                  <div className="mt-3">
+                    <div className="mt-3">
                     <p className="mb-2 text-xs font-semibold text-[var(--c-muted)]">Allowed Methods</p>
-                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="grid gap-3 sm:grid-cols-2">
                       {transactionMethods.map((method) => {
                         const selected = form.methods.includes(method.id);
                         const iconUrl = resolveMethodAsset(method, methodIconMap, systemAssets);
@@ -1343,21 +1355,25 @@ const PortalDetailPage = () => {
                               ...prev,
                               methods: selected ? prev.methods.filter((id) => id !== method.id) : [...prev.methods, method.id],
                             }))}
-                            className={`group flex items-center gap-3 rounded-2xl border px-3.5 py-3 text-left transition-colors ${selected
-                              ? 'border-[var(--c-accent)] bg-[var(--c-accent)]/15 shadow-sm'
+                            className={`group flex min-h-[56px] items-stretch overflow-hidden rounded-2xl border transition-colors ${selected
+                              ? 'border-[var(--c-accent)] bg-[color:color-mix(in_srgb,var(--c-accent)_12%,var(--c-panel))] shadow-sm'
                               : 'border-[var(--c-border)] bg-[var(--c-panel)] hover:border-[var(--c-accent)]/50'
                               }`}
                           >
-                            {iconUrl ? (
-                              <img
-                                src={iconUrl}
-                                alt={method.label}
-                                className="h-14 w-14 rounded-2xl object-cover shrink-0"
-                              />
-                            ) : (
-                              <MethodIcon className="h-14 w-14 shrink-0 text-[var(--c-accent)] drop-shadow-sm" />
-                            )}
-                            <span className="text-base font-bold text-[var(--c-text)]">{method.label}</span>
+                            <div className={`flex w-16 shrink-0 items-center justify-center overflow-hidden border-r ${selected ? 'border-[var(--c-accent)]/30' : 'border-[var(--c-border)]'} bg-white`}>
+                              {iconUrl ? (
+                                <img
+                                  src={iconUrl}
+                                  alt={method.label}
+                                  className="h-full w-full object-cover"
+                                />
+                              ) : MethodIcon ? (
+                                <MethodIcon className="h-5 w-5 text-[var(--c-accent)]" />
+                              ) : null}
+                            </div>
+                            <div className="flex min-w-0 flex-1 items-center px-4 py-3 text-left">
+                              <span className="block text-sm font-black text-[var(--c-text)]">{method.label}</span>
+                            </div>
                           </button>
                         );
                       })}
@@ -1398,7 +1414,7 @@ const PortalDetailPage = () => {
                 <div className="mt-3 rounded-2xl border border-[var(--c-border)] bg-[var(--c-surface)] p-4 shadow-sm">
                   <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--c-muted)] mb-3">Portal Methods</p>
                   {(portal.methods || []).length > 0 ? (
-                    <div className="flex flex-wrap gap-3">
+                    <div className="grid gap-3 sm:grid-cols-2">
                       {(portal.methods || []).map((methodId) => {
                         const methodMeta = methodMetaById[methodId] || {
                           label: String(methodId || ''),
@@ -1409,18 +1425,22 @@ const PortalDetailPage = () => {
                         return (
                           <div
                             key={methodId}
-                            className="flex items-center gap-3 rounded-2xl border border-[var(--c-accent)]/30 bg-[var(--c-accent)]/10 px-4 py-2.5 text-[var(--c-text)] shadow-sm"
+                            className="flex min-h-[56px] items-stretch overflow-hidden rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)]"
                           >
-                            {methodMeta.icon ? (
-                              <img
-                                src={methodMeta.icon}
-                                alt={methodMeta.label}
-                                className="h-14 w-14 rounded-2xl border border-[var(--c-border)] bg-white object-cover shrink-0 shadow-sm"
-                              />
-                            ) : MethodIcon ? (
-                              <MethodIcon className="h-14 w-14 shrink-0 text-[var(--c-accent)] drop-shadow-sm" />
-                            ) : null}
-                            <span className="text-base font-bold">{methodMeta.label}</span>
+                            <div className="flex w-16 shrink-0 items-center justify-center overflow-hidden border-r border-[var(--c-border)] bg-white">
+                              {methodMeta.icon ? (
+                                <img
+                                  src={methodMeta.icon}
+                                  alt={methodMeta.label}
+                                  className="h-full w-full object-cover"
+                                />
+                              ) : MethodIcon ? (
+                                <MethodIcon className="h-5 w-5 text-[var(--c-accent)]" />
+                              ) : null}
+                            </div>
+                            <div className="flex min-w-0 flex-1 items-center px-4 py-3">
+                              <span className="text-sm font-black text-[var(--c-text)]">{methodMeta.label}</span>
+                            </div>
                           </div>
                         );
                       })}
@@ -1441,15 +1461,25 @@ const PortalDetailPage = () => {
               </p>
             ) : null}
 
-            <section className="rounded-2xl border border-[var(--c-border)] bg-[var(--c-surface)] p-4">
-              <div className="mb-3">
-                <p className="text-sm font-bold text-[var(--c-text)]">Direct Balance Adjustment</p>
-                <p className="text-xs text-[var(--c-muted)]">
-                  Requests are raised universally and require second-person approval before posting to portal transactions.
-                </p>
-              </div>
-              {canRequestDirectAdjustment ? (
-                <>
+            {isBalanceAdjustOpen ? (
+              <section className="rounded-2xl border border-[var(--c-border)] bg-[var(--c-surface)] p-4">
+                <div className="mb-3 flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-bold text-[var(--c-text)]">Direct Balance Adjustment</p>
+                    <p className="text-xs text-[var(--c-muted)]">
+                      Requests are raised universally and require second-person approval before posting to portal transactions.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsBalanceAdjustOpen(false)}
+                    className="rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] px-3 py-2 text-xs font-bold text-[var(--c-text)] transition hover:border-[var(--c-accent)]"
+                  >
+                    Close
+                  </button>
+                </div>
+                {canRequestDirectAdjustment ? (
+                  <>
                   <div className="grid gap-3 md:grid-cols-4">
                     <div>
                       <p className="text-xs font-semibold text-[var(--c-muted)]">Direction</p>
@@ -1524,13 +1554,14 @@ const PortalDetailPage = () => {
                       {isBalanceAdjustSaving ? 'Submitting...' : 'Submit Adjustment'}
                     </button>
                   </div>
-                </>
-              ) : (
-                <p className="rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] p-3 text-sm text-[var(--c-muted)]">
-                  You do not have permission to request direct balance adjustment.
-                </p>
-              )}
-            </section>
+                  </>
+                ) : (
+                  <p className="rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] p-3 text-sm text-[var(--c-muted)]">
+                    You do not have permission to request direct balance adjustment.
+                  </p>
+                )}
+              </section>
+            ) : null}
 
             <section className="rounded-2xl border border-[var(--c-border)] bg-[var(--c-surface)] p-4">
               <p className="mb-3 text-sm font-bold text-[var(--c-text)]">Portal Transaction History</p>
@@ -1782,7 +1813,7 @@ const PortalDetailPage = () => {
                     max={maxTxDate}
                     value={statementRange.start}
                     onChange={(e) => setStatementRange((prev) => ({ ...prev, start: e.target.value }))}
-                    style={{ colorScheme: resolvedTheme }}
+                    style={{ colorScheme: 'light' }}
                     className="mt-1 w-full rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] px-3 py-2 text-sm text-[var(--c-text)] outline-none"
                   />
                 </label>
@@ -1794,7 +1825,7 @@ const PortalDetailPage = () => {
                     max={maxTxDate}
                     value={statementRange.end}
                     onChange={(e) => setStatementRange((prev) => ({ ...prev, end: e.target.value }))}
-                    style={{ colorScheme: resolvedTheme }}
+                    style={{ colorScheme: 'light' }}
                     className="mt-1 w-full rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] px-3 py-2 text-sm text-[var(--c-text)] outline-none"
                   />
                 </label>

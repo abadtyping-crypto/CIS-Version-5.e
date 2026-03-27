@@ -3,6 +3,7 @@ import { useAuth } from '../../context/useAuth';
 import { Facebook, Instagram, Twitter, Linkedin, Building2 } from 'lucide-react';
 import { deleteField } from 'firebase/firestore';
 import SettingCard from './SettingCard';
+import ConfirmDialog from '../common/ConfirmDialog';
 import { getTenantSettingDoc, upsertTenantNotification, upsertTenantSettingDoc } from '../../lib/backendStore';
 import { createSyncEvent } from '../../lib/syncEvents';
 import { useTenant } from '../../context/useTenant';
@@ -15,12 +16,12 @@ import {
   normalizeMobileContacts,
   serializeMobileContacts,
 } from '../../lib/mobileContactUtils';
-import { 
-  CompanyInfoSection, 
-  SocialMediaSection, 
-  BankDetailsSection, 
-  LogoLibrarySection, 
-  LogoUsageSection, 
+import {
+  CompanyInfoSection,
+  SocialMediaSection,
+  BankDetailsSection,
+  LogoLibrarySection,
+  LogoUsageSection,
   LogoEditorSection,
   WhatsAppIcon,
   TikTokIcon,
@@ -41,18 +42,18 @@ const SOCIAL_PLATFORMS = [
 ];
 
 const LOGO_FUNCTIONS = [
-  { key: 'paymentReceipt', label: 'Payment Receipt' },
-  { key: 'nextInvoice', label: 'Next Invoice' },
-  { key: 'quotation', label: 'Quotation' },
-  { key: 'performerInvoice', label: 'Performer Invoice' },
-  { key: 'statement', label: 'Statements' },
+  { key: 'quotation', label: 'PDF Quotation' },
+  { key: 'proforma', label: 'PDF Proforma' },
+  { key: 'paymentReceipt', label: 'PDF Payment Receipt' },
+  { key: 'statement', label: 'PDF Portal Statement' },
+  { key: 'invoice', label: 'PDF Invoice' },
   { key: 'header', label: 'Header' },
-  { key: 'footer', label: 'Footer' },
+  { key: 'login', label: 'Login' },
 ];
 
 const MAX_LOGO_SLOTS = 10;
 
-const defaultLogoLibrary = Array.from({ length: MAX_LOGO_SLOTS }, (_, index) => ({
+const defaultLogoLibrary = Array.from({ length: MAX_LOGO_SLOTS }, (v, index) => ({
   slotId: `logo_${index + 1}`,
   name: '', // Removed pre-filled name per user request
   url: '',
@@ -62,6 +63,16 @@ const defaultLogoUsage = LOGO_FUNCTIONS.reduce((acc, item) => {
   acc[item.key] = 'logo_1';
   return acc;
 }, {});
+
+const cleanPayload = (data) => {
+  if (typeof data !== 'object' || data === null) return data;
+  if (Array.isArray(data)) return data.map(cleanPayload).filter(v => v !== "" && v !== null && v !== undefined);
+  return Object.fromEntries(
+    Object.entries(data)
+      .map(([k, v]) => [k, cleanPayload(v)])
+      .filter((entry) => entry[1] !== "" && entry[1] !== null && entry[1] !== undefined)
+  );
+};
 
 const toDigits = (value) => String(value || '').replace(/\D/g, '');
 
@@ -115,11 +126,13 @@ const validateNineDigitUae = (digits) => {
 };
 
 const BrandDetailsSection = () => {
-  const { tenant, tenantId } = useTenant();
+  const { tenantId } = useTenant();
   const { user } = useAuth();
   const [form, setForm] = useState({
     companyName: '',
     brandName: '',
+    isBrandNameHeaderEnabled: true,
+    isBankDetailsEnabled: false,
     addressSource: 'tenant',
     sameAsHeadOffice: true,
     landlines: [''],
@@ -139,6 +152,7 @@ const BrandDetailsSection = () => {
     bankBranch: '',
     bankDetails: [createEmptyBankDetail()],
     locationPin: '',
+    isLogoLibraryEnabled: true,
     facebookUrl: '',
     instagramUrl: '',
     twitterUrl: '',
@@ -149,7 +163,14 @@ const BrandDetailsSection = () => {
 
   const [errors, setErrors] = useState({});
   const [saveMessage, setSaveMessage] = useState('');
-  
+  const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, slotId: '' });
+  const [saveConfirm, setSaveConfirm] = useState(false);
+
+  const executeSave = () => {
+    setSaveConfirm(false);
+    onSave();
+  };
+
   // Dynamic Social Media State
   const [activeSocialKeys, setActiveSocialKeys] = useState([]);
 
@@ -158,6 +179,7 @@ const BrandDetailsSection = () => {
   const [visibleSlotsCount, setVisibleSlotsCount] = useState(1);
   const [logoErrors, setLogoErrors] = useState({});
   const [logoUploading, setLogoUploading] = useState({});
+  const [activeLogoSlotId, setActiveLogoSlotId] = useState('logo_1');
   const [activeLogoEditorSlotId, setActiveLogoEditorSlotId] = useState('');
   const [logoRawUrl, setLogoRawUrl] = useState('');
   const [logoSourceUrl, setLogoSourceUrl] = useState('');
@@ -205,25 +227,30 @@ const BrandDetailsSection = () => {
         ...prev,
         companyName: toUpper(data.companyName || ''),
         brandName: toUpper(data.brandName || ''),
+        isBrandNameHeaderEnabled: data.isBrandNameHeaderEnabled !== false,
+        isBankDetailsEnabled: data.isBankDetailsEnabled === true || normalizedBankDetails.some(hasAnyBankValue),
         addressSource: String(data.addressSource || 'tenant'),
         sameAsHeadOffice: String(data.addressSource || 'tenant') !== 'custom',
-        landlines: Array.isArray(data.landlines) && data.landlines.length 
-          ? data.landlines.map(normalizePhone) 
+        landlines: Array.isArray(data.landlines) && data.landlines.length
+          ? data.landlines.map(normalizePhone)
           : [normalizePhone(data.landline1 || '')].filter(Boolean).concat(data.landline2 ? [normalizePhone(data.landline2)] : []),
-        mobiles: Array.isArray(data.mobiles) && data.mobiles.length 
-          ? data.mobiles.map(normalizePhone) 
+        mobiles: Array.isArray(data.mobiles) && data.mobiles.length
+          ? data.mobiles.map(normalizePhone)
           : [normalizePhone(data.mobile1 || '')].filter(Boolean).concat(data.mobile2 ? [normalizePhone(data.mobile2)] : []),
         mobileContacts: normalizeMobileContacts(data.mobileContacts, Array.isArray(data.mobiles) && data.mobiles.length
           ? data.mobiles
           : [data.mobile1 || '', data.mobile2 || '']),
-        addresses: Array.isArray(data.addresses) && data.addresses.length
+        addresses: (Array.isArray(data.addresses) && data.addresses.length
           ? data.addresses
-          : [String(data.primaryAddress || '')].filter(Boolean).concat(data.secondaryAddress ? [String(data.secondaryAddress)] : []),
+          : [String(data.primaryAddress || '')].filter(Boolean).concat(data.secondaryAddress ? [String(data.secondaryAddress)] : []))
+          .map((value) => String(value || '').trim())
+          .filter(Boolean)
+          .slice(0, 1),
         emirate: String(data.emirate || ''),
         poBoxNumber: normalizePoBox(data.poBoxNumber || ''),
         poBoxEmirate: String(data.poBoxEmirate || ''),
-        emails: Array.isArray(data.emails) && data.emails.length 
-          ? data.emails.map(v => ({ id: Math.random().toString(36).slice(2, 11), value: String(v).toLowerCase() })) 
+        emails: Array.isArray(data.emails) && data.emails.length
+          ? data.emails.map(v => ({ id: Math.random().toString(36).slice(2, 11), value: String(v).toLowerCase() }))
           : [{ id: 'default', value: toLower(data.email1 || '') }].filter(c => c.value),
         webAddress: toLower(data.webAddress || ''),
         bankName: primaryBank.bankName,
@@ -240,8 +267,9 @@ const BrandDetailsSection = () => {
         linkedinUrl: toLower(data.linkedinUrl || ''),
         tiktokUrl: toLower(data.tiktokUrl || ''),
         whatsappUrl: toLower(data.whatsappUrl || ''),
+        isLogoLibraryEnabled: data.isLogoLibraryEnabled !== false,
       }));
-      
+
       const incomingSocials = [];
       if (data.instagramUrl) incomingSocials.push('instagramUrl');
       if (data.facebookUrl) incomingSocials.push('facebookUrl');
@@ -249,10 +277,10 @@ const BrandDetailsSection = () => {
       if (data.linkedinUrl) incomingSocials.push('linkedinUrl');
       if (data.tiktokUrl) incomingSocials.push('tiktokUrl');
       if (data.whatsappUrl) incomingSocials.push('whatsappUrl');
-      
+
       // Default to one empty slot if none exist
       setActiveSocialKeys(incomingSocials.length > 0 ? incomingSocials : [SOCIAL_PLATFORMS[0].key]);
-      
+
       const incomingLibrary = Array.isArray(data.logoLibrary) ? data.logoLibrary : [];
       const normalizedLibrary = defaultLogoLibrary.map((slot) => {
         const match = incomingLibrary.find((item) => item.slotId === slot.slotId);
@@ -273,6 +301,9 @@ const BrandDetailsSection = () => {
         return acc;
       }, {});
       setLogoUsage(sanitizedUsage);
+      
+      const incomingActiveSlot = String(data.activeLogoSlotId || 'logo_1');
+      setActiveLogoSlotId(incomingActiveSlot);
 
       // Calculate how many slots should be visible (at least 1, up to the highest slot with data)
       let maxActiveIndex = 0;
@@ -399,6 +430,11 @@ const BrandDetailsSection = () => {
   };
 
   const removeLogoSlot = (slotId) => {
+    setDeleteConfirm({ isOpen: true, slotId });
+  };
+
+  const executeRemoveLogo = (slotId) => {
+    if (!slotId) return;
     setLogoLibrary((prev) =>
       prev.map((s) => (s.slotId === slotId ? { ...s, name: '', url: '' } : s))
     );
@@ -412,12 +448,17 @@ const BrandDetailsSection = () => {
       });
       return nextUsage;
     });
+    setDeleteConfirm({ isOpen: false, slotId: '' });
   };
 
   const updateLogoSlot = (slotId, patch) => {
     setLogoLibrary((prev) =>
       prev.map((slot) => (slot.slotId === slotId ? { ...slot, ...patch } : slot)),
     );
+  };
+
+  const onAddLogoSlot = () => {
+    setVisibleSlotsCount(2);
   };
 
   const openLogoEditor = (slotId) => {
@@ -466,16 +507,6 @@ const BrandDetailsSection = () => {
     }
   };
 
-  const onLogoEditorReset = () => {
-    if (!activeLogoEditorSlotId) return;
-    const slot = logoLibrary.find((item) => item.slotId === activeLogoEditorSlotId);
-    setLogoSourceUrl(slot?.url || '');
-    setLogoRotation(0);
-    setLogoFilter('natural');
-    setLogoDirty(false);
-    setCroppedAreaPixels(null);
-    setLogoErrors((prev) => ({ ...prev, [activeLogoEditorSlotId]: '' }));
-  };
 
   const handleLogoUpload = async (slotId, fileBlob) => {
     if (!fileBlob) return;
@@ -523,9 +554,11 @@ const BrandDetailsSection = () => {
   };
 
   const visibleLogoSlots = logoLibrary.slice(0, visibleSlotsCount);
-  const assignedOptions = visibleLogoSlots.filter(s => s.url || s.slotId === 'logo_1'); // Always keep Logo 1 as fallback
+  const assignedOptions = visibleLogoSlots.filter(s => Boolean(s.url));
 
   const onSave = async () => {
+    setSaveMessage('Saving...');
+
     const bankDetailsPayload = (Array.isArray(form.bankDetails) ? form.bankDetails : [])
       .map(normalizeBankDetail)
       .filter(hasAnyBankValue);
@@ -551,23 +584,25 @@ const BrandDetailsSection = () => {
     const normalized = {
       companyName: toUpper(form.companyName),
       brandName: toUpper(form.brandName),
+      isBrandNameHeaderEnabled: form.isBrandNameHeaderEnabled !== false,
+      isBankDetailsEnabled: form.isBankDetailsEnabled === true,
       landlines: form.landlines.map(normalizePhone).filter(Boolean),
       mobiles: getFilledMobileContacts(form.mobileContacts).map((contact) => normalizePhone(contact.value)).filter(Boolean),
       mobileContacts: serializeMobileContacts(form.mobileContacts),
-      addresses: form.addresses.map(toProperCase).filter(Boolean),
+      addresses: form.addresses.map(toProperCase).filter(Boolean).slice(0, 1),
       addressSource: form.sameAsHeadOffice ? 'tenant' : 'custom',
       emirate: form.emirate || '',
       poBoxNumber: normalizePoBox(form.poBoxNumber),
       poBoxEmirate: normalizePoBox(form.poBoxNumber) ? form.poBoxEmirate || '' : '',
       emails: form.emails.map(c => toLower(c?.value || c)).filter(Boolean),
       webAddress: toLower(form.webAddress),
-      bankName: primaryBank.bankName,
-      bankAccountName: primaryBank.bankAccountName,
-      bankAccountNumber: primaryBank.bankAccountNumber,
-      bankIban: primaryBank.bankIban,
-      bankSwift: primaryBank.bankSwift,
-      bankBranch: primaryBank.bankBranch,
-      bankDetails: bankDetailsPayload,
+      bankName: form.isBankDetailsEnabled === true ? primaryBank.bankName : '',
+      bankAccountName: form.isBankDetailsEnabled === true ? primaryBank.bankAccountName : '',
+      bankAccountNumber: form.isBankDetailsEnabled === true ? primaryBank.bankAccountNumber : '',
+      bankIban: form.isBankDetailsEnabled === true ? primaryBank.bankIban : '',
+      bankSwift: form.isBankDetailsEnabled === true ? primaryBank.bankSwift : '',
+      bankBranch: form.isBankDetailsEnabled === true ? primaryBank.bankBranch : '',
+      bankDetails: form.isBankDetailsEnabled === true ? bankDetailsPayload : [],
       locationPin: String(form.locationPin || '').trim(),
       facebookUrl: toLower(form.facebookUrl),
       instagramUrl: toLower(form.instagramUrl),
@@ -575,8 +610,11 @@ const BrandDetailsSection = () => {
       linkedinUrl: toLower(form.linkedinUrl),
       tiktokUrl: toLower(form.tiktokUrl),
       whatsappUrl: toLower(form.whatsappUrl),
+      isLogoLibraryEnabled: form.isLogoLibraryEnabled === true,
       logoLibrary: normalizedLogoLibrary,
       logoUsage: normalizedLogoUsage,
+      activeLogoSlotId,
+      activeLogoUrl: normalizedLogoLibrary.find(s => s.slotId === activeLogoSlotId)?.url || normalizedLogoLibrary[0]?.url || ''
     };
 
     const payload = {
@@ -584,6 +622,8 @@ const BrandDetailsSection = () => {
     };
     if (normalized.companyName) payload.companyName = normalized.companyName;
     if (normalized.brandName) payload.brandName = normalized.brandName;
+    payload.isBrandNameHeaderEnabled = normalized.isBrandNameHeaderEnabled;
+    payload.isBankDetailsEnabled = normalized.isBankDetailsEnabled;
     if (normalized.landlines.length) payload.landlines = normalized.landlines;
     if (normalized.mobiles.length) payload.mobiles = normalized.mobiles;
     if (normalized.mobileContacts.length) payload.mobileContacts = normalized.mobileContacts;
@@ -610,10 +650,17 @@ const BrandDetailsSection = () => {
     if (normalized.whatsappUrl) payload.whatsappUrl = normalized.whatsappUrl;
     if (normalized.logoLibrary.length) payload.logoLibrary = normalized.logoLibrary;
     if (Object.keys(normalized.logoUsage).length) payload.logoUsage = normalized.logoUsage;
+    if (normalized.activeLogoSlotId) payload.activeLogoSlotId = normalized.activeLogoSlotId;
+    if (normalized.activeLogoUrl) payload.activeLogoUrl = normalized.activeLogoUrl;
+    payload.isLogoLibraryEnabled = normalized.isLogoLibraryEnabled;
+
+    const sanitizedPayload = cleanPayload(payload);
+    sanitizedPayload.updatedBy = user.uid;
 
     [
       'companyName',
       'brandName',
+      'isBrandNameHeaderEnabled',
       'addressSource',
       'emirate',
       'poBoxNumber',
@@ -651,26 +698,24 @@ const BrandDetailsSection = () => {
     const nextErrors = {};
 
     if (!normalized.companyName) {
-      nextErrors.companyName = 'Company Name is mandatory.';
+      nextErrors.companyName = 'Company Official Name is mandatory.';
+    }
+
+    if (normalized.isBrandNameHeaderEnabled && !normalized.brandName) {
+      nextErrors.brandName = 'Brand Name is mandatory when "Show Header" is enabled.';
     }
 
     if (!normalized.mobiles.length) {
       nextErrors.phones = 'At least one mobile number is mandatory.';
     }
 
-    if (!normalized.addresses.length) {
-      nextErrors.addresses = 'At least one address is mandatory.';
-    }
 
-    if (!normalized.emails.length) {
-      nextErrors.emails = 'At least one official email is mandatory.';
-    }
 
-    if (!primaryBank.bankAccountName) {
+    if (normalized.isBankDetailsEnabled && !primaryBank.bankAccountName) {
       nextErrors.bankAccountName_0 = 'Account Name is mandatory.';
     }
 
-    if (!primaryBank.bankAccountNumber) {
+    if (normalized.isBankDetailsEnabled && !primaryBank.bankAccountNumber) {
       nextErrors.bankAccountNumber_0 = 'Account Number is mandatory.';
     }
 
@@ -687,6 +732,7 @@ const BrandDetailsSection = () => {
     }
 
     bankDetailsPayload.forEach((detail, index) => {
+      if (!normalized.isBankDetailsEnabled) return;
       if (detail.bankIban && detail.bankIban.length < 10) {
         nextErrors[`bankIban_${index}`] = 'IBAN looks too short.';
         if (index === 0) nextErrors.bankIban = 'IBAN looks too short.';
@@ -696,10 +742,11 @@ const BrandDetailsSection = () => {
         if (index === 0) nextErrors.bankSwift = 'SWIFT code looks too short.';
       }
     });
-    const invalidLogo = normalized.logoLibrary.some((slot) => slot.url && !slot.name);
-    if (invalidLogo) {
-      nextErrors.logoLibrary = 'Each uploaded logo must have a name.';
-    }
+    normalized.logoLibrary.forEach((slot) => {
+      if (slot.url && !slot.name.trim()) {
+        nextErrors[`logoName_${slot.slotId}`] = 'Logo name is mandatory for uploaded assets.';
+      }
+    });
 
     setErrors(nextErrors);
 
@@ -712,17 +759,19 @@ const BrandDetailsSection = () => {
       ...prev,
       companyName: normalized.companyName,
       brandName: normalized.brandName,
+      isBrandNameHeaderEnabled: normalized.isBrandNameHeaderEnabled,
+      isBankDetailsEnabled: normalized.isBankDetailsEnabled,
       landlines: normalized.landlines.length ? normalized.landlines : [''],
       mobiles: normalized.mobiles.length ? normalized.mobiles : [''],
       mobileContacts: normalized.mobileContacts.length
         ? normalizeMobileContacts(normalized.mobileContacts)
         : [createMobileContact()],
-      addresses: normalized.addresses.length ? normalized.addresses : [''],
+      addresses: normalized.addresses.length ? normalized.addresses.slice(0, 1) : [''],
       addressSource: normalized.addressSource,
       sameAsHeadOffice: normalized.addressSource !== 'custom',
-      emails: normalized.emails.length 
-          ? normalized.emails.map(v => ({ id: Math.random().toString(36).slice(2, 11), value: v })) 
-          : [{ id: 'default', value: '' }],
+      emails: normalized.emails.length
+        ? normalized.emails.map(v => ({ id: Math.random().toString(36).slice(2, 11), value: v }))
+        : [{ id: 'default', value: '' }],
       webAddress: normalized.webAddress,
       locationPin: normalized.locationPin,
       bankName: normalized.bankName,
@@ -731,7 +780,7 @@ const BrandDetailsSection = () => {
       bankIban: normalized.bankIban,
       bankSwift: normalized.bankSwift,
       bankBranch: normalized.bankBranch,
-      bankDetails: normalized.bankDetails.length ? normalized.bankDetails : [createEmptyBankDetail()],
+      bankDetails: normalized.isBankDetailsEnabled && normalized.bankDetails.length ? normalized.bankDetails : [createEmptyBankDetail()],
       facebookUrl: normalized.facebookUrl,
       instagramUrl: normalized.instagramUrl,
       twitterUrl: normalized.twitterUrl,
@@ -740,7 +789,7 @@ const BrandDetailsSection = () => {
       whatsappUrl: normalized.whatsappUrl,
     }));
 
-    const write = await upsertTenantSettingDoc(tenantId, 'branding', payload);
+    const write = await upsertTenantSettingDoc(tenantId, 'branding', sanitizedPayload);
     if (!write.ok) {
       setSaveMessage(`Brand details save failed: ${write.error}`);
       return;
@@ -751,7 +800,7 @@ const BrandDetailsSection = () => {
       eventType: 'update',
       entityType: 'settingsBranding',
       entityId: 'branding',
-      changedFields: Object.keys(payload),
+      changedFields: Object.keys(sanitizedPayload),
       createdBy: user.uid,
     });
 
@@ -801,8 +850,9 @@ const BrandDetailsSection = () => {
         description="Company identity and statutory settings with strict save-time normalization."
         icon={Building2}
       >
-        <div className="space-y-6">
-          <CompanyInfoSection
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+          <div className="space-y-8">
+            <CompanyInfoSection
             form={form}
             errors={errors}
             updateField={updateField}
@@ -826,26 +876,33 @@ const BrandDetailsSection = () => {
             changeSocialPlatform={changeSocialPlatform}
             socialPlatforms={SOCIAL_PLATFORMS}
           />
-          
+
           <BankDetailsSection
             form={form}
             errors={errors}
+            updateField={updateField}
             updateBankDetailField={updateBankDetailField}
             addBankDetail={addBankDetail}
             removeBankDetail={removeBankDetail}
             labelClass={labelClass}
             inputClass={inputClass}
           />
+          </div>
 
-          <LogoLibrarySection
+          <div className="space-y-8 sticky top-4">
+            <LogoLibrarySection
+            form={form}
+            errors={errors}
+            updateField={updateField}
             visibleLogoSlots={visibleLogoSlots}
             logoErrors={logoErrors}
             logoUploading={logoUploading}
+            activeLogoSlotId={activeLogoSlotId}
+            setActiveLogoSlotId={setActiveLogoSlotId}
             openLogoEditor={openLogoEditor}
             removeLogoSlot={removeLogoSlot}
             updateLogoSlot={updateLogoSlot}
-            setVisibleSlotsCount={setVisibleSlotsCount}
-            maxLogoSlots={MAX_LOGO_SLOTS}
+            onAddLogoSlot={onAddLogoSlot}
           />
 
           <LogoUsageSection
@@ -854,7 +911,7 @@ const BrandDetailsSection = () => {
             assignedOptions={assignedOptions}
             setLogoUsage={setLogoUsage}
           />
-
+          </div>
           <LogoEditorSection
             activeLogoEditorSlotId={activeLogoEditorSlotId}
             logoLibrary={logoLibrary}
@@ -865,26 +922,46 @@ const BrandDetailsSection = () => {
             setRotationWrapper={setRotationWrapper}
             onCropComplete={onCropComplete}
             onLogoEditorFileChange={onLogoEditorFileChange}
-            onLogoEditorReset={onLogoEditorReset}
             applyLogoEditor={applyLogoEditor}
             closeLogoEditor={closeLogoEditor}
             logoUploading={logoUploading}
             logoErrors={logoErrors}
           />
+        </div>
 
           <div className="flex items-center justify-between border-t border-(--c-border) pt-8">
             <p className={`max-w-[70%] rounded-lg border px-3 py-2 text-xs font-semibold ${statusClass}`}>
               {statusMessage}
             </p>
             <button
-              onClick={onSave}
+              onClick={() => setSaveConfirm(true)}
               className="group flex items-center gap-2 rounded-xl bg-(--c-accent) px-8 py-3 text-sm font-bold text-white shadow-lg transition-all hover:brightness-110 active:scale-95 shadow-(--c-accent)/20"
             >
               Save All Changes
             </button>
           </div>
-        </div>
       </SettingCard>
+
+      <ConfirmDialog
+        isOpen={saveConfirm}
+        title="Save Branding Profile"
+        message="Are you sure you want to apply these branding changes? This will immediately update your global PDF and correspondence layouts."
+        confirmText="Save changes"
+        cancelText="Discard"
+        onConfirm={executeSave}
+        onCancel={() => setSaveConfirm(false)}
+      />
+
+      <ConfirmDialog
+        isOpen={deleteConfirm.isOpen}
+        isDangerous
+        title="Delete Branded Asset"
+        message="Are you sure you want to remove this logo from your library? This action will also unbind it from all feature mappings."
+        confirmText="Remove Logo"
+        cancelText="Keep Asset"
+        onConfirm={() => executeRemoveLogo(deleteConfirm.slotId)}
+        onCancel={() => setDeleteConfirm({ isOpen: false, slotId: '' })}
+      />
     </>
   );
 };

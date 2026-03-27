@@ -54,7 +54,7 @@ const PortalSelectField = ({
         />
       </div>
       {showBalancePanel && selectedPortal ? (
-        <div className="compact-section mt-2 flex items-start justify-between rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)]">
+        <div className="compact-section mt-2 flex items-start justify-between rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)]">
           <div className="grid min-w-0 flex-1 gap-2 sm:grid-cols-2">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--c-muted)]">{currentBalanceTitle}</p>
@@ -74,7 +74,7 @@ const PortalSelectField = ({
           <button
             type="button"
             onClick={onToggleBalance}
-            className="compact-icon-action inline-flex items-center justify-center rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] text-[var(--c-muted)] transition hover:border-[var(--c-accent)] hover:text-[var(--c-text)]"
+            className="compact-icon-action inline-flex items-center justify-center rounded-2xl border border-[var(--c-border)] bg-[var(--c-surface)] text-[var(--c-muted)] transition hover:border-[var(--c-accent)] hover:text-[var(--c-text)]"
             aria-label={showBalance ? 'Hide balance' : 'Show balance'}
           >
             {showBalance ? <EyeOff strokeWidth={1.5} className="h-4 w-4" /> : <Eye strokeWidth={1.5} className="h-4 w-4" />}

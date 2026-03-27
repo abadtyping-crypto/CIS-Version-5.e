@@ -28,11 +28,17 @@ const SovereignViewer = ({ localFilePath, onClose, title = 'Document Viewer' }) 
 
   if (!localFilePath) return null;
 
-  const handlePrint = async () => {
-    // If we have the local path, we could print directly if Electron main supports it.
-    // main.js's document-print-pdf takes base64. 
-    // For now, let's just use the browser's internal PDF print button or shell.openPath.
-    // If the iframe is focused, Ctrl+P works too.
+  const handlePrint = () => {
+    const iframe = document.querySelector('iframe[title="Sovereign PDF Content"]');
+    if (iframe?.contentWindow) {
+      iframe.contentWindow.print();
+    } else {
+      window.print();
+    }
+  };
+
+  const handleDownload = () => {
+    if (url) window.open(url, '_blank');
   };
 
   return (
@@ -52,6 +58,23 @@ const SovereignViewer = ({ localFilePath, onClose, title = 'Document Viewer' }) 
           </div>
 
           <div className="flex items-center gap-2">
+            <button 
+              onClick={handlePrint}
+              disabled={!url}
+              className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 text-white/60 transition hover:bg-white/10 hover:text-white disabled:opacity-20"
+              title="Print Document"
+            >
+              <Printer strokeWidth={1.5} size={16} />
+            </button>
+            <button 
+              onClick={handleDownload}
+              disabled={!url}
+              className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 text-white/60 transition hover:bg-white/10 hover:text-white disabled:opacity-20"
+              title="Download PDF"
+            >
+              <Download strokeWidth={1.5} size={16} />
+            </button>
+            <div className="mx-2 h-6 w-px bg-white/10" />
             <button 
               onClick={() => setIsMaximized(!isMaximized)}
               className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 text-white/60 transition hover:bg-white/10 hover:text-white"

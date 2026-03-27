@@ -11,6 +11,8 @@ const InputActionField = ({
     value = '',
     onValueChange,
     onBlur,
+    onKeyDown,
+    onKeyUp,
     placeholder = '',
     autoComplete,
     autoCorrect,
@@ -91,8 +93,8 @@ const InputActionField = ({
         return (
             <div className={`${baseWrapperClass} ${className}`.trim()}>
                 {LeadIcon && (
-                    <div className="flex h-14 w-14 shrink-0 items-center justify-center border-r border-[var(--c-border)] bg-[var(--c-panel)]">
-                        <LeadIcon className="h-6 w-6 text-[var(--c-muted)]" />
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center border-r border-[var(--c-border)] bg-[var(--c-panel)] shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)]">
+                        <LeadIcon className="h-6.5 w-6.5 text-[var(--c-accent)]" />
                     </div>
                 )}
                 <textarea
@@ -106,6 +108,8 @@ const InputActionField = ({
                     value={value}
                     onChange={handleChange}
                     onBlur={handleBlur}
+                    onKeyDown={onKeyDown}
+                    onKeyUp={onKeyUp}
                     placeholder={placeholder}
                     autoComplete={autoComplete}
                     autoCorrect={autoCorrect}
@@ -142,8 +146,8 @@ const InputActionField = ({
     return (
         <div className={`${baseWrapperClass} ${className}`.trim()}>
             {LeadIcon && (
-                <div className="flex h-14 w-14 shrink-0 items-center justify-center border-r border-[var(--c-border)] bg-[var(--c-panel)]">
-                    <LeadIcon className="h-6 w-6 text-[var(--c-muted)]" />
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center border-r border-[var(--c-border)] bg-[var(--c-panel)] shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)]">
+                    <LeadIcon className="h-6.5 w-6.5 text-[var(--c-accent)]" />
                 </div>
             )}
             <input
@@ -158,6 +162,8 @@ const InputActionField = ({
                 inputMode={inputMode}
                 onChange={handleChange}
                 onBlur={handleBlur}
+                onKeyDown={onKeyDown}
+                onKeyUp={onKeyUp}
                 placeholder={placeholder}
                 autoComplete={autoComplete}
                 autoCorrect={autoCorrect}

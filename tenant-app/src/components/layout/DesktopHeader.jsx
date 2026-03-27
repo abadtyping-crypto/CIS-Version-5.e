@@ -12,15 +12,6 @@ import { useTenantNotifications } from '../../hooks/useTenantNotifications';
 import { resolveTenantRoute } from '../../lib/tenantRoutes';
 import { useSystemAssets } from '../../lib/systemAssetsCache';
 
-const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const toDisplayName = (user) => {
-  const raw = String(user?.displayName || '').trim();
-  if (raw && !emailRegex.test(raw)) return raw;
-  const email = String(user?.email || '').trim().toLowerCase();
-  if (emailRegex.test(email)) return email.split('@')[0];
-  return 'User';
-};
-
 const toRoleLabel = (role) => {
   const normalized = String(role || '').trim().toLowerCase();
   if (normalized === 'superadmin' || normalized === 'super admin') return 'Owner';
@@ -125,10 +116,11 @@ const DesktopHeader = ({ tenant, user, onLogout, layoutMode = 'wide', onToggleSi
   const appliedTheme = theme === 'system' ? resolvedTheme : theme;
   const ThemeIcon = theme === 'system' ? Monitor : appliedTheme === 'dark' ? MoonStar : SunMedium;
   const themeLabel = theme === 'system' ? `System (${resolvedTheme})` : appliedTheme === 'dark' ? 'Dark Mode' : 'Light Mode';
-  const displayName = toDisplayName(user);
+  const displayName = String(user?.displayName || '').trim() || 'User';
   const tenantLogoUrl = tenant?.logoUrl || '/logo.png';
   const { headerLogoUrl } = useTenantBrandingLogos(tenantId, tenantLogoUrl);
   const tenantLabel = tenant?.name || 'Tenant';
+  const showBrandName = tenant?.isBrandNameHeaderEnabled !== false;
 
   const goTo = (path) => navigate(`/t/${tenantId}/${path}`);
 
@@ -203,23 +195,22 @@ const DesktopHeader = ({ tenant, user, onLogout, layoutMode = 'wide', onToggleSi
           <button
             type="button"
             onClick={() => goTo('dashboard')}
-            className="brand-button no-drag inline-flex min-w-0 flex-1 appearance-none items-center border-0 bg-transparent p-0 text-left text-[var(--c-text)] no-underline outline-none focus-visible:ring-2 focus-visible:ring-[var(--c-ring)]"
+            className="brand-button no-drag inline-flex min-w-0 flex-1 appearance-none items-stretch gap-0 overflow-hidden rounded-2xl border border-[var(--c-border)] bg-[color:color-mix(in_srgb,var(--c-surface)_84%,transparent)] p-0 text-left text-[var(--c-text)] no-underline outline-none shadow-sm transition hover:border-[var(--c-ring)] hover:bg-[var(--c-panel)] focus-visible:ring-2 focus-visible:ring-[var(--c-ring)]"
             style={{ textDecoration: 'none' }}
           >
-            {/* Tenant logo tab — softened, full-cover */}
-            <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-[1.1rem] bg-[color:color-mix(in_srgb,var(--c-panel)_88%,var(--c-surface)_12%)] shadow-[0_10px_24px_-18px_rgba(15,23,42,0.32)]">
-              <span className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/30 via-transparent to-transparent" />
+            <div className="relative h-14 w-16 shrink-0 overflow-hidden bg-[var(--c-panel)]">
               <img
                 src={headerLogoUrl}
                 alt={tenantLabel}
-                className="relative z-[1] h-full w-full object-cover scale-[1.08]"
+                className="absolute inset-0 h-full w-full object-cover"
               />
             </div>
 
             {(layoutMode === 'standard' || layoutMode === 'wide') && (
-              <div className="min-w-0 px-4">
-                <p className="truncate text-[1rem] font-semibold leading-tight text-[var(--c-text)]">{tenant.name}</p>
-                <p className="truncate text-[10px] font-bold uppercase tracking-widest text-[var(--c-muted)]">Desktop Workspace</p>
+              <div className="flex min-w-0 flex-1 items-center px-4">
+                {showBrandName ? (
+                  <p className="truncate text-[1rem] font-semibold leading-tight text-[var(--c-text)]">{tenant.name}</p>
+                ) : null}
               </div>
             )}
           </button>
@@ -443,17 +434,18 @@ const DesktopHeader = ({ tenant, user, onLogout, layoutMode = 'wide', onToggleSi
           <button
             type="button"
             onClick={() => goTo('profile')}
-            className="compact-action flex cursor-pointer items-center gap-3 rounded-xl border border-[var(--c-border)] bg-[color:color-mix(in_srgb,var(--c-surface)_84%,transparent)] px-3 transition hover:border-[var(--c-ring)] hover:bg-[var(--c-panel)]"
+            className="compact-action flex cursor-pointer items-stretch gap-0 overflow-hidden rounded-2xl border border-[var(--c-border)] bg-[color:color-mix(in_srgb,var(--c-surface)_84%,transparent)] transition hover:border-[var(--c-ring)] hover:bg-[var(--c-panel)]"
             aria-label="Open profile page"
           >
-            <img
-              src={user.photoURL || '/avatar.png'}
-              alt={displayName}
-              className="h-7 w-7 rounded-xl object-cover"
-            />
-            <span className="hidden text-left xl:block">
-              <span className="block text-sm font-semibold text-[var(--c-text)]">{displayName}</span>
-              <span className="block text-xs text-[var(--c-muted)]">{toRoleLabel(user.role)}</span>
+            <div className="relative h-14 w-16 shrink-0 overflow-hidden bg-[var(--c-panel)]">
+              <img
+                src={user.photoURL || '/avatar.png'}
+                alt={displayName}
+                className="absolute inset-0 h-full w-full object-cover"
+              />
+            </div>
+            <span className="hidden min-w-0 items-center px-4 text-left xl:flex">
+              <span className="block truncate text-sm font-semibold text-[var(--c-text)]">{displayName} | {toRoleLabel(user.role)}</span>
             </span>
           </button>
 

@@ -111,22 +111,21 @@ const IconSelect = ({
             >
                 {leftIconSlot ? (
                     <span className="min-w-0 flex-1 flex items-center">
-                        <span className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-l-2xl border-r border-[var(--c-border)] bg-[color:color-mix(in_srgb,var(--c-panel)_88%,var(--c-surface)_12%)]">
-                            <span className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/28 via-transparent to-transparent" />
-                            <span className="relative z-[1] flex h-full w-full items-center justify-center overflow-hidden">
+                        <span className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden border-r border-[var(--c-border)] bg-[var(--c-panel)] p-0.5">
+                            <span className="flex h-full w-full items-center justify-center overflow-hidden">
                                 {selected?.icon || defaultIconUrl ? (
                                     typeof (selected?.icon || defaultIconUrl) === 'string' ? (
-                                        <img src={selected?.icon || defaultIconUrl} alt="" className="h-full w-full object-cover scale-[1.08]" />
+                                        <img src={selected?.icon || defaultIconUrl} alt="" className="h-full w-full object-cover" />
                                     ) : (
                                         <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center overflow-visible">
-                                            <selected.icon className="h-6 w-6 text-[var(--c-accent)]" />
+                                            <selected.icon className="h-5 w-5 text-[var(--c-accent)]" />
                                         </span>
                                     )
                                 ) : null}
                             </span>
                         </span>
                         {!hideLabel ? (
-                            <span className={`truncate px-3 ${selected ? 'text-[var(--c-text)]' : 'text-[var(--c-muted)]'}`}>
+                            <span className={`truncate px-4 text-sm font-black tracking-tight ${selected ? 'text-[var(--c-text)]' : 'text-[var(--c-muted)]'}`}>
                                 {selected ? selected.label : placeholder}
                             </span>
                         ) : null}

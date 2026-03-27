@@ -94,10 +94,10 @@ const renderNavIcon = (iconKey, customIconUrl = '', iconLabel = '') => {
   );
 };
 
-const renderSignatureNavLead = (iconKey, customIconUrl = '', iconLabel = '') => {
+const renderSignatureNavLead = (iconKey, customIconUrl = '', iconLabel = '', IconComponentOverride = null) => {
   if (customIconUrl) {
     return (
-      <span className="relative h-full w-12 shrink-0 overflow-hidden">
+      <span className="relative w-12 shrink-0 self-stretch overflow-hidden">
         <img
           src={customIconUrl}
           alt={iconLabel || 'Navigation'}
@@ -111,30 +111,15 @@ const renderSignatureNavLead = (iconKey, customIconUrl = '', iconLabel = '') => 
     );
   }
 
+  const IconComp = IconComponentOverride || getNavIconComponent(iconKey) || DynamicAppIcon;
+
   return (
-    <span className="flex h-full w-12 shrink-0 items-center justify-center bg-[linear-gradient(180deg,color-mix(in_srgb,var(--c-accent)_18%,transparent),color-mix(in_srgb,var(--c-accent)_6%,transparent))] text-[var(--c-accent)]">
-      <DynamicAppIcon iconKey={iconKey} className="h-5 w-5" />
+    <span className="flex w-12 shrink-0 self-stretch items-center justify-center bg-[linear-gradient(180deg,color-mix(in_srgb,var(--c-accent)_18%,transparent),color-mix(in_srgb,var(--c-accent)_6%,transparent))] text-[var(--c-accent)]">
+      <IconComp iconKey={iconKey} className="h-5 w-5" />
     </span>
   );
 };
 
-const renderUtilityIcon = (IconComponent, accent = false, customIconUrl = '', iconLabel = '') => (
-  <SidebarIconTile accent={accent} plain={Boolean(customIconUrl)}>
-    {customIconUrl ? (
-      <img
-        src={customIconUrl}
-        alt={iconLabel || 'Utility'}
-        className="relative z-[1] h-full w-full object-cover drop-shadow-[0_6px_10px_rgba(15,23,42,0.18)]"
-        onError={(event) => {
-          event.currentTarget.onerror = null;
-          event.currentTarget.src = '/appIcon.png';
-        }}
-      />
-    ) : (
-      <IconComponent className="relative z-[1] h-[1.1rem] w-[1.1rem] text-current drop-shadow-[0_6px_10px_rgba(15,23,42,0.18)]" />
-    )}
-  </SidebarIconTile>
-);
 
 const AppSidebar = ({ isCollapsed, isHidden = false, isOverlay = false, layoutMode, onToggle }) => {
   const { tenantId } = useParams();
@@ -190,16 +175,16 @@ const AppSidebar = ({ isCollapsed, isHidden = false, isOverlay = false, layoutMo
                   to={`/t/${tenantId}/${item.path}`}
                   title={isCollapsed ? item.label : undefined}
                   className={({ isActive }) =>
-                    `compact-nav-item flex flex-1 items-stretch gap-0 overflow-hidden rounded-xl text-[13px] font-semibold transition ${isActive
-                      ? 'bg-[color:color-mix(in_srgb,var(--c-panel)_88%,transparent)] text-[var(--c-accent)] ring-1 ring-[var(--c-ring)]'
-                      : 'text-[var(--c-muted)] hover:bg-[color:color-mix(in_srgb,var(--c-panel)_75%,transparent)] hover:text-[var(--c-accent)]'
+                    `compact-nav-item flex flex-1 items-stretch gap-0 overflow-hidden rounded-xl text-[13px] font-bold transition h-12 ${isActive
+                      ? 'bg-[color:color-mix(in_srgb,var(--c-panel)_88%,transparent)] text-[var(--c-accent)] border border-[var(--c-accent)]'
+                      : `bg-[color:color-mix(in_srgb,var(--c-panel)_75%,transparent)] text-[var(--c-text)] hover:bg-[color:color-mix(in_srgb,var(--c-panel)_92%,transparent)] hover:text-[var(--c-accent)] ${isCollapsed ? 'border-transparent' : 'border border-[var(--c-border)]'}`
                     } ${isCollapsed ? 'justify-center px-0' : 'justify-start'}`
                   }
                 >
                   {isCollapsed
                     ? renderNavIcon(item.icon, resolvePageIconUrl(systemAssets, item.key), item.label)
                     : renderSignatureNavLead(item.icon, resolvePageIconUrl(systemAssets, item.key), item.label)}
-                  <span className={`transition-opacity duration-300 ${isCollapsed ? 'hidden' : 'inline flex items-center px-4'}`}>{item.label}</span>
+                  <span className={`flex-1 flex items-center px-4 transition-opacity duration-300 ${isCollapsed ? 'hidden' : 'inline-flex'}`}>{item.label}</span>
                 </NavLink>
               </div>
             ))}
@@ -208,62 +193,61 @@ const AppSidebar = ({ isCollapsed, isHidden = false, isOverlay = false, layoutMo
         <div className={`desktop-sidebar-footer border-t border-[var(--c-border)] pb-3 pt-2 ${isCollapsed ? 'px-2.5' : 'px-3'}`}>
           <div className="space-y-1.5">
             {layoutMode !== 'compact' && (
-              <button
-                type="button"
-                onClick={onToggle}
-                aria-label={isCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
-                title={isCollapsed ? 'Expand Sidebar' : undefined}
-                className={`flex min-h-11 w-full items-center gap-2.5 rounded-xl border border-[var(--c-border)] bg-[color:color-mix(in_srgb,var(--c-panel)_72%,transparent)] px-2.5 text-[13px] font-semibold text-[var(--c-muted)] transition hover:border-[var(--c-ring)] hover:text-[var(--c-accent)] ${isCollapsed ? 'justify-center' : 'justify-start'}`}
-                style={{ minHeight: 'var(--d-control-h)' }}
-              >
-                <SidebarIconTile>
-                  <DynamicAppIcon
-                    iconKey="sidebarToggle"
-                    className={`relative z-[1] h-4.5 w-4.5 shrink-0 transition-transform duration-300 ${isCollapsed ? 'rotate-180' : ''}`}
-                  />
-                </SidebarIconTile>
-                <span className={isCollapsed ? 'hidden' : 'inline'}>{isCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}</span>
-              </button>
+              <div className="group relative flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={onToggle}
+                  aria-label={isCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
+                  title={isCollapsed ? 'Expand Sidebar' : undefined}
+                  className={`flex h-12 flex-1 items-stretch gap-0 overflow-hidden rounded-xl bg-[color:color-mix(in_srgb,var(--c-panel)_75%,transparent)] text-[13px] font-bold text-[var(--c-text)] transition hover:bg-[color:color-mix(in_srgb,var(--c-panel)_92%,transparent)] hover:border-[var(--c-accent)] hover:text-[var(--c-accent)] ${isCollapsed ? 'justify-center border-transparent' : 'justify-start border border-[var(--c-border)]'}`}
+                >
+                  {isCollapsed 
+                    ? renderNavIcon('sidebarToggle', '', 'Toggle', ({ className }) => <DynamicAppIcon iconKey="sidebarToggle" className={`${className} ${isCollapsed ? 'rotate-180' : ''}`} />)
+                    : renderSignatureNavLead('sidebarToggle', '', 'Toggle', ({ className }) => <DynamicAppIcon iconKey="sidebarToggle" className={className} />)}
+                  <span className={`flex-1 flex items-center px-4 transition-opacity duration-300 ${isCollapsed ? 'hidden' : 'inline-flex'}`}>Collapse Sidebar</span>
+                </button>
+              </div>
             )}
 
-            <button
-              type="button"
-              onClick={openRecycleBin}
-              title={isCollapsed ? 'Recycle Bin' : undefined}
-              className={`relative flex min-h-11 w-full items-center gap-2.5 rounded-xl border transition ${recycleBinIsOpen
-                ? 'border-[var(--c-ring)] bg-[color:color-mix(in_srgb,var(--c-panel)_88%,transparent)] text-[var(--c-accent)] ring-1 ring-[var(--c-ring)]'
-                : 'border-[var(--c-border)] bg-[color:color-mix(in_srgb,var(--c-surface)_58%,transparent)] text-[var(--c-text)] hover:border-[var(--c-ring)] hover:bg-[color:color-mix(in_srgb,var(--c-panel)_72%,transparent)] hover:text-[var(--c-accent)]'
-                } px-2.5 text-[13px] font-semibold ${isCollapsed ? 'justify-center' : 'justify-start'}`}
-              style={{ minHeight: 'var(--d-control-h)' }}
-            >
-              {renderUtilityIcon(
-                RecycleBinIcon,
-                recycleBinIsOpen,
-                resolvePageIconUrl(systemAssets, 'recycleBin'),
-                'Recycle Bin',
-              )}
-              <span className={isCollapsed ? 'hidden' : 'inline'}>Recycle Bin</span>
-              {recycleTotal > 0 ? (
-                <span className={`rounded-full bg-[var(--c-accent)] px-1.5 py-0.5 text-[10px] font-bold text-white ${isCollapsed ? 'absolute right-1.5 top-1.5' : 'ml-auto'}`}>
-                  {recycleTotal}
-                </span>
-              ) : null}
-            </button>
+            <div className="group relative flex items-center gap-1">
+              <button
+                type="button"
+                onClick={openRecycleBin}
+                title={isCollapsed ? 'Recycle Bin' : undefined}
+                className={`relative flex h-12 flex-1 items-stretch gap-0 overflow-hidden rounded-xl transition ${recycleBinIsOpen
+                  ? 'border border-[var(--c-accent)] bg-[color:color-mix(in_srgb,var(--c-panel)_88%,transparent)] text-[var(--c-accent)]'
+                  : `bg-[color:color-mix(in_srgb,var(--c-panel)_75%,transparent)] text-[var(--c-text)] hover:border-[var(--c-accent)] hover:bg-[color:color-mix(in_srgb,var(--c-panel)_92%,transparent)] hover:text-[var(--c-accent)] ${isCollapsed ? 'border-transparent' : 'border border-[var(--c-border)]'}`
+                  } text-[13px] font-bold ${isCollapsed ? 'justify-center' : 'justify-start'}`}
+              >
+                {isCollapsed
+                  ? renderNavIcon('recycleBin', resolvePageIconUrl(systemAssets, 'recycleBin'), 'Recycle Bin', RecycleBinIcon)
+                  : renderSignatureNavLead('recycleBin', resolvePageIconUrl(systemAssets, 'recycleBin'), 'Recycle Bin', RecycleBinIcon)}
+                <span className={`flex-1 flex items-center px-4 transition-opacity duration-300 ${isCollapsed ? 'hidden' : 'inline-flex'}`}>Recycle Bin</span>
+                {recycleTotal > 0 ? (
+                  <span className={`rounded-full bg-[var(--c-accent)] px-1.5 py-0.5 text-[10px] font-bold text-white ${isCollapsed ? 'absolute right-1.5 top-1.5' : 'ml-auto mr-4 flex items-center h-full'}`}>
+                    {recycleTotal}
+                  </span>
+                ) : null}
+              </button>
+            </div>
 
-            <NavLink
-              to={`/t/${tenantId}/settings`}
-              title={isCollapsed ? 'Settings' : undefined}
-              className={({ isActive }) =>
-                `flex min-h-11 items-center gap-2.5 rounded-xl px-2.5 text-[13px] font-semibold transition ${isActive
-                  ? 'bg-[color:color-mix(in_srgb,var(--c-panel)_74%,transparent)] text-[var(--c-accent)] ring-1 ring-[var(--c-ring)]'
-                  : 'text-[var(--c-muted)] hover:bg-[color:color-mix(in_srgb,var(--c-panel)_72%,transparent)] hover:text-[var(--c-accent)]'
-                } ${isCollapsed ? 'justify-center' : 'justify-start'}`
-              }
-              style={{ minHeight: 'var(--d-control-h)' }}
-            >
-              {renderUtilityIcon(SettingsIcon, false, resolvePageIconUrl(systemAssets, 'settings'), 'Settings')}
-              <span className={isCollapsed ? 'hidden' : 'inline'}>Settings</span>
-            </NavLink>
+            <div className="group relative flex items-center gap-1">
+              <NavLink
+                to={`/t/${tenantId}/settings`}
+                title={isCollapsed ? 'Settings' : undefined}
+                className={({ isActive }) =>
+                  `flex h-12 flex-1 items-stretch gap-0 overflow-hidden rounded-xl text-[13px] font-bold transition ${isActive
+                    ? 'bg-[color:color-mix(in_srgb,var(--c-panel)_88%,transparent)] text-[var(--c-accent)] border border-[var(--c-accent)]'
+                    : `bg-[color:color-mix(in_srgb,var(--c-panel)_75%,transparent)] text-[var(--c-text)] hover:bg-[color:color-mix(in_srgb,var(--c-panel)_92%,transparent)] hover:text-[var(--c-accent)] ${isCollapsed ? 'border-transparent' : 'border border-[var(--c-border)]'}`
+                  } ${isCollapsed ? 'justify-center' : 'justify-start'}`
+                }
+              >
+                {isCollapsed
+                  ? renderNavIcon('settings', resolvePageIconUrl(systemAssets, 'settings'), 'Settings', SettingsIcon)
+                  : renderSignatureNavLead('settings', resolvePageIconUrl(systemAssets, 'settings'), 'Settings', SettingsIcon)}
+                <span className={`flex-1 flex items-center px-4 transition-opacity duration-300 ${isCollapsed ? 'hidden' : 'inline-flex'}`}>Settings</span>
+              </NavLink>
+            </div>
           </div>
         </div>
       </div>

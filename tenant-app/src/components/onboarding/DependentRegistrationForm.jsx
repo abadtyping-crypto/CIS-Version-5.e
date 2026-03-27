@@ -197,11 +197,7 @@ const DependentRegistrationForm = ({ activeType, tenantId, user, onCancel, onSuc
                 setStatus({ type: 'error', message: 'Identification number is required.' });
                 return;
             }
-            if (!normalized.email) {
-                setStatus({ type: 'error', message: 'Primary email is required.' });
-                return;
-            }
-            if (!EMAIL_REGEX.test(normalized.email)) {
+            if (normalized.email && !EMAIL_REGEX.test(normalized.email)) {
                 setStatus({ type: 'error', message: 'Primary email format is invalid.' });
                 return;
             }
@@ -211,10 +207,16 @@ const DependentRegistrationForm = ({ activeType, tenantId, user, onCancel, onSuc
                 return;
             }
 
-            const mobileError = validateMobileContact(normalized.mobile, getPrimaryMobileContact(form.mobileContacts).countryIso2, 'Mobile number');
-            if (mobileError) {
-                setStatus({ type: 'error', message: mobileError });
-                return;
+            if (normalized.mobile) {
+                const mobileError = validateMobileContact(
+                    normalized.mobile,
+                    getPrimaryMobileContact(form.mobileContacts).countryIso2,
+                    'Mobile number'
+                );
+                if (mobileError) {
+                    setStatus({ type: 'error', message: mobileError });
+                    return;
+                }
             }
 
             // Identification Specific Rules
@@ -384,13 +386,12 @@ const DependentRegistrationForm = ({ activeType, tenantId, user, onCancel, onSuc
             {/* Bottom Section: Contacts */}
             <div className="grid gap-6 md:grid-cols-2 pt-2">
                 <MobileContactsField
-                    label="Mobile Numbers (Primary First)"
+                    label="Mobile Numbers"
                     contacts={form.mobileContacts}
                     onChange={(list) => setForm(prev => ({ ...prev, mobileContacts: list }))}
-                    required
                 />
                 <EmailContactsField
-                    label="Email Addresses *"
+                    label="Email Addresses"
                     contacts={form.emailContacts}
                     onChange={(list) => setForm(prev => ({ ...prev, emailContacts: list }))}
                 />

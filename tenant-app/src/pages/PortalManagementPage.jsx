@@ -125,35 +125,44 @@ const PortalBalanceAdjustmentPanel = ({ refreshKey }) => {
           {rows.map((item) => (
             <div
               key={item.id}
-              className="flex flex-col gap-3 rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] p-3 sm:flex-row sm:items-center sm:justify-between"
+              className="group flex min-h-[56px] flex-row items-stretch overflow-hidden rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)] transition-all hover:bg-[var(--c-surface)]"
             >
-              <div className="flex min-w-0 items-center gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[var(--c-border)] bg-white">
-                  <img
-                    src={resolvePortalCardIcon(item, systemAssets)}
-                    alt={item.name || item.id}
-                    className="h-full w-full object-cover"
-                    onError={(event) => {
-                      event.currentTarget.onerror = null;
-                      event.currentTarget.src = DEFAULT_PORTAL_ICON;
-                    }}
-                  />
-                </div>
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-bold text-[var(--c-text)]">{item.name || item.id}</p>
-                  <p className="truncate text-xs text-[var(--c-muted)]">{item.id}</p>
-                  <p className={`mt-1 text-xs font-bold ${Number(item.balance || 0) < 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
-                    <CurrencyValue value={item.balance || 0} iconSize="h-3 w-3" />
+              {/* Signature Icon Slot */}
+              <div className="flex w-20 shrink-0 items-center justify-center overflow-hidden border-r border-[var(--c-border)] bg-white shadow-sm">
+                <img
+                  src={resolvePortalCardIcon(item, systemAssets)}
+                  alt={item.name || item.id}
+                  className="h-full w-full object-cover"
+                  onError={(event) => {
+                    event.currentTarget.onerror = null;
+                    event.currentTarget.src = DEFAULT_PORTAL_ICON;
+                  }}
+                />
+              </div>
+
+              {/* Portal Details */}
+              <div className="flex min-w-0 flex-1 flex-col justify-center px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <p className="truncate text-sm font-black text-[var(--c-text)]">{item.name || item.id}</p>
+                  <p className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-[var(--c-muted)]">
+                    {item.id}
                   </p>
                 </div>
+                <p className={`mt-0.5 text-xs font-bold ${Number(item.balance || 0) < 0 ? 'text-rose-500' : 'text-emerald-600'}`}>
+                  <CurrencyValue value={item.balance || 0} iconSize="h-3 w-3" />
+                </p>
               </div>
-              <button
-                type="button"
-                onClick={() => navigate(`/t/${tenantId}/portal-management/${item.id}`)}
-                className="rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] px-4 py-2 text-xs font-bold text-[var(--c-text)] transition hover:border-[var(--c-accent)] hover:text-[var(--c-accent)]"
-              >
-                Open & Adjust
-              </button>
+
+              {/* Actions */}
+              <div className="flex items-center px-4">
+                <button
+                  type="button"
+                  onClick={() => navigate(`/t/${tenantId}/portal-management/${item.id}`)}
+                  className="h-10 rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] px-4 text-xs font-black uppercase tracking-wider text-[var(--c-text)] transition hover:border-[var(--c-accent)] hover:text-[var(--c-accent)] active:scale-95"
+                >
+                  Open & Adjust
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -255,7 +264,7 @@ const PortalManagementPage = () => {
         <aside
           onMouseEnter={() => setIsNavHovered(true)}
           onMouseLeave={() => setIsNavHovered(false)}
-          className={`sticky top-4 hidden h-fit rounded-2xl border border-[var(--c-border)] bg-[var(--c-surface)] p-3 shadow-sm transition-[width,box-shadow] duration-300 ease-in-out lg:block ${isNavExpanded ? 'w-[260px]' : 'w-[72px]'}`}
+          className={`sticky top-0 hidden h-fit p-3 transition-[width] duration-300 ease-in-out lg:block ${isNavExpanded ? 'w-[260px]' : 'w-[72px]'}`}
         >
           <div>
             <div className={`mb-3 flex items-center rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] transition-all ${isNavExpanded ? 'gap-3 px-3 py-3' : 'justify-center px-0 py-2.5'}`}>

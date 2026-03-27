@@ -447,19 +447,16 @@ const LoanManagementSection = ({ isOpen, onToggle, refreshKey }) => {
                                         <button
                                             type="button"
                                             onClick={() => setShowQuickAdd(!showQuickAdd)}
-                                            className="text-[10px] font-bold text-[var(--c-accent)] hover:underline"
+                                            className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] text-[var(--c-text)] transition hover:border-[var(--c-accent)] hover:text-[var(--c-accent)]"
+                                            aria-label={showQuickAdd ? 'Close quick add' : 'Open quick add'}
                                         >
-                                            {showQuickAdd ? 'Cancel' : '+ Quick Add'}
+                                            {showQuickAdd ? <X strokeWidth={1.5} className="h-4 w-4" /> : <Plus strokeWidth={1.5} className="h-4 w-4" />}
                                         </button>
                                     </div>
                                 </div>
 
                                 {showQuickAdd ? (
                                     <div className="mt-2 space-y-3 rounded-2xl border border-[var(--c-accent)]/20 bg-[color:color-mix(in_srgb,var(--c-accent)_7%,var(--c-surface))] p-3 animate-in fade-in slide-in-from-top-2">
-                                        <div className="rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] px-3 py-2">
-                                            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--c-accent)]">Quick Add</p>
-                                            <p className="mt-1 text-xs font-semibold text-[var(--c-text)]">Create a loan person without leaving this page.</p>
-                                        </div>
                                         <input
                                             type="text"
                                             placeholder="Full Name"
@@ -482,7 +479,7 @@ const LoanManagementSection = ({ isOpen, onToggle, refreshKey }) => {
                                                             ? prev
                                                             : { ...prev, emailContacts: [...prev.emailContacts, createLoanEmailContact()] }
                                                     ))}
-                                                    className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] text-[var(--c-text)] transition hover:border-[var(--c-accent)] hover:text-[var(--c-accent)] disabled:cursor-not-allowed disabled:opacity-35"
+                                                    className="inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)] text-[var(--c-text)] transition hover:border-[var(--c-accent)] hover:text-[var(--c-accent)] disabled:cursor-not-allowed disabled:opacity-35"
                                                     disabled={newPerson.emailContacts.length >= 3 || !String(newPerson.emailContacts[0]?.value || '').trim()}
                                                     aria-label="Add email"
                                                 >
@@ -493,7 +490,7 @@ const LoanManagementSection = ({ isOpen, onToggle, refreshKey }) => {
                                                 {newPerson.emailContacts.map((contact) => (
                                                     <div key={contact.id} className="flex items-start gap-2">
                                                         <div className="min-w-0 flex-1">
-                                                            <div className="flex h-11 items-center rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] px-3 focus-within:border-[var(--c-accent)] focus-within:ring-4 focus-within:ring-[var(--c-accent)]/5">
+                                                            <div className="flex min-h-[56px] items-center rounded-2xl border border-[var(--c-border)] bg-[var(--c-surface)] px-4 focus-within:border-[var(--c-accent)] focus-within:ring-4 focus-within:ring-[var(--c-accent)]/5">
                                                                 <input
                                                                     type="email"
                                                                     value={contact.value}
@@ -539,7 +536,7 @@ const LoanManagementSection = ({ isOpen, onToggle, refreshKey }) => {
                                                                 }
                                                                 return { ...prev, emailContacts: nextContacts };
                                                             })}
-                                                            className={`mt-1 inline-flex h-11 w-11 items-center justify-center rounded-xl border transition ${
+                                                            className={`mt-1 inline-flex h-14 w-14 items-center justify-center rounded-2xl border transition ${
                                                                 contact.emailEnabled
                                                                     ? 'border-[var(--c-accent)]/45 bg-[color:color-mix(in_srgb,var(--c-accent)_12%,transparent)] text-[var(--c-accent)]'
                                                                     : 'border-[var(--c-border)] bg-[var(--c-panel)] text-[var(--c-muted)]'
@@ -567,7 +564,7 @@ const LoanManagementSection = ({ isOpen, onToggle, refreshKey }) => {
                                                                         return next;
                                                                     });
                                                                 }}
-                                                                className="mt-1 inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] text-[var(--c-muted)] transition hover:border-rose-400/60 hover:bg-rose-500/10 hover:text-rose-400"
+                                                                className="mt-1 inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)] text-[var(--c-muted)] transition hover:border-rose-400/60 hover:bg-rose-500/10 hover:text-rose-400"
                                                                 aria-label="Remove email address"
                                                             >
                                                                 <X strokeWidth={1.5} className="h-4 w-4" />

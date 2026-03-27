@@ -29,6 +29,7 @@ const AppFooter = ({ appName = 'ACIS' }) => {
   const [controller, setController] = useState({
     title: appName,
     subtitle: 'Desktop Workspace',
+    headerIcon: '',
     footerIcon: '',
     footerIconOpacity: 0.28,
     privacyPolicy: '',
@@ -45,6 +46,7 @@ const AppFooter = ({ appName = 'ACIS' }) => {
         ...prev,
         title: String(data.title || prev.title || appName),
         subtitle: String(data.subtitle || 'Desktop Workspace'),
+        headerIcon: String(data.headerIcon || ''),
         footerIcon: String(data.footerIcon || ''),
         footerIconOpacity: Number(data.footerIconOpacity ?? prev.footerIconOpacity ?? 0.28),
         privacyPolicy: String(data.privacyPolicy || ''),
@@ -88,11 +90,11 @@ const AppFooter = ({ appName = 'ACIS' }) => {
 
   const boundedIndex = visibleBroadcasts.length ? (activeIndex % visibleBroadcasts.length) : 0;
   const activeBroadcast = visibleBroadcasts[boundedIndex] || null;
-  const iconSrc = controller.footerIcon || '/ACIS Icon/appIconx64.png';
+  const iconSrc = String(controller.footerIcon || controller.headerIcon || '').trim() || '/ACIS Icon/appIconx64.png';
   const iconOpacity = Math.min(1, Math.max(0.05, Number(controller.footerIconOpacity) || 0.28));
   const canOpenPrivacy = Boolean(String(controller.privacyPolicy || '').trim());
   const canOpenTerms = Boolean(String(controller.termsAndConditions || '').trim());
-  const hasFooterWatermark = Boolean(String(controller.footerIcon || '').trim());
+  const hasFooterWatermark = Boolean(String(iconSrc || '').trim());
   const broadcastType = String(activeBroadcast?.type || 'general_notice').toLowerCase();
   const accent = TYPE_ACCENT[broadcastType] || TYPE_ACCENT.general_notice;
   const textColor = String(activeBroadcast?.fontColor || '').trim() || 'var(--c-text)';
@@ -111,7 +113,7 @@ const AppFooter = ({ appName = 'ACIS' }) => {
           }
         `}
       </style>
-      <footer className="desktop-footer z-[1000] px-3 pb-3 pt-2" style={{ fontSize: '16px' }}>
+      <footer className="desktop-footer z-[10] px-3 pb-3 pt-2" style={{ fontSize: '16px' }}>
         <div
           className={`glass flex items-center justify-between gap-3 rounded-2xl border border-white/5 bg-[var(--c-surface)]/60 backdrop-blur-xl ${
             hasFooterWatermark ? 'overflow-hidden pl-0 pr-3 sm:pr-3.5' : 'px-3 sm:px-3.5'
@@ -119,7 +121,7 @@ const AppFooter = ({ appName = 'ACIS' }) => {
           style={{ minHeight: '59px' }}
         >
           <div className={`flex min-w-0 items-center ${hasFooterWatermark ? 'gap-2' : 'gap-3'}`}>
-            {controller.footerIcon ? (
+            {hasFooterWatermark ? (
               <div className="h-[59px] w-52 shrink-0 overflow-hidden">
                 <img src={iconSrc} alt={controller.title || appName} className="h-full w-full object-cover" style={{ opacity: iconOpacity }} />
               </div>

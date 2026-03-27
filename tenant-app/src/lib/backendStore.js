@@ -251,7 +251,8 @@ export const fetchTenantPortals = async (tenantId) => {
       balanceByPortal[portalId] = (balanceByPortal[portalId] || 0) + amount;
     });
 
-    const rows = portalSnap.docs.map((item) => {
+    const rows = portalSnap.docs
+      .map((item) => {
       const data = item.data();
       const portalLogoId = String(data?.portalLogoId || '').trim();
       const customLogoUrl = String(data?.logoUrl || '').trim();
@@ -262,9 +263,9 @@ export const fetchTenantPortals = async (tenantId) => {
       const computedBalance = balanceByPortal[item.id];
       const storedBalanceRaw = data?.balance ?? data?.Balance ?? 0;
       const storedBalance = Number(storedBalanceRaw);
-      const balance = Number.isFinite(computedBalance)
-        ? computedBalance
-        : (Number.isFinite(storedBalance) ? storedBalance : 0);
+      const balance = Number.isFinite(storedBalance)
+        ? storedBalance
+        : (Number.isFinite(computedBalance) ? computedBalance : 0);
       return {
         id: item.id,
         ...data,
@@ -274,7 +275,8 @@ export const fetchTenantPortals = async (tenantId) => {
         balance,
         balanceType: balance < 0 ? 'negative' : 'positive',
       };
-    });
+    })
+      .filter((item) => item?.status !== 'frozen' && item?.isActive !== false && !item?.deletedAt);
     return { ok: true, rows };
   } catch (error) {
     const message = toSafeError(error);
@@ -552,6 +554,62 @@ export const upsertTenantPortalTransaction = async (tenantId, txId, payload) => 
   } catch (error) {
     const message = toSafeError(error);
     console.warn(`[backendStore] portalTransaction upsert failed tenants/${tenantId}/portalTransactions/${txId}: ${message}`);
+    return { ok: false, error: message };
+  }
+};
+
+export const createPortalTransactionWithBalance = async (
+  tenantId,
+  txId,
+  payload,
+  balanceDelta,
+  updatedBy,
+) => {
+  try {
+    if (!tenantId || !txId || !payload?.portalId) {
+      return { ok: false, error: 'Missing tenant, portal, or transaction context.' };
+    }
+    const delta = Number(balanceDelta || 0);
+    if (!Number.isFinite(delta)) {
+      return { ok: false, error: 'Invalid balance delta.' };
+    }
+    const portalRef = doc(db, 'tenants', tenantId, 'portals', String(payload.portalId));
+    const portalTxRef = doc(db, 'tenants', tenantId, 'portalTransactions', txId);
+
+    await runTransaction(db, async (txn) => {
+      const portalSnap = await txn.get(portalRef);
+      if (!portalSnap.exists()) throw new Error('Selected portal not found.');
+      const portalData = portalSnap.data() || {};
+      const currentBalanceRaw = portalData.balance ?? 0;
+      const currentBalance = Number.isFinite(Number(currentBalanceRaw)) ? Number(currentBalanceRaw) : 0;
+      const nextBalance = currentBalance + delta;
+
+      txn.set(
+        portalTxRef,
+        {
+          ...payload,
+          updatedAt: serverTimestamp(),
+          createdAt: serverTimestamp(),
+        },
+        { merge: true },
+      );
+
+      txn.set(
+        portalRef,
+        {
+          balance: nextBalance,
+          balanceType: nextBalance < 0 ? 'negative' : 'positive',
+          updatedAt: serverTimestamp(),
+          updatedBy: updatedBy || '',
+        },
+        { merge: true },
+      );
+    });
+
+    return { ok: true };
+  } catch (error) {
+    const message = toSafeError(error);
+    console.warn(`[backendStore] portalTransaction+balance failed tenants/${tenantId}/portalTransactions/${txId}: ${message}`);
     return { ok: false, error: message };
   }
 };
@@ -1272,10 +1330,11 @@ export const executeLoanTransaction = async (tenantId, { personId, portalId, amo
       }
     }
 
-    const resolvedDisplayTxId = String(displayTxId || '').trim() || `LON-${Date.now()}`;
+    const loanDisplayTxId = String(displayTxId || '').trim() || `LON-${Date.now()}`;
+    const portalDisplayTxId = await generateNextTransactionId(tenantId, 'POR');
     const batchId = `loan_${Date.now()}`;
     const date = new Date().toISOString();
-    const portalTxId = toSafeDocId(resolvedDisplayTxId, 'portal_tx');
+    const portalTxId = toSafeDocId(portalDisplayTxId, 'portal_tx');
     const normalizedMethod = String(transactionMethod || '').trim();
     const methodLabel = normalizedMethod
       ? normalizedMethod.replace(/([A-Z])/g, ' $1').replace(/[_-]/g, ' ').trim()
@@ -1294,7 +1353,7 @@ export const executeLoanTransaction = async (tenantId, { personId, portalId, amo
     // 1. Record for Portal
     const portalTxRes = await upsertTenantPortalTransaction(tenantId, portalTxId, {
       portalId,
-      displayTransactionId: resolvedDisplayTxId,
+      displayTransactionId: portalDisplayTxId,
       amount: type === 'disbursement' ? -txnAmount : txnAmount,
       type: type === 'disbursement' ? 'Loan Disbursement' : 'Loan Repayment',
       description: `${type === 'disbursement' ? 'Loan to' : 'Repayment from'} ${personLabel}${methodLabel ? ` via ${methodLabel}` : ''}${description ? `: ${description}` : ''}`,
@@ -1307,10 +1366,57 @@ export const executeLoanTransaction = async (tenantId, { personId, portalId, amo
     });
     if (!portalTxRes.ok) throw new Error(`Portal entry failed: ${portalTxRes.error}`);
 
+    // 1b. Record a dedicated loan transaction entry
+    const loanTxId = toSafeDocId(loanDisplayTxId, 'loan_tx');
+    await setDoc(
+      doc(db, 'tenants', tenantId, 'loanTransactions', loanTxId),
+      {
+        displayTransactionId: loanDisplayTxId,
+        personId,
+        personLabel,
+        portalId,
+        portalLabel,
+        amount: type === 'disbursement' ? txnAmount : -txnAmount,
+        direction: type,
+        type: type === 'disbursement' ? 'Loan Disbursement' : 'Loan Repayment',
+        transactionMethod: normalizedMethod,
+        description: description || '',
+        date,
+        batchId,
+        createdBy,
+        entityType: 'loanTransaction',
+        status: 'active',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true },
+    );
+
+    const portalDelta = type === 'disbursement' ? -txnAmount : txnAmount;
+    await runTransaction(db, async (txn) => {
+      const portalRef = doc(db, 'tenants', tenantId, 'portals', portalId);
+      const portalSnap = await txn.get(portalRef);
+      if (!portalSnap.exists()) throw new Error('Selected portal not found.');
+      const portalData = portalSnap.data() || {};
+      const currentBalanceRaw = portalData.balance ?? 0;
+      const currentBalance = Number.isFinite(Number(currentBalanceRaw)) ? Number(currentBalanceRaw) : 0;
+      const nextBalance = currentBalance + portalDelta;
+      txn.set(
+        portalRef,
+        {
+          balance: nextBalance,
+          balanceType: nextBalance < 0 ? 'negative' : 'positive',
+          updatedAt: serverTimestamp(),
+          updatedBy: createdBy,
+        },
+        { merge: true },
+      );
+    });
+
     const pendingDelta = type === 'disbursement' ? txnAmount : -txnAmount;
     const personUpdatePayload = {
       pendingBalance: increment(pendingDelta),
-      lastTransactionId: resolvedDisplayTxId,
+      lastTransactionId: loanDisplayTxId,
       lastTransactionType: type,
       lastTransactionAt: date,
       lastPortalId: portalId,
@@ -1344,17 +1450,17 @@ export const executeLoanTransaction = async (tenantId, { personId, portalId, amo
         eventType: 'create',
         entityType: 'loanTransaction',
         entityId: batchId,
-        entityLabel: resolvedDisplayTxId,
+        entityLabel: loanDisplayTxId,
         pageKey: 'portalManagement',
         sectionKey: 'loanManagement',
-        txId: resolvedDisplayTxId,
+        txId: loanDisplayTxId,
         quickView: {
           title: personLabel,
           subtitle: type === 'repayment' ? 'Loan Repayment' : 'Loan Disbursement',
           description: description || `${type === 'repayment' ? 'Repayment recorded against a loan person.' : 'Funds disbursed against a loan person.'}`,
           badge: 'Loan',
           fields: [
-            { label: 'Tracking ID', value: resolvedDisplayTxId },
+            { label: 'Tracking ID', value: loanDisplayTxId },
             { label: 'Loan Person', value: personLabel },
             { label: 'Portal', value: portalLabel },
             { label: 'Method', value: methodLabel || 'Not specified' },
@@ -1365,7 +1471,7 @@ export const executeLoanTransaction = async (tenantId, { personId, portalId, amo
       },
     ).catch(() => null);
 
-    return { ok: true, batchId, displayTxId: resolvedDisplayTxId };
+    return { ok: true, batchId, displayTxId: loanDisplayTxId, portalDisplayTxId };
   } catch (error) {
     const message = toSafeError(error);
     console.warn(`[backendStore] loan transaction failed: ${message}`);
@@ -3838,6 +3944,56 @@ export const generateNextTransactionId = async (tenantId, ruleKey = 'DTID') => {
     });
   } catch (error) {
     console.warn(`[backendStore] next ID generation failed for ${ruleKey}:`, error);
-    return `${ruleKey}_${Date.now()}`;
+    const fallbackSeq = Number.isFinite(Date.now()) ? Date.now() % 10000 : 1;
+    return formatDisplayId({
+      prefix: String(ruleKey || '').toUpperCase(),
+      seq: fallbackSeq,
+      padding: 4,
+      dateFormat: 'YYYYMMDD',
+      useSeparator: true,
+    });
   }
+};
+
+/**
+ * Atomic Portal Creation Protocol
+ * Ensures zero-rubbish writing and financial ledger synchronicity.
+ */
+export const createTenantPortalAtomic = async (tenantId, portalId, payload, actorUid) => {
+  // 1. Anti-Rubbish Sanitizer: Strip empty strings, nulls, and undefined keys
+  const sanitized = Object.fromEntries(
+    Object.entries(payload || {}).filter(([, v]) => v !== '' && v !== null && v !== undefined)
+  );
+
+  const portalRef = doc(db, 'tenants', tenantId, 'portals', portalId);
+  const openingBalance = Number(sanitized.balance || 0);
+
+  return runTransaction(db, async (txn) => {
+    // 2. Write Portal Document (Metadata handled at backend level)
+    txn.set(portalRef, {
+      ...sanitized,
+      updatedAt: serverTimestamp(),
+      createdAt: serverTimestamp(),
+      createdBy: String(actorUid || '').trim(), // UID string only
+      updatedBy: String(actorUid || '').trim(),
+    }, { merge: false });
+
+    // 3. Conditional Opening Balance Ledger Entry
+    if (openingBalance !== 0) {
+      // Use configured POR rule for portal transactions
+      const displayTxId = await generateNextTransactionId(tenantId, 'POR');
+      const portalTxRef = doc(db, 'tenants', tenantId, 'portalTransactions', toSafeDocId(displayTxId, 'portal_tx'));
+      
+      txn.set(portalTxRef, {
+        portalId,
+        displayTransactionId: displayTxId,
+        amount: openingBalance,
+        type: 'Opening Balance',
+        date: new Date().toISOString(),
+        createdBy: String(actorUid || '').trim(),
+        status: 'active',
+        affectsPortalBalance: true
+      });
+    }
+  });
 };

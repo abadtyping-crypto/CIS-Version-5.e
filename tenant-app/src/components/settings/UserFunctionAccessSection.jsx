@@ -14,7 +14,7 @@ const normalizeRoleLabel = (role) => {
   return role || 'Staff';
 };
 
-const UserFunctionAccessSection = ({ tenantId, selectedUser, currentUser }) => {
+const UserFunctionAccessSection = ({ tenantId, selectedUser, currentUser, actionKeys = [] }) => {
   const [overrides, setOverrides] = useState({});
   const [prevUid, setPrevUid] = useState(null);
 
@@ -44,6 +44,10 @@ const UserFunctionAccessSection = ({ tenantId, selectedUser, currentUser }) => {
     setOverrides(next);
   };
 
+  const visibleActions = Array.isArray(actionKeys) && actionKeys.length > 0
+    ? USER_ACCESS_ACTIONS.filter((item) => actionKeys.includes(item.key))
+    : USER_ACCESS_ACTIONS;
+
   return (
     <SettingCard
       title="User Function Access"
@@ -71,7 +75,7 @@ const UserFunctionAccessSection = ({ tenantId, selectedUser, currentUser }) => {
       ) : null}
 
       <div className="grid gap-2">
-        {USER_ACCESS_ACTIONS.map((item) => {
+        {visibleActions.map((item) => {
           const hasOverride = Object.prototype.hasOwnProperty.call(overrides, item.key);
           const effectiveValue = hasOverride ? overrides[item.key] : roleDefaults[item.key];
 

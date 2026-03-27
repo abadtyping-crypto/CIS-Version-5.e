@@ -257,15 +257,6 @@ const NotificationsPage = () => {
 
               {item.entityType === 'portal' && item.entityMeta ? (
                 <div className="mt-3 flex items-center gap-3 rounded-xl border border-[var(--c-border)] bg-[color:color-mix(in_srgb,var(--c-surface)_50%,transparent)] px-3 py-2">
-                  <img
-                    src={item.entityMeta.iconUrl || DEFAULT_PORTAL_ICON}
-                    alt={item.entityMeta.name || 'Portal'}
-                    className="h-8 w-8 rounded-lg object-cover"
-                    onError={(event) => {
-                      event.currentTarget.onerror = null;
-                      event.currentTarget.src = DEFAULT_PORTAL_ICON;
-                    }}
-                  />
                   <div>
                     <p className="text-sm font-bold text-[var(--c-text)]">{item.entityMeta.name}</p>
                     <p className="text-xs font-semibold text-[var(--c-muted)]">{toBalanceLabel(item.entityMeta.balance)}</p>

@@ -29,6 +29,14 @@ import { ENFORCE_UNIVERSAL_APPLICATION_UID } from '../../lib/universalLibraryPol
 const normalizeNameKey = (value) => String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
 const resolveUniversalTemplateId = (app) => toSafeDocId(String(app?.appName || app?.name || app?.id || ''), 'svc_tpl');
 const resolveLegacyUniversalTemplateId = (app) => (app?.id ? `univ_${app.id}` : '');
+const getDefaultCharge = (...values) => {
+    for (const value of values) {
+        if (value === null || value === undefined || value === '') continue;
+        const parsed = Number(value);
+        if (Number.isFinite(parsed)) return parsed;
+    }
+    return 0;
+};
 
 const ServiceTemplateSection = () => {
     const { tenantId } = useTenant();
@@ -179,10 +187,6 @@ const ServiceTemplateSection = () => {
     };
 
     const handleToggleUniversal = async () => {
-        if (lockToUniversal) {
-            setStatus('Universal Application Library is enforced by policy and cannot be turned off.');
-            return;
-        }
         setIsSaving(true);
         const nextValue = !universalEnabled;
         setUniversalEnabled(nextValue);
@@ -228,6 +232,34 @@ const ServiceTemplateSection = () => {
         });
     };
 
+    const handleEnableApp = async (globalApp) => {
+        setIsSaving(true);
+        const targetId = resolveUniversalTemplateId(globalApp);
+        const existing = rows.find((s) => (
+            s.source === 'universal' && (
+                s.globalAppId === globalApp.id
+                || s.id === targetId
+                || normalizeNameKey(s.name) === normalizeNameKey(globalApp.appName)
+            )
+        ));
+        const payload = {
+            source: 'universal',
+            globalAppId: globalApp.id,
+            globalIconId: globalApp.iconId || '',
+            clientCharge: existing ? Number(existing.clientCharge) || 0 : getDefaultCharge(globalApp.clientCharge, globalApp.defaultClientCharge),
+            govCharge: existing ? Number(existing.govCharge) || 0 : getDefaultCharge(globalApp.govCharge, globalApp.defaultGovCharge),
+            description: existing ? String(existing.description || '') : '',
+            isActive: true,
+            createdAt: existing?.createdAt || new Date().toISOString(),
+            createdBy: existing?.createdBy || user.uid,
+            updatedBy: user.uid,
+            name: globalApp.appName,
+        };
+        const res = await upsertServiceTemplate(tenantId, targetId, payload);
+        if (res.ok) await loadData();
+        setIsSaving(false);
+    };
+
     const handleConfirmEnableApp = async () => {
         setIsSaving(true);
         const app = pricingModal.globalApp;
@@ -240,8 +272,8 @@ const ServiceTemplateSection = () => {
             govCharge: Number(pricingModal.govCharge) || 0,
             description: pricingModal.description || '',
             isActive: true,
-            createdAt: new Date().toISOString(),
-            createdBy: user.uid,
+            createdAt: rows.find((item) => item.id === templateId)?.createdAt || new Date().toISOString(),
+            createdBy: rows.find((item) => item.id === templateId)?.createdBy || user.uid,
             updatedBy: user.uid,
             name: app.appName, 
         };
@@ -417,16 +449,16 @@ const ServiceTemplateSection = () => {
                                 {customOnlyRows.map((row) => (
                                     <div
                                         key={row.id || row.name}
-                                        className="group relative flex items-center gap-4 rounded-2xl border border-[var(--c-border)] bg-[var(--c-surface)] p-4 hover:shadow-md transition"
+                                        className="group relative flex min-h-[5.5rem] items-stretch gap-0 overflow-hidden rounded-2xl border border-[var(--c-border)] bg-[var(--c-surface)] hover:shadow-md transition"
                                     >
-                                        <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-white border border-[var(--c-border)]/30 p-1">
+                                        <div className="relative h-auto w-24 shrink-0 overflow-hidden bg-[var(--c-panel)]">
                                             {(icons.find((icon) => icon.iconId === row.iconId)?.iconUrl) ? (
-                                                <img src={icons.find((icon) => icon.iconId === row.iconId)?.iconUrl} alt="" className="h-full w-full rounded-lg object-contain" />
+                                                <img src={icons.find((icon) => icon.iconId === row.iconId)?.iconUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
                                             ) : (
-                                                <span className="text-2xl">📄</span>
+                                                <div className="absolute inset-0 flex items-center justify-center bg-[var(--c-panel)] text-2xl">📄</div>
                                             )}
                                         </div>
-                                        <div className="min-w-0 flex-1">
+                                        <div className="min-w-0 flex-1 p-4">
                                             <p className="truncate text-sm font-bold text-[var(--c-text)]">{row.name}</p>
                                             {row.description && <p className="mt-1 line-clamp-2 text-[10px] font-semibold text-[var(--c-muted)]">{row.description}</p>}
                                             <div className="mt-1 flex gap-3 text-[10px] font-bold uppercase text-[var(--c-muted)]">
@@ -434,7 +466,7 @@ const ServiceTemplateSection = () => {
                                                 <span className="flex items-center gap-1">Client: <CurrencyValue value={row.clientCharge} /></span>
                                             </div>
                                         </div>
-                                        <div className="flex gap-1 flex-col sm:flex-row">
+                                        <div className="flex flex-col gap-1 p-4 sm:flex-row sm:items-center">
                                             <button onClick={() => handleEdit(row)} className="rounded-lg border border-[var(--c-border)] px-3 py-1.5 text-[10px] font-bold text-[var(--c-text)] hover:bg-[var(--c-panel)]">Edit</button>
                                             <button onClick={() => handleDelete(row)} className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-[10px] font-bold text-rose-600 hover:bg-rose-100">Delete</button>
                                         </div>
@@ -493,17 +525,9 @@ const ServiceTemplateSection = () => {
                                                                       )}
                                                                   </td>
                                                                   <td className="p-3 text-right">
-                                                                      {isAppEnabled ? (
+                                                                      {isAppEnabled ? null : (
                                                                            <button 
-                                                                                onClick={() => handleDisableApp(app)}
-                                                                                disabled={isSaving}
-                                                                                className="rounded-lg border border-rose-200 text-rose-600 bg-rose-50 px-3 py-1 text-[10px] uppercase font-bold hover:bg-rose-100 transition"
-                                                                           >
-                                                                               Disable
-                                                                           </button>
-                                                                      ) : (
-                                                                           <button 
-                                                                                onClick={() => handleOpenEnableModal(app)}
+                                                                                onClick={() => handleEnableApp(app)}
                                                                                 disabled={isSaving}
                                                                                 className="rounded-lg bg-[var(--c-accent)] text-white px-3 py-1 text-[10px] uppercase font-bold hover:opacity-90 transition"
                                                                            >
@@ -520,6 +544,15 @@ const ServiceTemplateSection = () => {
                                                                               Configure
                                                                           </button>
                                                                       )}
+                                                                      {isAppEnabled ? (
+                                                                           <button 
+                                                                                onClick={() => handleDisableApp(app)}
+                                                                                disabled={isSaving}
+                                                                                className="ml-0 rounded-lg border border-rose-200 text-rose-600 bg-rose-50 px-3 py-1 text-[10px] uppercase font-bold hover:bg-rose-100 transition sm:ml-2"
+                                                                           >
+                                                                               Disable
+                                                                           </button>
+                                                                      ) : null}
                                                                   </td>
                                                               </tr>
                                                           )
@@ -590,7 +623,7 @@ const ServiceTemplateSection = () => {
                                       disabled={isSaving}
                                       className="rounded-xl bg-[var(--c-accent)] px-4 py-2 text-xs uppercase font-bold tracking-widest text-white hover:opacity-90 transition"
                                   >
-                                      Save & Enable
+                                      Save Configuration
                                   </button>
                               </div>
                           </div>

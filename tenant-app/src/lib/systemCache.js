@@ -34,4 +34,12 @@ export const subscribeToSystemCache = (tenantId, callback) => {
   };
 };
 
+
+import { DEFAULT_PORTAL_ICON } from './transactionMethodConfig';
+
 export const getSystemCacheSnapshot = () => memoryCache;
+
+export const get = (key) => {
+  if (key === 'default_portal_asset') return DEFAULT_PORTAL_ICON;
+  return null;
+};

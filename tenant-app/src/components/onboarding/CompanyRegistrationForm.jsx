@@ -6,7 +6,7 @@ import {
     checkTradeLicenseDuplicate,
     generateDisplayClientId,
     previewDisplayClientId,
-    upsertTenantPortalTransaction,
+    createPortalTransactionWithBalance,
     sendTenantWelcomeEmail,
 } from '../../lib/backendStore';
 import SectionCard from '../portal/SectionCard';
@@ -101,6 +101,7 @@ const CompanyRegistrationForm = ({ activeType, tenantId, user, onCancel, onSucce
     const { tenant } = useTenant();
     const [portals, setPortals] = useState([]);
     const [nextId, setNextId] = useState('...');
+    const [showBalance, setShowBalance] = useState(false);
     const [form, setForm] = useState({
         tradeLicenseNumber: '',
         registeredEmirate: '',
@@ -332,18 +333,18 @@ const CompanyRegistrationForm = ({ activeType, tenantId, user, onCancel, onSucce
                         normalized.balanceType === 'debit'
                             ? -Math.abs(normalized.openingBalance)
                             : Math.abs(normalized.openingBalance);
-                    const txRes = await upsertTenantPortalTransaction(tenantId, portalTxId, {
+                    const txRes = await createPortalTransactionWithBalance(tenantId, portalTxId, {
                         portalId: normalized.portalId,
                         displayTransactionId: displayTxId,
                         amount: txAmount,
-                        type: 'Client Opening Balance',
+                        type: 'Client Balance',
                         method: normalized.portalMethod,
                         category: 'Client Onboarding',
-                        description: `Opening balance for ${normalized.tradeName || normalized.tradeLicenseNumber}`,
+                        description: `Balance for ${normalized.tradeName || normalized.tradeLicenseNumber}`,
                         clientId: res.id,
                         date: new Date().toISOString(),
                         createdBy: user.uid,
-                    });
+                    }, txAmount, user.uid);
                     if (!txRes.ok) {
                         setStatus({ type: 'error', message: txRes.error || 'Portal transaction failed during onboarding.' });
                         return;
@@ -387,7 +388,7 @@ const CompanyRegistrationForm = ({ activeType, tenantId, user, onCancel, onSucce
                                 { label: 'Client ID', value: displayId },
                                 { label: 'Trade License', value: normalized.tradeLicenseNumber },
                                 { label: 'Mobile', value: normalized.primaryMobile },
-                                { label: 'Opening Balance', value: String(normalized.openingBalance || 0) },
+                                { label: 'Balance', value: String(normalized.openingBalance || 0) },
                             ],
                         },
                     });
@@ -584,12 +585,12 @@ const CompanyRegistrationForm = ({ activeType, tenantId, user, onCancel, onSucce
             <div className="rounded-2xl border-2 border-dashed border-[var(--c-border)] bg-[var(--c-panel)]/30 p-4">
                 <div className="mb-4 flex items-center gap-2">
                     <div className="h-2 w-2 rounded-full bg-[var(--c-accent)]" />
-                    <h3 className="text-sm font-semibold uppercase tracking-widest text-[var(--c-text)]">Opening Balance & Finance</h3>
+                    <h3 className="text-sm font-semibold uppercase tracking-widest text-[var(--c-text)]">Balance & Finance</h3>
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                     <div className="space-y-2">
-                        <label className="text-xs font-bold uppercase tracking-wider text-[var(--c-muted)]">Opening Balance</label>
+                        <label className="text-xs font-bold uppercase tracking-wider text-[var(--c-muted)]">Balance</label>
                         <div className="relative">
                             <DirhamIcon insideTab className="h-4 w-4 text-[var(--c-muted)]" />
                             <InputActionField
@@ -644,7 +645,8 @@ const CompanyRegistrationForm = ({ activeType, tenantId, user, onCancel, onSucce
                                 methodPlaceholder="Select Method"
                                 disabled={!form.createPortalTransaction}
                                 showBalancePanel={form.createPortalTransaction && !!selectedPortal}
-                                showBalance
+                                showBalance={showBalance}
+                                onToggleBalance={() => setShowBalance((prev) => !prev)}
                                 projectedBalance={projectedBalance}
                                 currentBalanceTitle="Portal Balance"
                                 projectedBalanceTitle="After Posting"

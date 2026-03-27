@@ -5,6 +5,7 @@ import {
     ArrowLeft,
     Building2,
     Check,
+    Globe,
     ImagePlus,
     Layers,
     Plus,
@@ -15,6 +16,7 @@ import {
 import PageShell from '../components/layout/PageShell';
 import ImageStudio from '../components/common/ImageStudio';
 import DirhamIcon from '../components/common/DirhamIcon';
+import CurrencyValue from '../components/common/CurrencyValue';
 import ConfirmDialog from '../components/common/ConfirmDialog';
 import ProgressVideoOverlay from '../components/common/ProgressVideoOverlay';
 import { useAuth } from '../context/useAuth';
@@ -26,15 +28,15 @@ import { sendUniversalNotification } from '../lib/notificationDrafting';
 import { getCroppedImg } from '../lib/imageStudioUtils';
 import {
     fetchTenantPortals,
-    upsertTenantPortal,
-    upsertTenantPortalTransaction,
+    createTenantPortalAtomic,
     generateDisplayPortalId,
 } from '../lib/backendStore';
+import * as systemCache from '../lib/systemCache';
+import InputActionField from '../components/common/InputActionField';
 import { deletePortalIconByUrl, uploadPortalIcon } from '../lib/portalStorage';
 import { fetchApplicationIconLibrary } from '../lib/applicationIconLibraryStore';
 import { fetchAllGlobalPortalLogos } from '../lib/portalLogoLibraryStore';
 import { canUserPerformAction } from '../lib/userControlPreferences';
-import { generateDisplayTxId, toSafeDocId } from '../lib/txIdGenerator';
 import { toSafeDocId as toSafeIconId } from '../lib/idUtils';
 import {
     DEFAULT_PORTAL_CATEGORIES,
@@ -108,31 +110,37 @@ const CategoryTile = ({ category, isActive, onClick, systemAssets }) => {
         <button
             type="button"
             onClick={onClick}
-            className={`relative flex flex-col items-center gap-2 rounded-2xl border p-3 transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)] ${
+            className={`group relative flex min-h-[56px] w-[100%] flex-row items-stretch overflow-hidden rounded-2xl border transition-all duration-150 focus:outline-none focus:ring-4 focus:ring-[var(--c-accent)]/10 ${
                 isActive
-                    ? 'border-[var(--c-accent)] bg-[color:color-mix(in_srgb,var(--c-accent)_10%,var(--c-surface))] shadow-md'
+                    ? 'border-[var(--c-accent)] bg-[color:color-mix(in_srgb,var(--c-accent)_12%,var(--c-panel))]'
                     : 'border-[var(--c-border)] bg-[var(--c-panel)] hover:border-[var(--c-accent)]/40 hover:bg-[var(--c-surface)]'
             }`}
         >
-            {isActive && (
-                <span className="absolute right-2 top-2 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--c-accent)] text-white">
-                    <Check className="h-2.5 w-2.5" strokeWidth={3} />
-                </span>
-            )}
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[var(--c-border)] bg-white">
+            <div className={`flex w-16 shrink-0 items-center justify-center overflow-hidden border-r shadow-sm transition-colors ${
+                isActive ? 'border-[var(--c-accent)]/30' : 'border-[var(--c-border)]'
+            }`}>
                 <img
                     src={icon}
                     alt={category.label}
                     className="h-full w-full object-cover"
                     onError={(e) => {
                         e.currentTarget.onerror = null;
-                        e.currentTarget.src = DEFAULT_PORTAL_ICON;
+                        e.currentTarget.src = systemCache.get('default_portal_asset') || DEFAULT_PORTAL_ICON;
                     }}
                 />
             </div>
-            <span className={`text-[10px] font-bold uppercase tracking-wider ${isActive ? 'text-[var(--c-accent)]' : 'text-[var(--c-muted)]'}`}>
-                {category.label}
-            </span>
+            <div className="flex min-w-0 flex-1 items-center px-4 py-3 text-left">
+                <span className={`block text-[11px] font-black uppercase leading-[1.3] tracking-[0.18em] ${isActive ? 'text-[var(--c-text)]' : 'text-[var(--c-muted)]'}`}>
+                    {category.label}
+                </span>
+            </div>
+            {isActive && (
+                <div className="flex shrink-0 items-center pr-3">
+                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--c-accent)] text-white shadow-sm ring-4 ring-[var(--c-accent)]/10 animate-in zoom-in duration-200">
+                        <Check className="h-3.5 w-3.5" strokeWidth={3} />
+                    </div>
+                </div>
+            )}
         </button>
     );
 };
@@ -144,66 +152,73 @@ const MethodPill = ({ method, isSelected, isCustom, onToggle, onRemove, firestor
 
     return (
         <div
-            className={`group flex items-center gap-2.5 rounded-xl border px-3 py-2 transition-all duration-150 ${
+            className={`group flex min-h-[56px] items-stretch overflow-hidden rounded-2xl border transition-all duration-150 ${
                 isSelected
-                    ? 'border-[var(--c-accent)] bg-[color:color-mix(in_srgb,var(--c-accent)_8%,var(--c-surface))]'
+                    ? 'border-[var(--c-accent)] bg-[color:color-mix(in_srgb,var(--c-accent)_12%,var(--c-panel))]'
                     : 'border-[var(--c-border)] bg-[var(--c-panel)]'
             }`}
         >
-            {/* Icon */}
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-[var(--c-border)] bg-white">
-            {asset ? (
-                <img
-                    src={asset}
-                    alt={method.label}
-                    className="h-full w-full object-cover"
-                    onError={(e) => {
-                        e.currentTarget.onerror = null;
-                        e.currentTarget.src = DEFAULT_PORTAL_ICON;
-                    }}
-                />
-            ) : MethodIcon ? (
-                <MethodIcon className="h-4 w-4 text-[var(--c-muted)]" />
-            ) : (
-                <Zap strokeWidth={1.5} className="h-4 w-4 text-[var(--c-muted)]" />
-            )}
-        </div>
-
-            {/* Label */}
-            <span className={`flex-1 text-xs font-semibold ${isSelected ? 'text-[var(--c-text)]' : 'text-[var(--c-muted)]'}`}>
-                {method.label}
-                {isCustom && (
-                    <span className="ml-1.5 rounded-full bg-[var(--c-accent)]/15 px-1.5 py-0.5 text-[9px] font-bold uppercase text-[var(--c-accent)]">
-                        custom
-                    </span>
+            {/* Icon Slot: Slightly smaller than Category for hierarchy */}
+            <div className={`flex w-14 shrink-0 items-center justify-center overflow-hidden border-r bg-white shadow-sm transition-colors ${
+                isSelected ? 'border-[var(--c-accent)]/30' : 'border-[var(--c-border)]'
+            }`}>
+                {asset ? (
+                    <img
+                        src={asset}
+                        alt={method.label}
+                        className="h-full w-full object-cover"
+                        onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.src = systemCache.get('default_portal_asset') || DEFAULT_PORTAL_ICON;
+                        }}
+                    />
+                ) : MethodIcon ? (
+                    <MethodIcon className="h-4.5 w-4.5 text-[var(--c-accent)]" />
+                ) : (
+                    <Zap strokeWidth={1.5} className="h-4.5 w-4.5 text-[var(--c-muted)]" />
                 )}
-            </span>
+            </div>
 
-            {/* Toggle checkbox */}
-            <button
-                type="button"
-                onClick={onToggle}
-                className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition ${
-                    isSelected
-                        ? 'border-[var(--c-accent)] bg-[var(--c-accent)] text-white'
-                        : 'border-[var(--c-border)] bg-transparent text-transparent hover:border-[var(--c-accent)]/50'
-                }`}
-                aria-label={isSelected ? `Disable ${method.label}` : `Enable ${method.label}`}
-            >
-                <Check className="h-3 w-3" strokeWidth={3} />
-            </button>
+            {/* Label: Added more padding to prevent sticking to actions */}
+            <div className="flex min-w-0 flex-1 items-center pl-4 pr-2 py-3 text-left">
+                <span className={`block text-sm font-black leading-snug tracking-tight ${isSelected ? 'text-[var(--c-text)]' : 'text-[var(--c-muted)]'}`}>
+                    {method.label}
+                    {isCustom && (
+                        <span className="ml-2 inline-flex items-center rounded-full bg-[var(--c-accent)]/15 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider text-[var(--c-accent)]">
+                            custom
+                        </span>
+                    )}
+                </span>
+            </div>
 
-            {/* Remove for custom only */}
-            {isCustom && onRemove && (
+            {/* Actions / Toggle: Fixed width container for stability */}
+            <div className="flex shrink-0 items-center gap-1.5 px-3">
+                {/* Remove for custom only */}
+                {isCustom && onRemove && (
+                    <button
+                        type="button"
+                        onClick={onRemove}
+                        className="flex h-8 w-8 items-center justify-center rounded-lg text-rose-500/60 opacity-0 transition hover:bg-rose-500/10 hover:text-rose-500 group-hover:opacity-100"
+                        aria-label={`Remove ${method.label}`}
+                    >
+                        <X strokeWidth={2} className="h-4 w-4" />
+                    </button>
+                )}
+
+                {/* Toggle checkbox */}
                 <button
                     type="button"
-                    onClick={onRemove}
-                    className="ml-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-[var(--c-muted)] opacity-0 transition hover:text-rose-400 group-hover:opacity-100"
-                    aria-label={`Remove ${method.label}`}
+                    onClick={onToggle}
+                    className={`flex h-8 w-8 items-center justify-center rounded-lg border transition-all ${
+                        isSelected
+                            ? 'border-[var(--c-accent)] bg-[var(--c-accent)] text-white shadow-lg shadow-[var(--c-accent)]/20'
+                            : 'border-[var(--c-border)] bg-transparent text-transparent hover:border-[var(--c-accent)]/40'
+                    }`}
+                    aria-label={isSelected ? `Disable ${method.label}` : `Enable ${method.label}`}
                 >
-                    <X strokeWidth={1.5} className="h-3.5 w-3.5" />
+                    <Check className="h-4 w-4" strokeWidth={3} />
                 </button>
-            )}
+            </div>
         </div>
     );
 };
@@ -260,6 +275,7 @@ const PortalFormPage = ({ embedded = false }) => {
     const [isLogoStudioOpen, setIsLogoStudioOpen] = useState(false);
     const [logoPreviewUrl, setLogoPreviewUrl] = useState(''); // existing saved logo
     const logoFileRef = useRef(null);
+    const [useCustomLogo, setUseCustomLogo] = useState(false);
 
     const [firestoreIconMap, setFirestoreIconMap] = useState({});
     const [logoRemoved, setLogoRemoved] = useState(false);
@@ -302,6 +318,7 @@ const PortalFormPage = ({ embedded = false }) => {
                         portalLogoId: String(p.portalLogoId || ''),
                     });
                     setLogoPreviewUrl(p.logoUrl || '');
+                    setUseCustomLogo(Boolean(String(p.logoUrl || '').trim()));
                     setLogoRemoved(false);
                     setDraftPortalId(p.id || portalId || '');
                 }
@@ -346,10 +363,7 @@ const PortalFormPage = ({ embedded = false }) => {
     const allMethodDefs = resolvePortalMethodDefinitions(form.customMethods);
     // Which methods are relevant to this category?
     const categoryDefaultMethodIds = resolveCategoryMethodIds(form.type, form.customCategories);
-    const visibleMethodDefs = allMethodDefs.filter((m) => {
-        if (m.isCustom) return true; // always show custom
-        return categoryDefaultMethodIds.includes(m.id);
-    });
+    const visibleMethodDefs = allMethodDefs;
 
     const cloudCategoryIcon = CATEGORY_ASSET_MAP[activeCategory?.label] || CATEGORY_ASSET_MAP[form.type];
     const categoryIcon = systemAssets[cloudCategoryIcon]?.iconUrl || activeCategory?.icon || fallbackTypeIcon(form.type);
@@ -484,6 +498,7 @@ const PortalFormPage = ({ embedded = false }) => {
         if (!file) return;
         // If user uploads a custom logo, switch away from universal logo mode.
         setForm((prev) => ({ ...prev, portalLogoId: '' }));
+        setUseCustomLogo(true);
         const url = URL.createObjectURL(file);
         setLogoRawUrl(url);
         setLogoCroppedArea(null);
@@ -493,6 +508,7 @@ const PortalFormPage = ({ embedded = false }) => {
     };
 
     const handleOpenLogoStudio = () => {
+        if (!useCustomLogo) return;
         if (logoPreviewUrl) {
             setLogoRawUrl(logoPreviewUrl);
             setLogoCroppedArea(null);
@@ -509,6 +525,7 @@ const PortalFormPage = ({ embedded = false }) => {
         setLogoCroppedArea(null);
         setLogoPreviewUrl('');
         setLogoRemoved(true);
+        setUseCustomLogo(false);
         setIsLogoStudioOpen(false);
     };
 
@@ -527,6 +544,7 @@ const PortalFormPage = ({ embedded = false }) => {
             portalLogoId: prev.portalLogoId === normalizedId ? '' : normalizedId,
         }));
         if (normalizedId) {
+            setUseCustomLogo(false);
             setLogoRawUrl('');
             setLogoCroppedArea(null);
             setLogoZoom(1);
@@ -577,6 +595,7 @@ const PortalFormPage = ({ embedded = false }) => {
             setLogoZoom(1);
             setLogoRotation(0);
             setLogoRemoved(false);
+            setUseCustomLogo(true);
             setIsLogoStudioOpen(false);
             setStatus({ message: 'Logo cropped and saved.', type: 'success' });
         } catch (error) {
@@ -638,18 +657,23 @@ const PortalFormPage = ({ embedded = false }) => {
             customCategories: nextCustomCategories,
             customMethods: nextCustomMethods,
             iconUrl,
-            logoUrl: hasCustomLogo ? logoUrl : '',
-            portalLogoId,
             status: existingPortal?.status || 'active',
-            // Ensure createdBy only stores the uid string
-            createdBy: String(existingPortal?.createdBy || user.uid || '').trim(),
-            ...(isEdit
-                ? { updatedBy: user.uid } // Only include updatedBy on edit operations
-                : { balance: openingSignedBalance, balanceType: form.balanceType }),
+            // Minimalist Write: Omit logoUrl/portalLogoId if empty
+            ...(logoUrl ? { logoUrl } : {}),
+            ...(portalLogoId ? { portalLogoId } : {}),
+            // Set balance and type for atomic opening transaction if creating
+            ...(!isEdit ? { balance: openingSignedBalance, balanceType: form.balanceType } : {}),
         };
 
-        const res = await upsertTenantPortal(tenantId, targetPortalId, payload);
-        if (!res.ok) {
+        let res;
+        try {
+            res = await createTenantPortalAtomic(tenantId, targetPortalId, payload, user.uid);
+        } catch (error) {
+            setStatus({ message: error?.message || 'Failed to save portal.', type: 'error' });
+            setIsSaving(false);
+            return;
+        }
+        if (res && res.ok === false) {
             setStatus({ message: res.error || 'Failed to save portal.', type: 'error' });
             setIsSaving(false);
             return;
@@ -657,23 +681,6 @@ const PortalFormPage = ({ embedded = false }) => {
 
         if (logoRemoved && existingPortal?.logoUrl && !logoPreviewUrl) {
             await deletePortalIconByUrl(existingPortal.logoUrl);
-        }
-
-        // Opening balance transaction
-        if (!isEdit && openingAmount > 0) {
-            const displayTxId = await generateDisplayTxId(tenantId, 'POR');
-            await upsertTenantPortalTransaction(
-                tenantId,
-                toSafeDocId(displayTxId, 'portal_tx'),
-                {
-                    portalId: targetPortalId,
-                    displayTransactionId: displayTxId,
-                    amount: openingSignedBalance,
-                    type: 'Opening Balance',
-                    date: new Date().toISOString(),
-                    createdBy: user.uid,
-                },
-            );
         }
 
         // Notification (create only)
@@ -763,13 +770,13 @@ const PortalFormPage = ({ embedded = false }) => {
                         {/* Name */}
                         <div className="xl:max-w-[38rem] 2xl:max-w-[42rem]">
                             <FieldLabel>Portal Name</FieldLabel>
-                            <input
+                            <InputActionField
                                 id="portal-name"
-                                type="text"
                                 value={form.name}
-                                onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+                                onValueChange={(v) => setForm((p) => ({ ...p, name: v }))}
                                 placeholder="e.g. Main Operating Bank"
-                                className="mt-1.5 w-full rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] px-4 py-2.5 text-sm font-medium text-[var(--c-text)] outline-none transition focus:border-[var(--c-accent)] focus:ring-2 focus:ring-[var(--c-accent)]/20"
+                                leadIcon={Building2}
+                                showPasteButton={false}
                             />
                         </div>
 
@@ -778,18 +785,20 @@ const PortalFormPage = ({ embedded = false }) => {
                             <div className="grid gap-4 lg:grid-cols-[minmax(0,18rem)_minmax(0,28rem)] lg:items-start">
                                 <div className="max-w-[18rem]">
                                     <FieldLabel>Opening Balance <span className="normal-case font-normal text-[var(--c-muted)]">(optional)</span></FieldLabel>
-                                    <div className="relative mt-1.5">
-                                        <DirhamIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--c-muted)]" />
-                                        <input
-                                            id="portal-opening-balance"
-                                            type="number"
-                                            min="0"
-                                            value={form.balance}
-                                            onChange={(e) => setForm((p) => ({ ...p, balance: e.target.value }))}
-                                            placeholder="0"
-                                            className="w-full rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] pl-9 pr-4 py-2.5 text-sm font-medium text-[var(--c-text)] outline-none transition focus:border-[var(--c-accent)] focus:ring-2 focus:ring-[var(--c-accent)]/20"
-                                        />
-                                    </div>
+                                    <InputActionField
+                                        id="portal-opening-balance"
+                                        type="text"
+                                        inputMode="decimal"
+                                        value={form.balance}
+                                        onValueChange={(v) => setForm((p) => ({ ...p, balance: v }))}
+                                        onBlur={(v, e) => {
+                                            const rawValue = v ?? e?.target?.value ?? '';
+                                            setForm((p) => ({ ...p, balance: formatMoneyInput(rawValue) }));
+                                        }}
+                                        placeholder="0.00"
+                                        leadIcon={DirhamIcon}
+                                        showPasteButton={false}
+                                    />
                                 </div>
                                 {Number(form.balance) > 0 && (
                                     <div className="max-w-[28rem]">
@@ -844,10 +853,11 @@ const PortalFormPage = ({ embedded = false }) => {
                             <div className="max-w-[24rem]">
                                 <FieldLabel>Current Balance</FieldLabel>
                                 <div className="mt-1.5 flex items-center gap-2 rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] px-4 py-2.5">
-                                    <DirhamIcon className="h-4 w-4 text-[var(--c-muted)]" />
-                                    <span className={`text-sm font-bold ${Number(existingPortal?.balance || 0) < 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
-                                        {Number(existingPortal?.balance || 0).toLocaleString()}
-                                    </span>
+                                    <CurrencyValue
+                                        value={Number(existingPortal?.balance || 0)}
+                                        iconSize="h-4 w-4"
+                                        className={Number(existingPortal?.balance || 0) < 0 ? 'text-rose-400' : 'text-emerald-400'}
+                                    />
                                     <span className="ml-auto text-xs text-[var(--c-muted)]">Dhs · read-only</span>
                                 </div>
                             </div>
@@ -855,179 +865,196 @@ const PortalFormPage = ({ embedded = false }) => {
                     </div>
                 </div>
 
-                {/* ── Section 2 · Logo ───────────────────────────── */}
+                {/* ── Section 2 · Logo Preview ───────────────────── */}
                 <div className="rounded-2xl border border-[var(--c-border)] bg-[var(--c-surface)] p-5 shadow-sm xl:col-span-5 2xl:col-span-5">
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-                        <div className="flex-1">
-                            <SectionHeading icon={ImagePlus} label="Portal Logo" />
-                            <p className="mt-1 text-xs text-[var(--c-muted)]">
-                                Optional. Upload a custom logo image for this portal (displayed in portal detail).
-                            </p>
-                            <div className="mt-4">
-                                <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--c-muted)]">Universal Portal Logos</p>
-                                <p className="mt-1 text-[11px] text-[var(--c-muted)]">Select one from developer library. It will sync by UID.</p>
-                                <div className="mt-2 rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] p-3">
-                                    {isPortalLogoLoading ? (
-                                        <p className="py-3 text-center text-xs font-semibold text-[var(--c-muted)]">Loading portal logos...</p>
-                                    ) : globalPortalLogos.length === 0 ? (
-                                        <p className="py-3 text-center text-xs font-semibold text-[var(--c-muted)]">No universal portal logos available.</p>
-                                    ) : (
-                                        <div className="grid max-h-64 grid-cols-2 gap-3 overflow-y-auto pr-1 sm:grid-cols-3 lg:grid-cols-4">
-                                            {globalPortalLogos.map((item) => {
-                                                const isSelected = String(form.portalLogoId || '') === String(item.logoId || '');
-                                                return (
-                                                    <button
-                                                        key={item.logoId}
-                                                        type="button"
-                                                        onClick={() => handleSelectUniversalLogo(item.logoId)}
-                                                        className={`rounded-xl border p-2 transition ${isSelected ? 'border-[var(--c-accent)] bg-[color:color-mix(in_srgb,var(--c-accent)_10%,transparent)] shadow-sm' : 'border-[var(--c-border)] bg-[var(--c-surface)] hover:border-[var(--c-accent)]/40'}`}
-                                                        title={item.logoName || item.logoId}
-                                                    >
-                                                        <div className="flex h-16 w-full items-center justify-center overflow-hidden rounded-lg border border-[var(--c-border)] bg-white p-1">
-                                                            <img src={item.logoUrl} alt={item.logoName || item.logoId} className="h-full w-full object-contain" />
-                                                        </div>
-                                                        <p className="mt-2 truncate text-[11px] font-semibold text-[var(--c-muted)]">
-                                                            {item.logoName || item.logoId}
-                                                        </p>
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                            <div className="mt-4 flex flex-wrap items-center gap-3">
-                                <input
-                                    ref={logoFileRef}
-                                    type="file"
-                                    accept="image/png,image/jpeg,image/webp"
-                                    onChange={handleLogoFileSelect}
-                                    className="hidden"
-                                    id="logo-upload-input"
-                                />
-                                <button
-                                    type="button"
-                                    onClick={handleOpenLogoStudio}
-                                    className="flex items-center gap-2 rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] px-4 py-2.5 text-xs font-bold text-[var(--c-text)] transition hover:border-[var(--c-accent)] hover:text-[var(--c-accent)]"
-                                >
-                                    <ImagePlus strokeWidth={1.5} className="h-4 w-4" />
-                                    {logoPreviewUrl ? 'Adjust Logo' : 'Upload Logo'}
-                                </button>
-                                {logoPreviewUrl && (
-                                    <button
-                                        type="button"
-                                        onClick={handleLogoClear}
-                                        className="flex items-center gap-1.5 rounded-xl border border-rose-500/30 px-3 py-2.5 text-xs font-bold text-rose-400 transition hover:bg-rose-500/10"
-                                    >
-                                        <X strokeWidth={1.5} className="h-3.5 w-3.5" />
-                                        Remove
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Logo preview + Portal icon side by side */}
-                        <div className="flex shrink-0 flex-col items-center gap-2 self-start rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)] p-3">
-                            {logoPreviewUrl ? (
-                                <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-2xl border border-[var(--c-border)] bg-white p-1.5 shadow-sm">
+                    <div className="flex items-center justify-between gap-3">
+                        <SectionHeading icon={ImagePlus} label="Portal Logo" />
+                        <button
+                            type="button"
+                            onClick={() => {
+                                if (useCustomLogo) {
+                                    setUseCustomLogo(false);
+                                    setLogoRawUrl('');
+                                    setLogoCroppedArea(null);
+                                    setLogoPreviewUrl('');
+                                    setLogoRemoved(true);
+                                    setIsLogoStudioOpen(false);
+                                } else {
+                                    setUseCustomLogo(true);
+                                    setForm((prev) => ({ ...prev, portalLogoId: '' }));
+                                }
+                            }}
+                            className={`flex h-9 w-9 items-center justify-center rounded-xl border transition ${
+                                useCustomLogo
+                                    ? 'border-[var(--c-accent)] bg-[color:color-mix(in_srgb,var(--c-accent)_12%,var(--c-panel))] text-[var(--c-text)]'
+                                    : 'border-[var(--c-border)] bg-[var(--c-panel)] text-[var(--c-muted)] hover:border-[var(--c-accent)]/40'
+                            }`}
+                            aria-pressed={useCustomLogo}
+                            aria-label={useCustomLogo ? 'Disable custom logo' : 'Enable custom logo'}
+                        >
+                            {useCustomLogo ? (
+                                <Check strokeWidth={2.2} className="h-3.5 w-3.5" />
+                            ) : (
+                                <ImagePlus strokeWidth={1.8} className="h-4 w-4" />
+                            )}
+                        </button>
+                    </div>
+                    <p className="mt-1 text-xs text-[var(--c-muted)]">
+                        Optional. Upload a custom logo image for this portal (displayed in portal detail).
+                    </p>
+                    <div className="mt-4 space-y-3">
+                        <input
+                            ref={logoFileRef}
+                            type="file"
+                            accept="image/png,image/jpeg,image/webp"
+                            onChange={handleLogoFileSelect}
+                            className="hidden"
+                            id="logo-upload-input"
+                        />
+                        <button
+                            type="button"
+                            onClick={handleOpenLogoStudio}
+                            disabled={!useCustomLogo}
+                            className={`group flex w-full items-center gap-4 rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)] p-4 text-left transition ${
+                                useCustomLogo ? 'hover:border-[var(--c-accent)]' : 'opacity-50 cursor-not-allowed'
+                            }`}
+                        >
+                            <div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)]">
+                                {logoPreviewUrl ? (
                                     <img
                                         src={logoPreviewUrl}
                                         alt="Logo preview"
-                                        className="h-full w-full rounded-xl object-contain"
+                                        className="h-full w-full object-contain"
                                     />
-                                </div>
-                            ) : (
-                                <div className="flex h-24 w-24 items-center justify-center rounded-2xl border border-dashed border-[var(--c-border)] bg-[var(--c-surface)]">
-                                    <ImagePlus strokeWidth={1.5} className="h-8 w-8 text-[var(--c-muted)]/50" />
-                                </div>
-                            )}
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--c-muted)]">Logo Preview</span>
-                        </div>
-                    </div>
-
-                    {logoPreviewUrl ? (
-                        <p className="mt-2 text-[11px] font-medium text-[var(--c-muted)]">
-                            This logo is saved separately for this portal and will appear automatically on portal cards.
-                        </p>
-                    ) : null}
-
-                    {/* ── Portal Display Icon (auto) ─── */}
-                    <div className="mt-5 border-t border-[var(--c-border)] pt-4">
-                        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                            <div>
-                                <p className="text-xs font-bold uppercase tracking-wider text-[var(--c-muted)]">Portal Display Icon</p>
-                                <p className="mt-0.5 text-[11px] text-[var(--c-muted)]">
-                                    If you upload a custom logo, it is used first. Otherwise selected universal logo, then category icon.
+                                ) : (
+                                    <Plus strokeWidth={1.5} className="h-10 w-10 text-[var(--c-muted)]/70" />
+                                )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                                <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--c-muted)]">Logo Preview</p>
+                                <p className="mt-1 text-xs font-semibold text-[var(--c-text)]">
+                                    {logoPreviewUrl ? 'Tap to adjust logo' : 'Tap to upload logo'}
                                 </p>
                             </div>
-                            <div className="flex items-center gap-3 rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)] px-3 py-3">
-                                <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl border border-[var(--c-border)] bg-white p-1.5 shadow-sm">
-                                    <img
-                                        src={portalIconPreview}
-                                        alt="Portal icon"
-                                        className="h-full w-full rounded-xl object-contain"
-                                        onError={(e) => {
-                                            e.currentTarget.onerror = null;
-                                            e.currentTarget.src = fallbackTypeIcon(form.type);
-                                        }}
-                                    />
-                                </div>
-                                <div className="min-w-0">
-                                    <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--c-muted)]">Preview Source</p>
-                                    <p className="mt-1 text-xs font-semibold text-[var(--c-text)]">
-                                        {previewSourceLabel}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
+                        </button>
+                        {logoPreviewUrl ? (
+                            <button
+                                type="button"
+                                onClick={handleLogoClear}
+                                className="flex items-center gap-1.5 rounded-xl border border-rose-500/30 px-3 py-2 text-xs font-bold text-rose-400 transition hover:bg-rose-500/10"
+                            >
+                                <X strokeWidth={1.5} className="h-3.5 w-3.5" />
+                                Remove
+                            </button>
+                        ) : null}
                     </div>
                 </div>
 
-                {/* ── Section 3 · Category ───────────────────────── */}
+                {/* ── Section 3 · Universal Logos ───────────────── */}
+                {!useCustomLogo && (
+                    <div className="rounded-2xl border border-[var(--c-border)] bg-[var(--c-surface)] p-5 shadow-sm xl:col-span-12">
+                        <div className="flex items-center justify-between gap-3">
+                            <p className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-[var(--c-muted)]">
+                                <Globe className="h-3 w-3" strokeWidth={1.6} />
+                                Universal Portal Logos
+                            </p>
+                        </div>
+                        <p className="mt-1 text-[11px] text-[var(--c-muted)]">Select one from developer library. It will sync by UID.</p>
+                        <div className="mt-3 rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)] p-3">
+                            {isPortalLogoLoading ? (
+                                <p className="py-3 text-center text-xs font-semibold text-[var(--c-muted)]">Loading portal logos...</p>
+                            ) : globalPortalLogos.length === 0 ? (
+                                <p className="py-3 text-center text-xs font-semibold text-[var(--c-muted)]">No universal portal logos available.</p>
+                            ) : (
+                                <div className="grid max-h-80 grid-cols-1 gap-3 overflow-y-auto pr-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                                    {globalPortalLogos.map((item) => {
+                                        const isSelected = String(form.portalLogoId || '') === String(item.logoId || '');
+                                        return (
+                                            <button
+                                                key={item.logoId}
+                                                type="button"
+                                                onClick={() => handleSelectUniversalLogo(item.logoId)}
+                                                className={`group relative flex min-h-[56px] flex-row items-stretch overflow-hidden rounded-2xl border transition-all duration-150 focus:outline-none focus:ring-4 focus:ring-[var(--c-accent)]/10 ${
+                                                    isSelected
+                                                        ? 'border-[var(--c-accent)] bg-[color:color-mix(in_srgb,var(--c-accent)_12%,var(--c-panel))]'
+                                                        : 'border-[var(--c-border)] bg-[var(--c-surface)] hover:border-[var(--c-accent)]/40 hover:bg-[var(--c-panel)]'
+                                                }`}
+                                        >
+                                            <div className={`flex w-20 shrink-0 items-center justify-center overflow-hidden border-r bg-white shadow-sm transition-colors ${
+                                                isSelected ? 'border-[var(--c-accent)]/30' : 'border-[var(--c-border)]'
+                                            }`}>
+                                                    <img
+                                                        src={item.logoUrl}
+                                                        alt={item.logoName || item.logoId}
+                                                        className="h-full w-full object-contain p-2"
+                                                    />
+                                            </div>
+                                            <div className="flex min-w-0 flex-1 items-center px-4 py-3 text-left" />
+                                            {isSelected && (
+                                                    <div className="flex shrink-0 items-center pr-3">
+                                                        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--c-accent)] text-white shadow-sm ring-4 ring-[var(--c-accent)]/10 animate-in zoom-in duration-200">
+                                                            <Check className="h-3.5 w-3.5" strokeWidth={3} />
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* ── Section 4 · Category ───────────────────────── */}
                 <div className="rounded-2xl border border-[var(--c-border)] bg-[var(--c-surface)] p-5 shadow-sm xl:col-span-12">
                     <div className="flex items-center justify-between gap-3">
                         <SectionHeading icon={Layers} label="Portal Category" />
                         <button
                             type="button"
                             onClick={() => setIsAddCategoryOpen((value) => !value)}
-                            className="flex items-center gap-1.5 rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] px-3 py-2 text-xs font-bold text-[var(--c-text)] transition hover:border-[var(--c-accent)] hover:text-[var(--c-accent)]"
+                            className="flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] text-[var(--c-text)] transition hover:border-[var(--c-accent)] hover:text-[var(--c-accent)]"
+                            aria-label="Add custom category"
+                            title="Add"
                         >
                             <Plus strokeWidth={1.5} className="h-3.5 w-3.5" />
-                            Add Custom Category
                         </button>
                     </div>
                     <p className="mt-1 text-xs text-[var(--c-muted)]">
                         The category determines the default transaction methods for this portal. If you need a new one, add a custom category and it will start with a safe default icon.
                     </p>
                     {isAddCategoryOpen && (
-                        <div className="mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] p-3">
-                            <input
-                                id="new-category-name"
-                                type="text"
-                                value={newCategoryName}
-                                onChange={(e) => setNewCategoryName(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && handleAddCustomCategory()}
-                                placeholder="New category name..."
-                                autoFocus
-                                className="min-w-[220px] flex-1 rounded-lg border border-[var(--c-border)] bg-[var(--c-surface)] px-3 py-2 text-xs font-medium text-[var(--c-text)] outline-none focus:border-[var(--c-accent)]"
-                            />
-                            <button
-                                type="button"
-                                onClick={handleAddCustomCategory}
-                                className="rounded-lg bg-[var(--c-accent)] px-3 py-2 text-xs font-bold text-white transition hover:opacity-90"
-                            >
-                                Add
-                            </button>
+                        <div className="mt-4 flex flex-wrap items-center gap-2">
+                            <div className="min-w-[220px] flex-1">
+                                <InputActionField
+                                    id="new-category-name"
+                                    value={newCategoryName}
+                                    onValueChange={(v) => setNewCategoryName(v)}
+                                    onAppend={handleAddCustomCategory}
+                                    appendLabel="Add category"
+                                    placeholder="New category name..."
+                                    showPasteButton={false}
+                                    inputClassName="text-xs font-semibold"
+                                    onKeyDown={(event) => {
+                                        if (event.key === 'Enter') {
+                                            event.preventDefault();
+                                            handleAddCustomCategory();
+                                        }
+                                    }}
+                                />
+                            </div>
                             <button
                                 type="button"
                                 onClick={() => { setIsAddCategoryOpen(false); setNewCategoryName(''); }}
-                                className="rounded-lg p-2 text-[var(--c-muted)] transition hover:text-[var(--c-text)]"
+                                className="flex h-14 w-14 items-center justify-center rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)] text-[var(--c-muted)] transition hover:text-[var(--c-text)]"
+                                aria-label="Cancel category"
+                                title="Cancel"
                             >
                                 <X strokeWidth={1.5} className="h-4 w-4" />
                             </button>
                         </div>
                     )}
-                    <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6 2xl:grid-cols-7">
+                    <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
                         {allCategories.map((cat) => (
                             <div key={cat.id} className="relative">
                                 <CategoryTile
@@ -1052,17 +1079,18 @@ const PortalFormPage = ({ embedded = false }) => {
                     </div>
                 </div>
 
-                {/* ── Section 4 · Transaction Methods ───────────── */}
+                {/* ── Section 5 · Transaction Methods ───────────── */}
                 <div className="rounded-2xl border border-[var(--c-border)] bg-[var(--c-surface)] p-5 shadow-sm xl:col-span-12">
                     <div className="flex items-center justify-between gap-3">
                         <SectionHeading icon={Zap} label="Transaction Methods" />
                         <button
                             type="button"
                             onClick={() => setIsAddMethodOpen((v) => !v)}
-                            className="flex items-center gap-1.5 rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] px-3 py-2 text-xs font-bold text-[var(--c-text)] transition hover:border-[var(--c-accent)] hover:text-[var(--c-accent)]"
+                            className="flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] text-[var(--c-text)] transition hover:border-[var(--c-accent)] hover:text-[var(--c-accent)]"
+                            aria-label="Add custom method"
+                            title="Add"
                         >
                             <Plus strokeWidth={1.5} className="h-3.5 w-3.5" />
-                            Add Custom
                         </button>
                     </div>
                     <p className="mt-1 text-xs text-[var(--c-muted)]">
@@ -1071,28 +1099,31 @@ const PortalFormPage = ({ embedded = false }) => {
 
                     {/* Add custom method inline form */}
                     {isAddMethodOpen && (
-                        <div className="mt-3 flex items-center gap-2 rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] p-3">
-                            <input
-                                id="new-method-name"
-                                type="text"
-                                value={newMethodName}
-                                onChange={(e) => setNewMethodName(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && handleAddCustomMethod()}
-                                placeholder="New method name…"
-                                autoFocus
-                                className="flex-1 rounded-lg border border-[var(--c-border)] bg-[var(--c-surface)] px-3 py-2 text-xs font-medium text-[var(--c-text)] outline-none focus:border-[var(--c-accent)]"
-                            />
-                            <button
-                                type="button"
-                                onClick={handleAddCustomMethod}
-                                className="rounded-lg bg-[var(--c-accent)] px-3 py-2 text-xs font-bold text-white transition hover:opacity-90"
-                            >
-                                Add
-                            </button>
+                        <div className="mt-3 flex flex-wrap items-center gap-2">
+                            <div className="min-w-[220px] flex-1">
+                                <InputActionField
+                                    id="new-method-name"
+                                    value={newMethodName}
+                                    onValueChange={(v) => setNewMethodName(v)}
+                                    onAppend={handleAddCustomMethod}
+                                    appendLabel="Add method"
+                                    placeholder="New method name..."
+                                    showPasteButton={false}
+                                    inputClassName="text-xs font-semibold"
+                                    onKeyDown={(event) => {
+                                        if (event.key === 'Enter') {
+                                            event.preventDefault();
+                                            handleAddCustomMethod();
+                                        }
+                                    }}
+                                />
+                            </div>
                             <button
                                 type="button"
                                 onClick={() => { setIsAddMethodOpen(false); setNewMethodName(''); }}
-                                className="rounded-lg p-2 text-[var(--c-muted)] transition hover:text-[var(--c-text)]"
+                                className="flex h-14 w-14 items-center justify-center rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)] text-[var(--c-muted)] transition hover:text-[var(--c-text)]"
+                                aria-label="Cancel method"
+                                title="Cancel"
                             >
                                 <X strokeWidth={1.5} className="h-4 w-4" />
                             </button>
@@ -1117,6 +1148,37 @@ const PortalFormPage = ({ embedded = false }) => {
                                 />
                             ))
                         )}
+                    </div>
+                </div>
+
+                {/* ── Section 6 · Display Icon ───────────────────── */}
+                <div className="rounded-2xl border border-[var(--c-border)] bg-[var(--c-surface)] p-5 shadow-sm xl:col-span-12">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <p className="text-xs font-bold uppercase tracking-wider text-[var(--c-muted)]">Portal Display Icon</p>
+                            <p className="mt-0.5 text-[11px] text-[var(--c-muted)]">
+                                If you upload a custom logo, it is used first. Otherwise selected universal logo, then category icon.
+                            </p>
+                        </div>
+                        <div className="flex min-h-[56px] items-stretch overflow-hidden rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)]">
+                            <div className="flex w-20 shrink-0 items-center justify-center overflow-hidden border-r border-[var(--c-border)] bg-white shadow-sm">
+                                <img
+                                    src={portalIconPreview}
+                                    alt="Portal icon"
+                                    className="h-full w-full object-cover"
+                                    onError={(e) => {
+                                        e.currentTarget.onerror = null;
+                                        e.currentTarget.src = fallbackTypeIcon(form.type);
+                                    }}
+                                />
+                            </div>
+                            <div className="min-w-0 px-4 py-3">
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--c-muted)]">Preview Source</p>
+                                <p className="mt-1 text-xs font-semibold text-[var(--c-text)]">
+                                    {previewSourceLabel}
+                                </p>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -1263,5 +1325,15 @@ const FieldLabel = ({ children }) => (
         {children}
     </label>
 );
+
+const formatMoneyInput = (value) => {
+    if (value === null || value === undefined) return '';
+    const trimmed = String(value).trim();
+    if (!trimmed) return '';
+    const numeric = Number(trimmed.replace(/,/g, ''));
+    if (!Number.isFinite(numeric)) return trimmed;
+    // Always show 2 decimal points
+    return numeric.toFixed(2);
+};
 
 export default PortalFormPage;

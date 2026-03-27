@@ -31,14 +31,13 @@ const PortalListItem = ({ portal, onEdit, onDelete, onOpen, systemAssets }) => {
     const isNegative = balance < 0;
 
     return (
-        <div className="group flex items-center gap-2.5 rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] px-2.5 py-2 transition hover:border-[var(--c-accent)]/40 hover:shadow-sm">
-            {/* Icon */}
-            <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-[color:color-mix(in_srgb,var(--c-panel)_88%,var(--c-surface)_12%)] shadow-[0_10px_24px_-18px_rgba(15,23,42,0.28)]">
-                <span className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/26 via-transparent to-transparent" />
+        <div className="group flex min-h-[56px] items-stretch overflow-hidden rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)] transition hover:bg-[var(--c-surface)]">
+            {/* Signature Icon Slot */}
+            <div className="flex w-20 shrink-0 items-center justify-center overflow-hidden border-r border-[var(--c-border)] bg-white shadow-sm">
                 <img
                     src={portal.logoUrl || portal.iconUrl || fallbackTypeIcon(portal.type, systemAssets)}
                     alt={portal.name}
-                    className="relative z-[1] h-full w-full object-cover scale-[1.08]"
+                    className="h-full w-full object-cover"
                     onError={(e) => {
                         e.currentTarget.onerror = null;
                         e.currentTarget.src = DEFAULT_PORTAL_ICON;
@@ -47,36 +46,40 @@ const PortalListItem = ({ portal, onEdit, onDelete, onOpen, systemAssets }) => {
             </div>
 
             {/* Info */}
-            <div className="min-w-0 flex-1">
-                <p className="truncate text-xs font-semibold text-[var(--c-text)]">{portal.name}</p>
-                <p className="text-[10px] uppercase tracking-wider text-[var(--c-muted)]">{portal.type}</p>
-                <p className={`mt-0.5 text-[10px] font-semibold ${isNegative ? 'text-rose-400' : 'text-emerald-400'}`}>
-                    <CurrencyValue value={balance} iconSize="h-2.5 w-2.5" />
+            <div className="flex min-w-0 flex-1 flex-col justify-center px-4 py-3">
+                <div className="flex items-baseline gap-2">
+                    <p className="truncate text-sm font-black text-[var(--c-text)]">{portal.name}</p>
+                    <span className="truncate text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--c-muted)]">
+                        {portal.type}
+                    </span>
+                </div>
+                <p className={`mt-0.5 text-xs font-bold ${isNegative ? 'text-rose-500' : 'text-emerald-500'}`}>
+                    <CurrencyValue value={balance} iconSize="h-3 w-3" />
                 </p>
             </div>
 
             {/* Actions */}
-            <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100">
+            <div className="flex items-center gap-1 px-3">
                 <ActionBtn
                     onClick={onOpen}
                     actionLabel="Open portal detail"
                     className="hover:text-[var(--c-accent)]"
                 >
-                    <ExternalLink strokeWidth={1.5} className="h-3.5 w-3.5" />
+                    <ExternalLink strokeWidth={1.6} className="h-4 w-4" />
                 </ActionBtn>
                 <ActionBtn
                     onClick={onEdit}
                     actionLabel="Edit portal"
                     className="hover:text-[var(--c-accent)]"
                 >
-                    <Pencil strokeWidth={1.5} className="h-3.5 w-3.5" />
+                    <Pencil strokeWidth={1.6} className="h-4 w-4" />
                 </ActionBtn>
                 <ActionBtn
                     onClick={onDelete}
                     actionLabel="Delete portal"
                     className="hover:text-rose-400"
                 >
-                    <Trash2 strokeWidth={1.5} className="h-3.5 w-3.5" />
+                    <Trash2 strokeWidth={1.6} className="h-4 w-4" />
                 </ActionBtn>
             </div>
         </div>
@@ -88,7 +91,7 @@ const ActionBtn = ({ onClick, actionLabel, className = '', children }) => (
         type="button"
         onClick={onClick}
         aria-label={actionLabel}
-        className={`rounded-lg bg-[var(--c-panel)] p-1.5 text-[var(--c-muted)] transition ${className}`}
+        className={`rounded-lg bg-[var(--c-panel)] p-2 text-[var(--c-muted)] transition ${className}`}
     >
         {children}
     </button>

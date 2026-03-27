@@ -149,6 +149,10 @@ const ClientsOnboardingPage = () => {
                                 tenantId={tenantId}
                                 user={user}
                                 refreshKey={refreshKey}
+                                onEdit={(item) => {
+                                    setInitialData(item);
+                                    setActiveType(item.type);
+                                }}
                             />
                         </div>
                     ) : null}
@@ -163,7 +167,7 @@ const ClientsOnboardingPage = () => {
                                 <List strokeWidth={1.5} className="h-4 w-4" />
                                 Back to Actions
                             </button>
-                            {renderFormByType(currentFormType, () => setMobileView('actions'))}
+                            {renderFormByType(currentFormType, () => setMobileView('actions'), initialData)}
                         </div>
                     ) : null}
                 </div>
@@ -245,7 +249,7 @@ const ClientsOnboardingPage = () => {
                             Back to Selection
                         </button>
 
-                        {renderFormByType(activeType, () => setActiveType(null))}
+                        {renderFormByType(activeType, () => setActiveType(null), initialData)}
                     </div>
                 )}
             </div>

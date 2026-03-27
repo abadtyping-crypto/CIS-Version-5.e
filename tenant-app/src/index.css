@@ -400,6 +400,10 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   display: none;
 }
 
+body.hide-desktop-footer .desktop-footer {
+  display: none !important;
+}
+
 .auto-fit-grid {
   display: grid;
   gap: 1rem;

@@ -6,6 +6,8 @@ import { TenantContext } from './TenantContextValue';
 export const TenantProvider = ({ children }) => {
   const [tenantId, setTenantId] = useState(DEFAULT_TENANT_ID);
   const [uiBrandName, setUiBrandName] = useState('');
+  const [uiWorkspaceTitle, setUiWorkspaceTitle] = useState('');
+  const [isBrandNameHeaderEnabled, setIsBrandNameHeaderEnabled] = useState(true);
   const baseTenant = findTenantById(tenantId) || findTenantById(DEFAULT_TENANT_ID);
 
   useEffect(() => {
@@ -13,12 +15,18 @@ export const TenantProvider = ({ children }) => {
     let active = true;
     const handle = requestAnimationFrame(() => {
       setUiBrandName('');
+      setUiWorkspaceTitle('');
+      setIsBrandNameHeaderEnabled(true);
       getTenantSettingDoc(tenantId, 'branding').then((result) => {
         if (!active) return;
         if (!result?.ok || !result?.data) return;
         const branding = result.data;
         const nextName = String(branding.brandName || branding.companyName || '').trim();
+        const nextWorkspaceTitle = String(branding.workspaceTitle || '').trim();
+        const nextBrandNameHeaderEnabled = branding.isBrandNameHeaderEnabled !== false;
         setUiBrandName(nextName);
+        setUiWorkspaceTitle(nextWorkspaceTitle);
+        setIsBrandNameHeaderEnabled(nextBrandNameHeaderEnabled);
       });
     });
 
@@ -31,12 +39,16 @@ export const TenantProvider = ({ children }) => {
   const tenant = useMemo(() => {
     if (!baseTenant) return null;
     const effectiveName = uiBrandName || baseTenant.name;
+    const workspaceTitle = uiWorkspaceTitle || String(baseTenant.workspaceTitle || '').trim();
     return {
       ...baseTenant,
       name: effectiveName,
+      brandName: effectiveName,
       defaultName: baseTenant.name,
+      workspaceTitle,
+      isBrandNameHeaderEnabled,
     };
-  }, [baseTenant, uiBrandName]);
+  }, [baseTenant, uiBrandName, uiWorkspaceTitle, isBrandNameHeaderEnabled]);
 
   const value = useMemo(
     () => ({

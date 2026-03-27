@@ -5,7 +5,7 @@ import {
     checkIndividualDuplicate,
     generateDisplayClientId,
     previewDisplayClientId,
-    upsertTenantPortalTransaction,
+    createPortalTransactionWithBalance,
     sendTenantWelcomeEmail,
 } from '../../lib/backendStore';
 import { generateDisplayTxId, toSafeDocId } from '../../lib/txIdGenerator';
@@ -93,25 +93,27 @@ const removeEmptyEntries = (value) => {
     return value;
 };
 
-const IndividualRegistrationForm = ({ activeType, tenantId, user, onCancel, onSuccess }) => {
+const IndividualRegistrationForm = ({ activeType, tenantId, user, onCancel, onSuccess, initialData }) => {
+    const isEdit = !!initialData;
     const { tenant } = useTenant();
     const [portals, setPortals] = useState([]);
     const [nextId, setNextId] = useState('...');
+    const [showBalance, setShowBalance] = useState(false);
     const [form, setForm] = useState({
-        fullName: '',
-        idType: 'emirates_id',
-        idNumber: '',
-        unifiedNumber: '',
-        primaryMobile: '',
-        secondaryMobile: '',
-        mobileContacts: [createMobileContact()],
-        primaryEmail: '',
-        emailContacts: [{ id: 'init-1', value: '' }],
-        address: '',
-        poBox: '',
-        poBoxEmirate: '',
-        landline1: '',
-        landline2: '',
+        fullName: initialData?.fullName || '',
+        idType: initialData?.idType || initialData?.identificationMethod || 'emirates_id',
+        idNumber: initialData?.idNumber || initialData?.emiratesId || initialData?.passportNumber || '',
+        unifiedNumber: initialData?.unifiedNumber || '',
+        primaryMobile: initialData?.primaryMobile || '',
+        secondaryMobile: initialData?.secondaryMobile || '',
+        mobileContacts: initialData?.mobileContacts ? JSON.parse(JSON.stringify(initialData.mobileContacts)) : [createMobileContact()],
+        primaryEmail: initialData?.primaryEmail || '',
+        emailContacts: initialData?.emailContacts ? JSON.parse(JSON.stringify(initialData.emailContacts)) : [{ id: 'init-1', value: '' }],
+        address: initialData?.address || '',
+        poBox: initialData?.poBox || '',
+        poBoxEmirate: initialData?.poBoxEmirate || '',
+        landline1: initialData?.landline1 || '',
+        landline2: initialData?.landline2 || '',
         openingBalance: '',
         balanceType: '',
         createPortalTransaction: false,
@@ -130,6 +132,10 @@ const IndividualRegistrationForm = ({ activeType, tenantId, user, onCancel, onSu
     const closeConfirm = () => setConfirmDialog((prev) => ({ ...prev, open: false }));
 
     useEffect(() => {
+        if (isEdit) {
+            setNextId(initialData.displayClientId || initialData.id);
+            return;
+        }
         const loadInitialData = async () => {
             fetchTenantPortals(tenantId).then(res => {
                 if (res.ok) setPortals(res.rows);
@@ -138,7 +144,7 @@ const IndividualRegistrationForm = ({ activeType, tenantId, user, onCancel, onSu
             setNextId(previewId);
         };
         loadInitialData();
-    }, [tenantId]);
+    }, [tenantId, isEdit, initialData]);
 
     const handleOpeningBalanceChange = (nextValue) => {
         const parsed = Number(nextValue);
@@ -198,11 +204,15 @@ const IndividualRegistrationForm = ({ activeType, tenantId, user, onCancel, onSu
         submitLockRef.current = true;
         setIsSaving(true);
         let shouldUnlock = true;
-        setStatus({ type: 'info', message: 'Validating data...' });
+        setStatus({ type: 'info', message: isEdit ? 'Updating core data...' : 'Validating data...' });
 
         try {
-            if (!canUserPerformAction(tenantId, user, 'createClient')) {
+            if (!isEdit && !canUserPerformAction(tenantId, user, 'createClient')) {
                 setStatus({ type: 'error', message: "You don't have permission to create clients." });
+                return;
+            }
+            if (isEdit && !canUserPerformAction(tenantId, user, 'updateClient')) {
+                setStatus({ type: 'error', message: "You don't have permission to update clients." });
                 return;
             }
 
@@ -299,44 +309,44 @@ const IndividualRegistrationForm = ({ activeType, tenantId, user, onCancel, onSu
             };
             const finalPayload = removeEmptyEntries(finalPayloadRaw) || {};
 
-            setStatus({ type: 'info', message: 'Saving to database...' });
-            const res = await upsertClient(tenantId, null, finalPayload);
+            setStatus({ type: 'info', message: isEdit ? 'Updating database...' : 'Saving to database...' });
+            const res = await upsertClient(tenantId, isEdit ? initialData.id : null, finalPayload);
 
             if (res.ok) {
                 await createSyncEvent({
                     tenantId,
-                    eventType: 'create',
+                    eventType: isEdit ? 'update' : 'create',
                     entityType: 'client',
-                    entityId: res.id,
+                    entityId: isEdit ? initialData.id : res.id,
                     createdBy: user.uid,
                     changedFields: Object.keys(finalPayload),
                 });
 
-                if (normalized.createPortalTransaction && normalized.portalId && normalized.openingBalance > 0) {
+                if (!isEdit && normalized.createPortalTransaction && normalized.portalId && normalized.openingBalance > 0) {
                     const displayTxId = await generateDisplayTxId(tenantId, 'POR');
                     const portalTxId = toSafeDocId(displayTxId, 'tx');
                     const txAmount =
                         normalized.balanceType === 'debit'
                             ? -Math.abs(normalized.openingBalance)
                             : Math.abs(normalized.openingBalance);
-                    const txRes = await upsertTenantPortalTransaction(tenantId, portalTxId, {
+                    const txRes = await createPortalTransactionWithBalance(tenantId, portalTxId, {
                         portalId: normalized.portalId,
                         displayTransactionId: displayTxId,
                         amount: txAmount,
-                        type: 'Client Opening Balance',
+                        type: 'Client Balance',
                         method: normalized.portalMethod,
                         category: 'Client Onboarding',
-                        description: `Opening balance for ${normalized.fullName || normalized.emiratesId || normalized.passportNumber}`,
+                        description: `Balance for ${normalized.fullName || normalized.emiratesId || normalized.passportNumber}`,
                         clientId: res.id,
                         date: new Date().toISOString(),
                         createdBy: user.uid,
-                    });
+                    }, txAmount, user.uid);
                     if (!txRes.ok) {
                         setStatus({ type: 'error', message: txRes.error || 'Portal transaction failed during onboarding.' });
                         return;
                     }
                 }
-                if (normalized.sendWelcomeEmail) {
+                if (!isEdit && normalized.sendWelcomeEmail) {
                     const mailRes = await sendTenantWelcomeEmail(tenantId, {
                         toEmail: normalized.primaryEmail,
                         clientName: normalized.fullName,
@@ -374,7 +384,7 @@ const IndividualRegistrationForm = ({ activeType, tenantId, user, onCancel, onSu
                                 { label: 'Client ID', value: displayId },
                                 { label: 'Identification', value: normalized.identificationMethod === 'passport' ? normalized.passportNumber : normalized.emiratesId },
                                 { label: 'Mobile', value: normalized.primaryMobile },
-                                { label: 'Opening Balance', value: String(normalized.openingBalance || 0) },
+                                { label: 'Balance', value: String(normalized.openingBalance || 0) },
                             ],
                         },
                     });
@@ -406,11 +416,11 @@ const IndividualRegistrationForm = ({ activeType, tenantId, user, onCancel, onSu
         <form onSubmit={handleSaveClick} className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <header className="mb-6 flex items-center justify-between border-b border-[var(--c-border)] pb-4">
                 <div>
-                    <h2 className="text-lg font-semibold text-[var(--c-text)] uppercase">{activeType} Registration</h2>
-                    <p className="text-xs font-semibold text-[var(--c-muted)]">Registering under {tenant?.name || tenantId}</p>
+                    <h2 className="text-lg font-semibold text-[var(--c-text)] uppercase">{isEdit ? 'Update Profile' : `${activeType} Registration`}</h2>
+                    <p className="text-xs font-semibold text-[var(--c-muted)]">{isEdit ? `Modifying entry in ${tenant?.name || tenantId}` : `Registering under ${tenant?.name || tenantId}`}</p>
                 </div>
                 <div className="text-right">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--c-muted)]">Next Available ID</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--c-muted)]">{isEdit ? 'Record ID' : 'Next Available ID'}</p>
                     <p className="text-base font-semibold text-[var(--c-accent)]">{nextId}</p>
                 </div>
             </header>
@@ -544,11 +554,11 @@ const IndividualRegistrationForm = ({ activeType, tenantId, user, onCancel, onSu
             <div className="rounded-2xl border-2 border-dashed border-[var(--c-border)] bg-[var(--c-panel)]/30 p-4">
                 <div className="mb-4 flex items-center gap-2">
                     <div className="h-2 w-2 rounded-full bg-[var(--c-accent)]" />
-                    <h3 className="text-sm font-semibold uppercase tracking-widest text-[var(--c-text)]">Opening Balance & Finance</h3>
+                    <h3 className="text-sm font-semibold uppercase tracking-widest text-[var(--c-text)]">Balance & Finance</h3>
                 </div>
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                     <div className="space-y-2">
-                        <label className="text-xs font-bold uppercase tracking-wider text-[var(--c-muted)]">Opening Balance</label>
+                        <label className="text-xs font-bold uppercase tracking-wider text-[var(--c-muted)]">Balance</label>
                         <div className="relative">
                             <DirhamIcon insideTab className="h-4 w-4 text-[var(--c-muted)]" />
                             <InputActionField
@@ -600,7 +610,8 @@ const IndividualRegistrationForm = ({ activeType, tenantId, user, onCancel, onSu
                                 methodPlaceholder="Select Method"
                                 disabled={!form.createPortalTransaction}
                                 showBalancePanel={form.createPortalTransaction && !!selectedPortal}
-                                showBalance
+                                showBalance={showBalance}
+                                onToggleBalance={() => setShowBalance((prev) => !prev)}
                                 projectedBalance={projectedBalance}
                                 currentBalanceTitle="Portal Balance"
                                 projectedBalanceTitle="After Posting"
@@ -634,7 +645,7 @@ const IndividualRegistrationForm = ({ activeType, tenantId, user, onCancel, onSu
                     disabled={isSaving}
                     className="compact-action flex-1 rounded-xl bg-[var(--c-accent)] py-2.5 text-sm font-semibold text-white shadow-lg shadow-[var(--c-accent)]/20 transition hover:opacity-90 disabled:opacity-50"
                 >
-                    {isSaving ? 'Registering...' : 'Register Individual'}
+                    {isSaving ? (isEdit ? 'Saving...' : 'Registering...') : (isEdit ? 'Save Changes' : 'Register Individual')}
                 </button>
                 <button
                     type="button"

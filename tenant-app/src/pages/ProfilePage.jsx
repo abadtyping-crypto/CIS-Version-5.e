@@ -258,6 +258,12 @@ const ProfilePage = () => {
           };
           setForm(initialForm);
           setOriginalForm(initialForm);
+          if (mine.displayName && mine.displayName !== user.displayName) {
+            patchSessionUser({ displayName: mine.displayName });
+          }
+          if (profileAvatar && profileAvatar !== user.photoURL) {
+            patchSessionUser({ photoURL: profileAvatar });
+          }
           return;
         }
 
@@ -274,7 +280,7 @@ const ProfilePage = () => {
     return () => {
       active = false;
     };
-  }, [tenantId, user?.uid, user?.displayName, user?.photoURL]);
+  }, [tenantId, user?.uid, user?.displayName, user?.photoURL, patchSessionUser]);
 
   const publicProfiles = useMemo(
     () => profiles.filter((item) => item.publicProfile === true),
@@ -470,7 +476,9 @@ const ProfilePage = () => {
                     </div>
                     <div className="text-center sm:text-left">
                       <h3 className="text-lg font-bold text-[var(--c-text)]">{form.displayName}</h3>
-                      <p className="text-sm text-[var(--c-accent)]">{form.headline || normalizeRoleLabel(user.role) || 'Staff'}</p>
+                      {form.headline || normalizeRoleLabel(user.role) ? (
+                        <p className="text-sm text-[var(--c-accent)]">{form.headline || normalizeRoleLabel(user.role)}</p>
+                      ) : null}
                       <div className="mt-2 flex items-center justify-center gap-2 sm:justify-start">
                         {form.publicProfile ? (
                           <span className={statusVisibleClass}>
@@ -486,41 +494,57 @@ const ProfilePage = () => {
                   </div>
 
                   <div className="grid gap-6 sm:grid-cols-2">
-                    <div className="space-y-1">
-                      <p className="text-xs font-bold tracking-wider text-[var(--c-muted)] uppercase">Self Intro</p>
-                      <p className="text-sm text-[var(--c-text)] leading-relaxed">{form.selfIntro || 'No introduction provided.'}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-xs font-bold tracking-wider text-[var(--c-muted)] uppercase">Bio / Summary</p>
-                      <p className="text-sm text-[var(--c-text)] leading-relaxed">{form.bio || 'No bio provided.'}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-xs font-bold tracking-wider text-[var(--c-muted)] uppercase">Education</p>
-                      <p className="text-sm text-[var(--c-text)] whitespace-pre-wrap">{form.education || 'Not specified'}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-xs font-bold tracking-wider text-[var(--c-muted)] uppercase">Work Experience</p>
-                      <p className="text-sm text-[var(--c-text)] whitespace-pre-wrap">{form.workExperience || 'Not specified'}</p>
-                    </div>
+                    {form.selfIntro ? (
+                      <div className="space-y-1">
+                        <p className="text-xs font-bold tracking-wider text-[var(--c-muted)] uppercase">Self Intro</p>
+                        <p className="text-sm text-[var(--c-text)] leading-relaxed">{form.selfIntro}</p>
+                      </div>
+                    ) : null}
+                    {form.bio ? (
+                      <div className="space-y-1">
+                        <p className="text-xs font-bold tracking-wider text-[var(--c-muted)] uppercase">Bio / Summary</p>
+                        <p className="text-sm text-[var(--c-text)] leading-relaxed">{form.bio}</p>
+                      </div>
+                    ) : null}
+                    {form.education ? (
+                      <div className="space-y-1">
+                        <p className="text-xs font-bold tracking-wider text-[var(--c-muted)] uppercase">Education</p>
+                        <p className="text-sm text-[var(--c-text)] whitespace-pre-wrap">{form.education}</p>
+                      </div>
+                    ) : null}
+                    {form.workExperience ? (
+                      <div className="space-y-1">
+                        <p className="text-xs font-bold tracking-wider text-[var(--c-muted)] uppercase">Work Experience</p>
+                        <p className="text-sm text-[var(--c-text)] whitespace-pre-wrap">{form.workExperience}</p>
+                      </div>
+                    ) : null}
                   </div>
 
-                  <div className="rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] p-4">
-                    <h4 className="text-xs font-bold tracking-wider text-[var(--c-muted)] uppercase">Social & Links</h4>
-                    <div className="mt-3 grid gap-3 sm:grid-cols-3">
-                      <div className="flex items-center gap-2 text-sm text-[var(--c-text)]">
-                        <span className="text-xs text-[var(--c-muted)]">LI:</span>
-                        <span className="truncate">{form.linkedin || '-'}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-[var(--c-text)]">
-                        <span className="text-xs text-[var(--c-muted)]">IG:</span>
-                        <span className="truncate">{form.instagram || '-'}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-[var(--c-text)]">
-                        <span className="text-xs text-[var(--c-muted)]">WS:</span>
-                        <span className="truncate">{form.website || '-'}</span>
+                  {(form.linkedin || form.instagram || form.website) ? (
+                    <div className="rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] p-4">
+                      <h4 className="text-xs font-bold tracking-wider text-[var(--c-muted)] uppercase">Social & Links</h4>
+                      <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                        {form.linkedin ? (
+                          <div className="flex items-center gap-2 text-sm text-[var(--c-text)]">
+                            <span className="text-xs text-[var(--c-muted)]">LI:</span>
+                            <span className="truncate">{form.linkedin}</span>
+                          </div>
+                        ) : null}
+                        {form.instagram ? (
+                          <div className="flex items-center gap-2 text-sm text-[var(--c-text)]">
+                            <span className="text-xs text-[var(--c-muted)]">IG:</span>
+                            <span className="truncate">{form.instagram}</span>
+                          </div>
+                        ) : null}
+                        {form.website ? (
+                          <div className="flex items-center gap-2 text-sm text-[var(--c-text)]">
+                            <span className="text-xs text-[var(--c-muted)]">WS:</span>
+                            <span className="truncate">{form.website}</span>
+                          </div>
+                        ) : null}
                       </div>
                     </div>
-                  </div>
+                  ) : null}
                 </div>
               ) : (
                 <div className="grid gap-5">
