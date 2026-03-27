@@ -32,8 +32,8 @@ contextBridge.exposeInMainWorld(
         resolveSovereignUrl: (localFilePath) => ipcRenderer.invoke('acis-pdf-resolve', { localFilePath }),
         onPdfDetected: (callback) => {
             const listener = (_event, data) => callback(data);
-            ipcRenderer.on('sync-event', listener);
-            return () => ipcRenderer.removeListener('sync-event', listener);
+            ipcRenderer.on('pdf-detected', listener);
+            return () => ipcRenderer.removeListener('pdf-detected', listener);
         },
         startScraping: (payload) => ipcRenderer.invoke('start-scraping', payload),
     },

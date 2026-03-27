@@ -12,10 +12,43 @@
     --c-accent: #e67e22;
     --c-bg: #fffbf2;
   }
+
+  [data-theme="dark"] {
+    --c-bg: #0f172a;
+    --c-surface: #1e293b;
+    --c-text: #f1f5f9;
+    --c-muted: #94a3b8;
+    --c-border: #334155;
+    --c-panel: color-mix(in srgb, var(--c-surface) 88%, black);
+  }
   
+  html {
+    background-color: var(--c-bg);
+  }
+
   body {
     background-color: var(--c-bg);
     color: var(--c-text);
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    transition: background-color 160ms ease, color 160ms ease;
+  }
+
+  input,
+  select,
+  textarea,
+  button {
+    color: inherit;
+  }
+
+  input,
+  select,
+  textarea {
+    background-color: var(--c-panel);
+    border-color: var(--c-border);
+    color: var(--c-text);
+  }
+
+  [data-theme="dark"] img {
+    filter: brightness(0.8) contrast(1.1);
   }
 }

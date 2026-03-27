@@ -486,7 +486,7 @@ const LoanManagementSection = ({ isOpen, onToggle, refreshKey }) => {
                                                     disabled={newPerson.emailContacts.length >= 3 || !String(newPerson.emailContacts[0]?.value || '').trim()}
                                                     aria-label="Add email"
                                                 >
-                                                    <Plus className="h-4 w-4" />
+                                                    <Plus strokeWidth={1.5} className="h-4 w-4" />
                                                 </button>
                                             </div>
                                             <div className="space-y-3">
@@ -546,7 +546,7 @@ const LoanManagementSection = ({ isOpen, onToggle, refreshKey }) => {
                                                             }`}
                                                             aria-label={contact.emailEnabled ? 'Disable email conversation for this address' : 'Enable email conversation for this address'}
                                                         >
-                                                            <Mail className="h-4 w-4" />
+                                                            <Mail strokeWidth={1.5} className="h-4 w-4" />
                                                         </button>
                                                         {newPerson.emailContacts.length > 1 ? (
                                                             <button
@@ -570,7 +570,7 @@ const LoanManagementSection = ({ isOpen, onToggle, refreshKey }) => {
                                                                 className="mt-1 inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] text-[var(--c-muted)] transition hover:border-rose-400/60 hover:bg-rose-500/10 hover:text-rose-400"
                                                                 aria-label="Remove email address"
                                                             >
-                                                                <X className="h-4 w-4" />
+                                                                <X strokeWidth={1.5} className="h-4 w-4" />
                                                             </button>
                                                         ) : null}
                                                     </div>

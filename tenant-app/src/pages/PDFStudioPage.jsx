@@ -60,14 +60,14 @@ const PDFStudioPage = () => {
               onClick={handlePrint}
               className="flex h-10 items-center gap-2 rounded-xl border border-[var(--c-border)] bg-[color:color-mix(in_srgb,white_92%,var(--c-surface)_8%)] px-4 font-semibold text-[var(--c-text)] shadow-sm transition hover:bg-[color:color-mix(in_srgb,white_85%,var(--c-surface)_15%)]"
             >
-              <Printer size={18} /> Print
+              <Printer strokeWidth={1.5} size={18} /> Print
             </button>
             <button
               type="button"
               onClick={handlePrint}
               className="flex h-10 items-center gap-2 rounded-xl bg-[var(--c-accent)] px-4 font-semibold text-[var(--c-on-accent)] shadow-md transition hover:opacity-90"
             >
-              <Download size={18} /> Download PDF
+              <Download strokeWidth={1.5} size={18} /> Download PDF
             </button>
           </div>
         </div>

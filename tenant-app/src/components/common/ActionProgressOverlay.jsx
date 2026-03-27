@@ -59,7 +59,7 @@ const ActionProgressOverlay = ({
         <div
           className="acis-action-loader-shell glass relative flex h-[18rem] w-[18rem] items-center justify-center overflow-hidden rounded-[2.2rem] border"
           style={{
-            borderColor: 'color-mix(in srgb, var(--glass-border) 70%, white 30%)',
+            borderColor: 'var(--c-border)',
             boxShadow: `0 24px 70px -34px ${preset.glow}, var(--glass-shadow)`,
           }}
         >

@@ -121,7 +121,7 @@ const SingleEmailInput = ({ id, value, onChange, onAppend, placeholder, errorMes
         }`}
       >
         <div className="flex shrink-0 items-center justify-center border-r border-[var(--c-border)] bg-[var(--c-panel)] px-4 text-[var(--c-muted)]">
-          <Mail className="h-4 w-4" />
+          <Mail strokeWidth={1.5} className="h-4 w-4" />
         </div>
         
         <input
@@ -152,7 +152,7 @@ const SingleEmailInput = ({ id, value, onChange, onAppend, placeholder, errorMes
             className="flex h-[56px] w-[56px] shrink-0 items-center justify-center text-[var(--c-muted)] hover:text-[var(--c-accent)] transition-colors"
             title="Paste from clipboard"
           >
-            <ClipboardPaste className="h-4 w-4" />
+            <ClipboardPaste strokeWidth={1.5} className="h-4 w-4" />
           </button>
         )}
 
@@ -163,7 +163,7 @@ const SingleEmailInput = ({ id, value, onChange, onAppend, placeholder, errorMes
             className="flex h-[56px] w-[56px] shrink-0 items-center justify-center border-l border-[var(--c-border)] bg-[var(--c-panel)] text-[var(--c-muted)] transition hover:bg-[color:color-mix(in_srgb,var(--c-accent)_10%,var(--c-panel))] hover:text-[var(--c-accent)]"
             aria-label="Add additional email"
           >
-            <Plus className="h-5 w-5" />
+            <Plus strokeWidth={1.5} className="h-5 w-5" />
           </button>
         ) : null}
       </div>
@@ -198,7 +198,7 @@ const SingleEmailInput = ({ id, value, onChange, onAppend, placeholder, errorMes
                   className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition text-[var(--c-text)] hover:bg-[color:color-mix(in_srgb,var(--c-surface)_38%,var(--c-panel)_62%)]"
                 >
                   <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[var(--c-surface)] border border-[color:color-mix(in_srgb,var(--c-border)_40%,transparent)]">
-                    {BRAND_ICONS[domainObj.name] || <Mail className="h-4 w-4 text-[var(--c-muted)]" />}
+                    {BRAND_ICONS[domainObj.name] || <Mail strokeWidth={1.5} className="h-4 w-4 text-[var(--c-muted)]" />}
                   </div>
                   <span className="min-w-0 flex-1 truncate text-sm font-bold text-[color:color-mix(in_srgb,var(--c-text)_90%,transparent)]">
                     <span className="text-[var(--c-text)]">{prefix}</span>
@@ -275,7 +275,7 @@ export default function EmailContactsField({
                   className="flex h-[56px] w-[56px] shrink-0 items-center justify-center rounded-2xl bg-[var(--c-surface)] text-[var(--c-muted)] transition-all duration-300 hover:bg-rose-500/10 hover:text-rose-400"
                   aria-label="Remove email"
                 >
-                  <X className="h-5 w-5" />
+                  <X strokeWidth={1.5} className="h-5 w-5" />
                 </button>
               ) : null}
             </div>

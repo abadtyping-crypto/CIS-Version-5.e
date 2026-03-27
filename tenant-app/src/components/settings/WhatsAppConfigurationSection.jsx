@@ -110,13 +110,13 @@ const WhatsAppConfigurationSection = () => {
       <div className="space-y-6">
         {/* Info banner */}
         <div className="flex items-start gap-3 rounded-xl border border-teal-500/20 bg-teal-500/5 px-4 py-3">
-          <Info className="mt-0.5 h-4 w-4 shrink-0 text-teal-400" />
+          <Info strokeWidth={1.5} className="mt-0.5 h-4 w-4 shrink-0 text-teal-400" />
           <p className="text-xs font-medium text-teal-300 leading-relaxed">
             WhatsApp integration requires a Facebook Developer account and a WhatsApp Business Platform setup.
             You can find your credentials in the{' '}
             <a href="https://developers.facebook.com/apps/" target="_blank" rel="noreferrer"
               className="underline hover:text-teal-200 inline-flex items-center gap-0.5">
-              Meta App Dashboard<ExternalLink className="h-3 w-3 ml-0.5" />
+              Meta App Dashboard<ExternalLink strokeWidth={1.5} className="h-3 w-3 ml-0.5" />
             </a>.
           </p>
         </div>
@@ -208,7 +208,7 @@ const WhatsAppConfigurationSection = () => {
                 disabled={isTesting || !config.testRecipient}
                 className="inline-flex items-center gap-2 rounded-xl bg-teal-500/10 border border-teal-500/20 px-4 py-2 text-sm font-bold text-teal-400 hover:bg-teal-500/20 transition disabled:opacity-50 whitespace-nowrap"
               >
-                {isTesting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                {isTesting ? <Loader2 strokeWidth={1.5} className="h-4 w-4 animate-spin" /> : <Send strokeWidth={1.5} className="h-4 w-4" />}
                 Send Test
               </button>
             </div>
@@ -223,7 +223,7 @@ const WhatsAppConfigurationSection = () => {
             disabled={isSaving}
             className="inline-flex items-center gap-2 rounded-xl bg-(--c-accent) px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-(--c-accent)/20 transition hover:opacity-90 disabled:opacity-50"
           >
-            {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}
+            {isSaving && <Loader2 strokeWidth={1.5} className="h-4 w-4 animate-spin" />}
             {isSaving ? 'Saving…' : 'Save Configuration'}
           </button>
           

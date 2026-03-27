@@ -45,7 +45,7 @@ const ImageStudio = ({
             <div className="flex items-center justify-between border-b border-[var(--c-border)] bg-[var(--c-panel)] px-5 py-4">
                 <div className="flex items-center gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--c-accent)]/10 text-[var(--c-accent)]">
-                        <ImageIcon className="h-5 w-5" />
+                        <ImageIcon strokeWidth={1.5} className="h-5 w-5" />
                     </div>
                     <div>
                         <h3 className="text-sm font-black text-[var(--c-text)]">{title}</h3>
@@ -58,7 +58,7 @@ const ImageStudio = ({
                         className="flex h-9 w-9 items-center justify-center rounded-xl text-[var(--c-muted)] transition hover:bg-rose-500/10 hover:text-rose-500"
                         title="Clear Workspace"
                     >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 strokeWidth={1.5} className="h-4 w-4" />
                     </button>
                 </div>
             </div>
@@ -89,7 +89,7 @@ const ImageStudio = ({
                 ) : (
                     <div className="flex h-full w-full flex-col items-center justify-center gap-4 bg-[var(--c-panel)] text-center p-8">
                         <div className="h-16 w-16 mb-2 rounded-full border-2 border-dashed border-[var(--c-border)] flex items-center justify-center text-[var(--c-border)]">
-                            <ImageIcon className="h-8 w-8" />
+                            <ImageIcon strokeWidth={1.5} className="h-8 w-8" />
                         </div>
                         <p className="text-sm font-bold text-[var(--c-text)]">No image selected</p>
                         <p className="max-w-[200px] text-xs leading-relaxed text-[var(--c-muted)]">Upload a high-quality logo or photo to start editing in the studio.</p>
@@ -114,7 +114,7 @@ const ImageStudio = ({
                                     <span className="text-[10px] font-bold text-[var(--c-accent)]">{(zoom * 100).toFixed(0)}%</span>
                                 </div>
                                 <div className="flex items-center gap-3">
-                                    <button onClick={handleZoomOut} className="text-[var(--c-muted)] hover:text-[var(--c-accent)]"><ZoomOut className="h-4 w-4" /></button>
+                                    <button onClick={handleZoomOut} className="text-[var(--c-muted)] hover:text-[var(--c-accent)]"><ZoomOut strokeWidth={1.5} className="h-4 w-4" /></button>
                                     <input
                                         type="range"
                                         min={minZoom}
@@ -124,7 +124,7 @@ const ImageStudio = ({
                                         onChange={(e) => setZoom(Number(e.target.value))}
                                         className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-[var(--c-surface)] accent-[var(--c-accent)]"
                                     />
-                                    <button onClick={handleZoomIn} className="text-[var(--c-muted)] hover:text-[var(--c-accent)]"><ZoomIn className="h-4 w-4" /></button>
+                                    <button onClick={handleZoomIn} className="text-[var(--c-muted)] hover:text-[var(--c-accent)]"><ZoomIn strokeWidth={1.5} className="h-4 w-4" /></button>
                                 </div>
                             </div>
 
@@ -136,14 +136,14 @@ const ImageStudio = ({
                                         onClick={handleRotateLeft}
                                         className="flex h-10 w-10 items-center justify-center rounded-xl transition hover:bg-[var(--c-panel)] hover:text-[var(--c-accent)]"
                                     >
-                                        <RotateCcw className="h-4 w-4" />
+                                        <RotateCcw strokeWidth={1.5} className="h-4 w-4" />
                                     </button>
                                     <div className="h-4 w-[1px] bg-[var(--c-border)] mx-1" />
                                     <button
                                         onClick={handleRotateRight}
                                         className="flex h-10 w-10 items-center justify-center rounded-xl transition hover:bg-[var(--c-panel)] hover:text-[var(--c-accent)]"
                                     >
-                                        <RotateCw className="h-4 w-4" />
+                                        <RotateCw strokeWidth={1.5} className="h-4 w-4" />
                                     </button>
                                 </div>
                             </div>
@@ -161,7 +161,7 @@ const ImageStudio = ({
                         {/* Tip Box */}
                         <div className="hidden items-center gap-4 rounded-2xl bg-[var(--c-accent)]/5 px-4 lg:flex">
                             <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-white shadow-sm">
-                                <Maximize className="h-5 w-5 text-[var(--c-accent)]" />
+                                <Maximize strokeWidth={1.5} className="h-5 w-5 text-[var(--c-accent)]" />
                             </div>
                             <p className="max-w-[150px] text-[10px] font-medium leading-relaxed text-[var(--c-text)]">
                                 <span className="font-black text-[var(--c-accent)]">SMART TIP:</span> Use mouse drag to move and wheel to zoom instantly.
@@ -174,7 +174,7 @@ const ImageStudio = ({
                         <div className="border-t border-[var(--c-border)] pt-5">
                             <div className="mb-3 flex items-center justify-between">
                                 <span className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[var(--c-muted)]">
-                                    <SlidersHorizontal className="h-3 w-3" />
+                                    <SlidersHorizontal strokeWidth={1.5} className="h-3 w-3" />
                                     Visual Enhancement
                                 </span>
                                 <span className="text-[10px] font-bold text-[var(--c-accent)]">{filterMap[filter]?.label || 'Natural'}</span>

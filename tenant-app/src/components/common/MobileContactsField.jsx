@@ -124,7 +124,7 @@ const MobileContactsField = ({
                     className="flex h-[56px] w-[56px] shrink-0 items-center justify-center rounded-2xl bg-[var(--c-surface)] text-[var(--c-muted)] transition-all duration-300 hover:bg-rose-500/10 hover:text-rose-400"
                     aria-label="Remove mobile number"
                   >
-                    <X className="h-4 w-4" />
+                    <X strokeWidth={1.5} className="h-4 w-4" />
                   </button>
                 </div>
               ) : null}

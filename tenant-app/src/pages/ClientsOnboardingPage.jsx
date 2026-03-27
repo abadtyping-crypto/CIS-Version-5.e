@@ -113,7 +113,7 @@ const ClientsOnboardingPage = () => {
                                         type="button"
                                         onClick={() => canCreateClient && setMobileView(type.id)}
                                         disabled={!canCreateClient}
-                                        className="compact-action flex items-center gap-3 rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] px-3 text-left hover:border-[var(--c-accent)] disabled:cursor-not-allowed disabled:opacity-50"
+                                        className="flex h-14 items-center gap-3 rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)] px-4 text-left hover:border-[var(--c-accent)] disabled:cursor-not-allowed disabled:opacity-50"
                                     >
                                         <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#F8F9FA] shadow-sm">
                                             <img src={type.icon} alt={type.label} className="h-full w-full object-cover" />
@@ -124,10 +124,10 @@ const ClientsOnboardingPage = () => {
                                 <button
                                     type="button"
                                     onClick={() => setMobileView('list')}
-                                    className="compact-action mt-1 flex items-center gap-3 rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] px-3 text-left hover:border-[var(--c-accent)]"
+                                    className="mt-1 flex h-14 items-center gap-3 rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)] px-4 text-left hover:border-[var(--c-accent)]"
                                 >
                                     <div className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--c-surface)]">
-                                        <Users className="h-4.5 w-4.5 text-[var(--c-accent)]" />
+                                        <Users strokeWidth={1.5} className="h-4.5 w-4.5 text-[var(--c-accent)]" />
                                     </div>
                                     <span className="text-sm font-bold text-[var(--c-text)]">Live Client List</span>
                                 </button>
@@ -142,7 +142,7 @@ const ClientsOnboardingPage = () => {
                                 onClick={() => setMobileView('actions')}
                                 className="inline-flex items-center gap-2 rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] px-3 py-2 text-xs font-bold text-[var(--c-text)]"
                             >
-                                <List className="h-4 w-4" />
+                                <List strokeWidth={1.5} className="h-4 w-4" />
                                 Back to Actions
                             </button>
                             <ClientLiveListSection
@@ -160,7 +160,7 @@ const ClientsOnboardingPage = () => {
                                 onClick={() => setMobileView('actions')}
                                 className="inline-flex items-center gap-2 rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] px-3 py-2 text-xs font-bold text-[var(--c-text)]"
                             >
-                                <List className="h-4 w-4" />
+                                <List strokeWidth={1.5} className="h-4 w-4" />
                                 Back to Actions
                             </button>
                             {renderFormByType(currentFormType, () => setMobileView('actions'))}

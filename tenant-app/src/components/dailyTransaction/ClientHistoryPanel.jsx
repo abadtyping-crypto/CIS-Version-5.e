@@ -33,7 +33,7 @@ const ClientHistoryPanel = ({ tenantId, clientId, onClone }) => {
     <div className="rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)]/30 overflow-hidden">
       <header className="flex items-center justify-between px-4 py-3 border-b border-[var(--c-border)] bg-[var(--c-panel)]">
         <div className="flex items-center gap-2">
-          <History size={14} className="text-[var(--c-accent)]" />
+          <History strokeWidth={1.5} size={14} className="text-[var(--c-accent)]" />
           <h3 className="text-[10px] font-black uppercase tracking-widest text-[var(--c-text)]">Client PI History</h3>
         </div>
         <span className="text-[10px] font-bold text-[var(--c-muted)] uppercase">{history.length} Recent</span>
@@ -78,14 +78,14 @@ const ClientHistoryPanel = ({ tenantId, clientId, onClone }) => {
                   title="Clone Items"
                   className="rounded-lg p-1.5 text-[var(--c-muted)] hover:bg-[var(--c-accent)]/10 hover:text-[var(--c-accent)] transition-colors"
                 >
-                  <Copy size={14} />
+                  <Copy strokeWidth={1.5} size={14} />
                 </button>
                 <a
                   href={`/t/${tenantId}/proforma-invoices?id=${pi.id}`}
                   title="View Details"
                   className="rounded-lg p-1.5 text-[var(--c-muted)] hover:bg-[var(--c-accent)]/10 hover:text-[var(--c-accent)] transition-colors"
                 >
-                  <ExternalLink size={14} />
+                  <ExternalLink strokeWidth={1.5} size={14} />
                 </a>
               </div>
             </div>
@@ -98,7 +98,7 @@ const ClientHistoryPanel = ({ tenantId, clientId, onClone }) => {
            type="button"
            className="w-full flex items-center justify-center gap-2 py-1.5 text-[10px] font-bold text-[var(--c-muted)] hover:text-[var(--c-accent)] transition-colors"
         >
-            <Search size={12} /> View All History
+            <Search strokeWidth={1.5} size={12} /> View All History
         </button>
       </footer>
     </div>

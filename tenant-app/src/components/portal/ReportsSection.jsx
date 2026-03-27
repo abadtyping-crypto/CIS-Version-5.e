@@ -48,7 +48,7 @@ const ReportsSection = ({ isOpen, onToggle, refreshKey }) => {
 
         const pdfRes = await generateTenantPdf({
             tenantId,
-            documentType: 'statement',
+            documentType: 'portalStatement',
             data: {
                 txId: `ST-${Date.now()}`,
                 date: new Date().toLocaleDateString(),

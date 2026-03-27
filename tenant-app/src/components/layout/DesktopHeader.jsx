@@ -377,7 +377,7 @@ const DesktopHeader = ({ tenant, user, onLogout, layoutMode = 'wide', onToggleSi
                                   {item.actionTakenBy ? (
                                     <div className="mt-2 rounded-lg bg-[var(--c-success-soft)] px-2 py-1.5 text-[10px] font-bold text-[var(--c-success)]">
                                       <div className="flex items-center gap-1.5">
-                                        <Check className="h-3 w-3" />
+                                        <Check strokeWidth={1.5} className="h-3 w-3" />
                                         <span>Taken by {item.actionTakenByUser?.displayName || 'System'}</span>
                                       </div>
                                     </div>
@@ -408,13 +408,13 @@ const DesktopHeader = ({ tenant, user, onLogout, layoutMode = 'wide', onToggleSi
                                           className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--c-accent)]/20 bg-[color:color-mix(in_srgb,var(--c-accent)_12%,var(--c-surface))] px-2.5 py-1 text-[10px] font-bold text-[var(--c-accent)] transition hover:border-[var(--c-accent)]/35 hover:bg-[color:color-mix(in_srgb,var(--c-accent)_18%,var(--c-surface))]"
                                           aria-label="Quick View"
                                         >
-                                          <Eye className="h-3.5 w-3.5" />
+                                          <Eye strokeWidth={1.5} className="h-3.5 w-3.5" />
                                           <span>Quick View</span>
                                         </button>
                                       ) : null}
                                       {item.routePath ? (
                                         <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-[var(--c-muted)]">
-                                          <ArrowUpRight className="h-3.5 w-3.5" />
+                                          <ArrowUpRight strokeWidth={1.5} className="h-3.5 w-3.5" />
                                           <span>Open in workspace</span>
                                         </span>
                                       ) : null}
@@ -457,7 +457,7 @@ const DesktopHeader = ({ tenant, user, onLogout, layoutMode = 'wide', onToggleSi
             className="compact-icon-action inline-flex items-center justify-center rounded-xl border border-[var(--c-danger)]/40 bg-[color:color-mix(in_srgb,var(--c-danger)_10%,var(--c-surface))] text-[var(--c-danger)] shadow-sm transition hover:border-[var(--c-danger)] hover:bg-[var(--c-danger-soft)]"
             aria-label="Logout"
           >
-            <LogOut className="h-5 w-5" />
+            <LogOut strokeWidth={1.5} className="h-5 w-5" />
           </button>
         </div>
       </div>

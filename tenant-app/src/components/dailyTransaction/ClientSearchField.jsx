@@ -108,7 +108,7 @@ const ClientSearchField = ({ onSelect, selectedId, placeholder = 'Search Client.
                 }`}
                 onClick={() => setIsOpen(true)}
             >
-                <Search size={16} className="text-[var(--c-muted)]" />
+                <Search strokeWidth={1.5} size={16} className="text-[var(--c-muted)]" />
                 <div className="flex-1 overflow-hidden">
                     {selectedClient ? (
                         <div className="flex items-center gap-2">
@@ -143,7 +143,7 @@ const ClientSearchField = ({ onSelect, selectedId, placeholder = 'Search Client.
                         }}
                         className="p-1 text-[var(--c-muted)] hover:text-rose-500"
                     >
-                        <ChevronRight size={14} className="rotate-90" />
+                        <ChevronRight strokeWidth={1.5} size={14} className="rotate-90" />
                     </button>
                 )}
             </div>
@@ -178,7 +178,7 @@ const ClientSearchField = ({ onSelect, selectedId, placeholder = 'Search Client.
                                             }}
                                             className="compact-action flex items-center gap-2 mx-auto rounded-xl bg-[var(--c-accent)] px-4 text-[10px] font-semibold text-white uppercase shadow-lg shadow-[var(--c-accent)]/20"
                                         >
-                                            <Plus size={12} /> Create New Client
+                                            <Plus strokeWidth={1.5} size={12} /> Create New Client
                                         </button>
                                     </div>
                                 ) : (
@@ -221,7 +221,7 @@ const ClientSearchField = ({ onSelect, selectedId, placeholder = 'Search Client.
                                                 }}
                                                 className="flex w-full items-center gap-2 rounded-xl border border-dashed border-[var(--c-border)] bg-[var(--c-panel)]/50 px-3 py-2 text-[10px] font-black uppercase text-[var(--c-muted)] hover:border-[var(--c-accent)] hover:text-[var(--c-accent)] transition-all"
                                             >
-                                                <Plus size={12} /> Not in list? Create New
+                                                <Plus strokeWidth={1.5} size={12} /> Not in list? Create New
                                             </button>
                                         </div>
                                     </>

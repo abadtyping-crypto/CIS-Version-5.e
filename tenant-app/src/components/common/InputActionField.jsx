@@ -121,7 +121,7 @@ const InputActionField = ({
                                 }`}
                             title="Copy to clipboard"
                         >
-                            {isCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                            {isCopied ? <Check strokeWidth={1.5} className="h-4 w-4" /> : <Copy strokeWidth={1.5} className="h-4 w-4" />}
                         </button>
                     ) : null}
                     {showPasteButton ? (
@@ -131,7 +131,7 @@ const InputActionField = ({
                             className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--c-muted)] transition-colors hover:bg-[var(--c-surface)] hover:text-[var(--c-accent)]"
                             title="Paste from clipboard"
                         >
-                            <ClipboardPaste className="h-4 w-4" />
+                            <ClipboardPaste strokeWidth={1.5} className="h-4 w-4" />
                         </button>
                     ) : null}
                 </div>
@@ -172,7 +172,7 @@ const InputActionField = ({
                         }`}
                     title="Copy to clipboard"
                 >
-                    {isCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                    {isCopied ? <Check strokeWidth={1.5} className="h-4 w-4" /> : <Copy strokeWidth={1.5} className="h-4 w-4" />}
                 </button>
             ) : null}
             {showPasteButton ? (
@@ -182,7 +182,7 @@ const InputActionField = ({
                     className="flex h-14 w-14 shrink-0 items-center justify-center text-[var(--c-muted)] transition-colors hover:text-[var(--c-accent)]"
                     title="Paste from clipboard"
                 >
-                    <ClipboardPaste className="h-4 w-4" />
+                    <ClipboardPaste strokeWidth={1.5} className="h-4 w-4" />
                 </button>
             ) : null}
             {onAppend ? (
@@ -193,7 +193,7 @@ const InputActionField = ({
                     aria-label={appendLabel}
                     title={appendLabel}
                 >
-                    <Plus className="h-4 w-4" />
+                    <Plus strokeWidth={1.5} className="h-4 w-4" />
                 </button>
             ) : null}
         </div>

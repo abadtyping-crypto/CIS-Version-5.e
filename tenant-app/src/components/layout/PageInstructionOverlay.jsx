@@ -96,7 +96,7 @@ const PageInstructionOverlay = ({ open = false, instructionID = '', onClose }) =
             className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] text-[var(--c-muted)] transition hover:border-[var(--c-accent)] hover:text-[var(--c-accent)]"
             aria-label="Close instructions"
           >
-            <X className="h-4.5 w-4.5" />
+            <X strokeWidth={1.5} className="h-4.5 w-4.5" />
           </button>
         </div>
 

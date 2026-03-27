@@ -40,26 +40,28 @@ import {
   resolvePortalTypeIcon,
 } from '../lib/transactionMethodConfig';
 
+const EMPTY_LEDGER_CELL = '—';
+
 const toDateText = (value) => {
-  if (!value) return '-';
+  if (!value) return EMPTY_LEDGER_CELL;
   if (typeof value?.toDate === 'function') return value.toDate().toLocaleString();
   if (typeof value?.toMillis === 'function') return new Date(value.toMillis()).toLocaleString();
   const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? '-' : parsed.toLocaleString();
+  return Number.isNaN(parsed.getTime()) ? EMPTY_LEDGER_CELL : parsed.toLocaleString();
 };
 
 const toDateOnlyText = (value) => {
-  if (!value) return '-';
+  if (!value) return EMPTY_LEDGER_CELL;
   if (typeof value?.toDate === 'function') {
     const d = value.toDate();
-    return Number.isNaN(d.getTime()) ? '-' : d.toISOString().slice(0, 10);
+    return Number.isNaN(d.getTime()) ? EMPTY_LEDGER_CELL : d.toISOString().slice(0, 10);
   }
   if (typeof value?.toMillis === 'function') {
     const d = new Date(value.toMillis());
-    return Number.isNaN(d.getTime()) ? '-' : d.toISOString().slice(0, 10);
+    return Number.isNaN(d.getTime()) ? EMPTY_LEDGER_CELL : d.toISOString().slice(0, 10);
   }
   const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? '-' : parsed.toISOString().slice(0, 10);
+  return Number.isNaN(parsed.getTime()) ? EMPTY_LEDGER_CELL : parsed.toISOString().slice(0, 10);
 };
 
 const METHOD_ASSET_MAP = {
@@ -109,7 +111,7 @@ const getStatusBadgeClass = (statusValue) => {
 };
 
 const formatValue = (value) => {
-  if (value === null || value === undefined) return '-';
+  if (value === null || value === undefined) return EMPTY_LEDGER_CELL;
   if (typeof value?.toDate === 'function' || typeof value?.toMillis === 'function') return toDateText(value);
   if (typeof value === 'object') return JSON.stringify(value);
   return String(value);
@@ -283,7 +285,7 @@ const PortalDetailPage = () => {
         >
           <img src={creator.avatar} alt={creator.name} className="h-6 w-6 rounded-full object-cover" />
           <span>{creator.name}</span>
-          <ExternalLink size={12} />
+          <ExternalLink strokeWidth={1.5} size={12} />
         </Link>
       );
     }
@@ -328,7 +330,7 @@ const PortalDetailPage = () => {
     const amount = Number(selectedTx.amount || 0);
     const amountLabel = Number.isFinite(amount)
       ? `${amount < 0 ? '-' : ''}<img src="/dirham.svg" class="dh-icon" alt="Dhs"> ${Math.abs(amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-      : '-';
+      : EMPTY_LEDGER_CELL;
 
     const html = `
       <!doctype html>
@@ -354,15 +356,15 @@ const PortalDetailPage = () => {
           <div class="slip">
             <div class="head">
               <h1 class="title">Transaction Slip</h1>
-              <p class="sub">${String(selectedTx.displayTransactionId || selectedTx.id || '-')}</p>
+              <p class="sub">${String(selectedTx.displayTransactionId || selectedTx.id || EMPTY_LEDGER_CELL)}</p>
             </div>
             <table>
-              <tr><td>Portal</td><td>${String(portalRef?.name || selectedTx.portalId || '-')}</td></tr>
-              <tr><td>Type</td><td>${String(selectedTx.type || '-')}</td></tr>
+              <tr><td>Portal</td><td>${String(portalRef?.name || selectedTx.portalId || EMPTY_LEDGER_CELL)}</td></tr>
+              <tr><td>Type</td><td>${String(selectedTx.type || EMPTY_LEDGER_CELL)}</td></tr>
               <tr><td>Amount</td><td class="amt">${amountLabel}</td></tr>
               <tr><td>Date</td><td>${toDateText(selectedTx.date || selectedTx.createdAt)}</td></tr>
-              <tr><td>Created By</td><td>${String(creator.name || '-')}</td></tr>
-              <tr><td>Description</td><td>${String(selectedTx.description || '-')}</td></tr>
+              <tr><td>Created By</td><td>${String(creator.name || EMPTY_LEDGER_CELL)}</td></tr>
+              <tr><td>Description</td><td>${String(selectedTx.description || EMPTY_LEDGER_CELL)}</td></tr>
             </table>
             <div class="foot">
               <span>Printed: ${new Date().toLocaleString()}</span>
@@ -759,7 +761,7 @@ const PortalDetailPage = () => {
         }
         return {
           date: toDateOnlyText(row.date || row.createdAt || row.updatedAt),
-          description: row.description || row.displayTransactionId || row.id || row.type || '-',
+          description: row.description || row.displayTransactionId || row.id || row.type || EMPTY_LEDGER_CELL,
           debit: amount < 0 ? Math.abs(amount) : 0,
           credit: amount > 0 ? amount : 0,
           balance: runningBalance,
@@ -1243,7 +1245,7 @@ const PortalDetailPage = () => {
                       })()}
                       <div>
                         <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--c-muted)]">Type</p>
-                        <span className="text-sm font-bold text-[var(--c-text)]">{portal.type || '-'}</span>
+                        <span className="text-sm font-bold text-[var(--c-text)]">{portal.type || EMPTY_LEDGER_CELL}</span>
                       </div>
                     </div>
                     <span className={`inline-flex items-center justify-center rounded-2xl border px-4 py-2 text-sm font-bold shadow-sm min-h-[58px] ${getStatusBadgeClass(portal.status)}`}>
@@ -1313,7 +1315,7 @@ const PortalDetailPage = () => {
                               key={statusOption}
                               type="button"
                               onClick={() => setForm((prev) => ({ ...prev, status: statusOption }))}
-                              className={`rounded-xl border px-3 py-2 text-sm font-semibold transition ${selected
+                              className={`flex h-14 items-center justify-center rounded-2xl border px-4 text-sm font-semibold transition ${selected
                                 ? getStatusBadgeClass(statusOption)
                                 : 'border-[var(--c-border)] bg-[var(--c-panel)] text-[var(--c-muted)] hover:border-[var(--c-accent)]/25 hover:text-[var(--c-text)]'
                                 }`}
@@ -1460,7 +1462,7 @@ const PortalDetailPage = () => {
                             key={item.value}
                             type="button"
                             onClick={() => setBalanceAdjustForm((prev) => ({ ...prev, direction: item.value }))}
-                            className={`rounded-xl border px-3 py-2 text-xs font-bold transition ${
+                            className={`flex h-14 items-center justify-center rounded-2xl border px-4 text-xs font-bold transition ${
                               balanceAdjustForm.direction === item.value
                                 ? 'border-[var(--c-accent)] bg-[var(--c-accent)]/12 text-[var(--c-accent)]'
                                 : 'border-[var(--c-border)] bg-[var(--c-panel)] text-[var(--c-muted)] hover:text-[var(--c-text)]'
@@ -1563,9 +1565,9 @@ const PortalDetailPage = () => {
                                 {row.displayTransactionId || row.id}
                               </button>
                             </td>
-                            <td className="py-2 pr-2 text-[var(--c-muted)]">{row.type || '-'}</td>
+                            <td className="py-2 pr-2 text-[var(--c-muted)]">{row.type || EMPTY_LEDGER_CELL}</td>
                             <td className={`py-2 pr-2 font-semibold ${amt < 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
-                              <CurrencyValue value={amt} iconSize="h-3.5 w-3.5" />
+                              {amt === 0 ? EMPTY_LEDGER_CELL : <CurrencyValue value={amt} iconSize="h-3.5 w-3.5" />}
                             </td>
                             <td className="py-2 pr-2">
                               <Link
@@ -1575,10 +1577,10 @@ const PortalDetailPage = () => {
                               >
                                 <img src={creator.avatar} alt={creator.name} className="h-6 w-6 rounded-full object-cover" />
                                 <span>{creator.name}</span>
-                                <ExternalLink size={12} />
+                                <ExternalLink strokeWidth={1.5} size={12} />
                               </Link>
                             </td>
-                            <td className="py-2 pr-2 text-[var(--c-muted)]">{row.description || '-'}</td>
+                            <td className="py-2 pr-2 text-[var(--c-muted)]">{row.description || EMPTY_LEDGER_CELL}</td>
                             <td className="py-2 text-[var(--c-muted)]">{toDateText(row.date || row.createdAt)}</td>
                           </tr>
                         );
@@ -1938,4 +1940,3 @@ const PortalDetailPage = () => {
 };
 
 export default PortalDetailPage;
-

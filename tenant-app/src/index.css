@@ -18,7 +18,6 @@
   --c-success: #15803d;
   --c-success-soft: rgba(21, 128, 61, 0.12);
   --c-warning: #b45309;
-  --c-warning-soft: rgba(180, 83, 9, 0.12);
   --c-danger: #dc2626;
   --c-danger-soft: rgba(220, 38, 38, 0.12);
   --c-info: #2563eb;
@@ -282,6 +281,11 @@ body {
 }
 
 /* Custom Desktop Scrollbars */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: var(--c-border) transparent;
+}
+
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -354,9 +358,11 @@ textarea {
   display: none;
 }
 
+/* webhint-disable compat-api/css */
 .no-drag {
   -webkit-app-region: no-drag;
 }
+/* webhint-enable compat-api/css */
 
 .brand-gradient-bg {
   background: var(--brand-gradient);
@@ -378,11 +384,11 @@ textarea {
 
 input[type="date"]::-webkit-calendar-picker-indicator {
   cursor: pointer;
-  filter: var(--calendar-filter, none);
+  filter: var(--calendar-picker-filter, none);
 }
 
 :root[data-theme='dark'] {
-  --calendar-filter: invert(1) brightness(1.5);
+  --calendar-picker-filter: invert(1) brightness(1.8);
 }
 
 .scrollbar-hide {

@@ -1,6 +1,6 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { PORTAL_STATEMENT_DISCLAIMER_TEXT, resolvePdfTemplateForRenderer } from './pdfTemplateRenderer';
+import { PORTAL_STATEMENT_DISCLAIMER_TEXT, resolvePdfTemplateForRenderer, PDF_DEFAULT_TEMPLATE } from './pdfTemplateRenderer';
 import { fetchTenantPdfTemplates, getTenantSettingDoc } from './backendStore';
 
 const resolveTemplateTerms = (template, data) => {
@@ -227,7 +227,7 @@ const generatePremiumPortalStatement = async ({
     const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
-    const margins = { left: 40, right: 40, top: 40, bottom: 40 };
+    const margins = { left: 40, right: 40, top: 40, bottom: 65 };
     const contentWidth = pageWidth - margins.left - margins.right;
 
     const accentHex = template?.accentColor || '#0f172a';
@@ -239,9 +239,7 @@ const generatePremiumPortalStatement = async ({
 
     // 2. Header Info
     let cursorY = margins.top + 10;
-    
     const rows = Array.isArray(data?.statementRows) ? data.statementRows : [];
-    const brandingName = String(branding?.legalName || branding?.brandName || 'Portal Activity').trim();
     
     // Left: Statement Title & Branding
     doc.setFont('helvetica', 'bold');
@@ -249,6 +247,7 @@ const generatePremiumPortalStatement = async ({
     doc.setTextColor(...accentRgb);
     doc.text('STATEMENT', margins.left, cursorY + 20);
 
+    const brandingName = String(branding?.legalName || branding?.brandName || 'Portal Activity').trim();
     doc.setFontSize(11);
     doc.setTextColor(15, 23, 42);
     doc.setFont('helvetica', 'bold');
@@ -283,6 +282,15 @@ const generatePremiumPortalStatement = async ({
       contactY += 11;
     });
 
+    // mica styling cues in header
+    doc.setFillColor(241, 245, 249);
+    doc.roundedRect(margins.left, cursorY - 10, contentWidth / 2 - 20, 75, 4, 4, 'F');
+    // Draw Logo if available
+    const logoUrl = branding?.logoUrl || branding?.iconUrl || '';
+    if (logoUrl) {
+      addImageWithFallbackFormat(doc, logoUrl, margins.left + 5, cursorY - 5, 40, 40);
+    }
+
 
     let openingBalance = rows.length > 0 && rows[0].description === 'Opening Balance' ? rows[0].balance : 0;
     let closingBalance = rows.length > 0 && rows[rows.length - 1].description === 'Closing Balance' ? rows[rows.length - 1].balance : 0;
@@ -301,7 +309,7 @@ const generatePremiumPortalStatement = async ({
     // 3. Statement Summary Details
     doc.setFillColor(248, 250, 252);
     doc.setDrawColor(226, 232, 240);
-    doc.roundedRect(margins.left, cursorY, contentWidth, 44, 6, 6, 'FD');
+    doc.roundedRect(margins.left, cursorY, contentWidth, 44, 4, 4, 'FD');
     
     doc.setFontSize(8);
     doc.setTextColor(100, 116, 139);
@@ -315,21 +323,22 @@ const generatePremiumPortalStatement = async ({
     
     const desc = String(data?.description || '');
     const periodMatch = desc.match(/(\d{4}-\d{2}-\d{2})\s+to\s+(\d{4}-\d{2}-\d{2})/);
-    const periodStr = periodMatch ? `${periodMatch[1]} to ${periodMatch[2]}` : 'All Time';
+    const periodStr = periodMatch ? `${periodMatch[1]} TO ${periodMatch[2]}` : 'ALL TIME';
     
     doc.text(periodStr, margins.left + 16, cursorY + 32);
-    doc.text(String(data?.txId || 'N/A'), margins.left + contentWidth / 2, cursorY + 32, { align: 'center' });
+    doc.text(String(data?.statementRef || data?.txId || 'N/A').toUpperCase(), margins.left + contentWidth / 2, cursorY + 32, { align: 'center' });
     doc.text(String(data?.date || new Date().toISOString().slice(0, 10)), margins.left + contentWidth - 16, cursorY + 32, { align: 'right' });
 
     cursorY += 64;
 
-    // 4. Financial Summary Cards
-    const cardSpacing = 10;
-    const cardWidth = (contentWidth - (cardSpacing * 3)) / 4;
+    // 4. Financial Summary Cards (Reworked for 5 essential values)
+    const cardSpacing = 8;
+    const cardWidth = (contentWidth - (cardSpacing * 4)) / 5;
     const cards = [
       { label: 'OPENING BALANCE', value: openingBalance, color: [100, 116, 139] },
-      { label: 'TOTAL IN (CREDITS)', value: creditTotal, color: [16, 185, 129] },
-      { label: 'TOTAL OUT (DEBITS)', value: debitTotal, color: [239, 68, 68] },
+      { label: 'TOTAL RECEIVED / DEPOSITED', value: creditTotal, color: [16, 185, 129] },
+      { label: 'TOTAL CREDIT', value: creditTotal, color: [5, 150, 105] }, // Placeholder separation
+      { label: 'TOTAL DEBIT', value: debitTotal, color: [239, 68, 68] },
       { label: 'CLOSING BALANCE', value: closingBalance, color: accentRgb },
     ];
 
@@ -337,29 +346,30 @@ const generatePremiumPortalStatement = async ({
       const cx = margins.left + (cardWidth + cardSpacing) * i;
       doc.setFillColor(255, 255, 255);
       doc.setDrawColor(226, 232, 240);
-      doc.roundedRect(cx, cursorY, cardWidth, 60, 6, 6, 'FD');
+      doc.roundedRect(cx, cursorY, cardWidth, 60, 4, 4, 'FD');
       
       doc.setFillColor(...c.color);
-      doc.roundedRect(cx, cursorY, cardWidth, 4, 6, 6, 'F');
+      doc.roundedRect(cx, cursorY, cardWidth, 4, 4, 4, 'F');
       doc.rect(cx, cursorY + 2, cardWidth, 2, 'F');
 
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(7);
+      doc.setFontSize(6.5);
       doc.setTextColor(100, 116, 139);
-      doc.text(c.label, cx + cardWidth / 2, cursorY + 20, { align: 'center' });
+      const labelLines = doc.splitTextToSize(c.label, cardWidth - 10);
+      doc.text(labelLines, cx + cardWidth / 2, cursorY + 16, { align: 'center' });
 
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(12);
+      doc.setFontSize(10.5);
       doc.setTextColor(15, 23, 42);
       
       const valText = formatAmount(c.value, { trimTrailingZeros: false });
       const valWidth = doc.getTextWidth(valText);
-      const iconSz = 8;
+      const iconSz = 7;
       const padding = 2;
       const totalW = dirhamIconBase64 ? (iconSz + padding + valWidth) : (doc.getTextWidth('Dhs ') + valWidth);
       const startX = cx + (cardWidth - totalW) / 2;
       
-      drawDirhamAmount(doc, dirhamIconBase64, c.value, startX, cursorY + 42, {
+      drawDirhamAmount(doc, dirhamIconBase64, c.value, startX, cursorY + 45, {
         iconSize: iconSz,
         trimTrailingZeros: false
       });
@@ -370,17 +380,20 @@ const generatePremiumPortalStatement = async ({
     // 5. Transactions Table
     autoTable(doc, {
       startY: cursorY,
-      head: [['Date', 'Transaction Description', 'Debit Out', 'Credit In', 'Balance']],
+      head: [['Date', 'Transaction Description', 'Credit In', 'Debit Out', 'Balance']],
       body: rows.map(r => {
-        const d = String(r.date || '-');
-        const descText = String(r.description || '-');
+        const d = String(r.date || '—');
+        const descText = String(r.description || '—');
         const isOpt = descText === 'Opening Balance' || descText === 'Closing Balance';
+        const creditVal = parseAmountText(r.credit);
+        const debitVal = parseAmountText(r.debit);
+        
         return [
           d,
           descText,
-          isOpt ? '' : formatAmount(r.debit, { trimTrailingZeros: false }),
-          isOpt ? '' : formatAmount(r.credit, { trimTrailingZeros: false }),
-          formatAmount(r.balance, { trimTrailingZeros: false }),
+          isOpt ? '' : (creditVal > 0 ? formatAmount(creditVal) : '—'),
+          isOpt ? '' : (debitVal > 0 ? formatAmount(debitVal) : '—'),
+          formatAmount(r.balance),
         ];
       }),
       theme: 'grid',
@@ -414,22 +427,30 @@ const generatePremiumPortalStatement = async ({
         const amountStr = String(hookData.cell.raw || '');
         const descText = String(hookData.row.raw[1] || '');
         const isOpt = descText === 'Opening Balance' || descText === 'Closing Balance';
+        const isLedgerAmountColumn = hookData.column.index === 2 || hookData.column.index === 3;
+        const amount = parseAmountText(amountStr);
         
         if (isOpt) {
             hookData.cell.styles.fontStyle = 'bold';
             hookData.cell.styles.textColor = [15, 23, 42];
             hookData.cell.styles.fillColor = [241, 245, 249];
         } else {
-            if (hookData.column.index === 2 && parseAmountText(amountStr) > 0) {
-              hookData.cell.styles.textColor = [220, 38, 38];
-            } else if (hookData.column.index === 3 && parseAmountText(amountStr) > 0) {
+            // Index 2 is Credit In (Emerald), Index 3 is Debit Out (Rose)
+            if (hookData.column.index === 2 && amount > 0) {
               hookData.cell.styles.textColor = [5, 150, 105];
+            } else if (hookData.column.index === 3 && amount > 0) {
+              hookData.cell.styles.textColor = [220, 38, 38];
             }
         }
 
-        if ((hookData.column.index === 2 || hookData.column.index === 3) && (!amountStr || parseAmountText(amountStr) === 0)) {
-           hookData.cell.text = isOpt ? [''] : ['-'];
-        } else if (hookData.column.index >= 2 && amountStr) {
+        // Zero-value sanitization
+        if (isLedgerAmountColumn && amount <= 0) {
+          delete hookData.cell.__dirhamText;
+          hookData.cell.text = isOpt ? [''] : ['—'];
+        } else if (hookData.column.index >= 2 && amountStr && amount !== 0) {
+          hookData.cell.__dirhamText = amountStr;
+          hookData.cell.text = [''];
+        } else if (hookData.column.index === 4) {
           hookData.cell.__dirhamText = amountStr;
           hookData.cell.text = [''];
         }
@@ -440,18 +461,7 @@ const generatePremiumPortalStatement = async ({
         if (hookData.column.index < 2) return;
         
         const text = hookData.cell.__dirhamText;
-        const descText = String(hookData.row.raw[1] || '');
-        const isOpt = descText === 'Opening Balance' || descText === 'Closing Balance';
-        if (isOpt && (hookData.column.index === 2 || hookData.column.index === 3)) return;
-        
-        if (!text || text === '-' || (parseAmountText(text) === 0 && hookData.column.index !== 4)) {
-          if ((hookData.column.index === 2 || hookData.column.index === 3) && parseAmountText(text) === 0 && !isOpt) {
-            doc.setFont('helvetica', 'normal');
-            doc.setFontSize(8.5);
-            doc.text('-', hookData.cell.x + hookData.cell.width - 12, hookData.cell.y + hookData.cell.height / 2 + 3, { align: 'right' });
-          }
-          return;
-        }
+        if (!text) return;
         
         const { x, y, width, height } = hookData.cell;
         const padding = 6;
@@ -463,10 +473,13 @@ const generatePremiumPortalStatement = async ({
 
         try {
           doc.addImage(dirhamIconBase64, 'PNG', startX, iconY, iconSz, iconSz);
-        } catch { /* */ }
+        } catch { /* fallback to text drawing handled by jspdf if needed */ }
 
         doc.setFont('helvetica', hookData.cell.styles.fontStyle || 'normal');
         doc.setFontSize(hookData.cell.styles.fontSize || 8.5);
+        if (hookData.cell.styles.textColor) {
+          doc.setTextColor(...hookData.cell.styles.textColor);
+        }
         doc.text(text, startX + iconSz + 2, textY);
       }
     });
@@ -535,7 +548,6 @@ export const generateTenantPdf = async ({
   filename,
 }) => {
   try {
-    // Load the Dirham icon once; falls back gracefully to text if unavailable.
     const dirhamIconBase64 = await loadDirhamIconBase64();
     const templatesRes = await fetchTenantPdfTemplates(tenantId);
     if (!templatesRes.ok) throw new Error('Failed to fetch templates.');
@@ -545,21 +557,12 @@ export const generateTenantPdf = async ({
       templateDoc: templatesRes.byType[documentType],
     });
 
-    const {
-      showCompanyName = true,
-      showCompanyAddress = true,
-      showBankDetails = false,
-      showContactInfo = true,
-      bankAccountsVisibility = [true],
-      contactVisibilityMap = {},
-      billingAddressPosition = 'right',
-      portalLogoEnabled = true,
-      portalTableEnabled = true,
-      portalTableLayout = 'horizontal',
-    } = template;
-    const isPortalStatement = documentType === 'portalStatement';
+    const prefRes = await getTenantSettingDoc(tenantId, 'preferenceSettings');
+    const customizationDisabled = prefRes.ok && prefRes.data?.pdfCustomizationEnabled === false;
 
-    // Advanced filename resolution
+    const brandRes = await getTenantSettingDoc(tenantId, 'branding');
+    const branding = brandRes.ok && brandRes.data ? brandRes.data : {};
+
     let finalFilename = filename;
     if (!finalFilename) {
       const idRulesRes = await getTenantSettingDoc(tenantId, 'transactionIdRules');
@@ -572,15 +575,29 @@ export const generateTenantPdf = async ({
       }
     }
 
-    const brandRes = await getTenantSettingDoc(tenantId, 'branding');
-    const branding = brandRes.ok && brandRes.data ? brandRes.data : {};
+    const sourceTemplate = customizationDisabled ? PDF_DEFAULT_TEMPLATE : template;
+
+    const {
+      showCompanyName = true,
+      showCompanyAddress = true,
+      showBankDetails = false,
+      showContactInfo = true,
+      bankAccountsVisibility = [true],
+      contactVisibilityMap = {},
+      billingAddressPosition = 'right',
+      portalLogoEnabled = true,
+      portalTableEnabled = true,
+      portalTableLayout = 'horizontal',
+    } = sourceTemplate;
+
+    const isPortalStatement = documentType === 'portalStatement';
 
     if (isPortalStatement) {
       return await generatePremiumPortalStatement({
         data,
         save,
         returnBase64,
-        template,
+        template: sourceTemplate,
         branding,
         dirhamIconBase64,
         finalFilename,
@@ -778,15 +795,15 @@ export const generateTenantPdf = async ({
       const tableBody = useStatementRows
         ? (useVerticalPortalTable
           ? statementRows.flatMap((row, idx) => ([
-            [`Entry ${idx + 1} Date`, String(row?.date || '-')],
-            [`Entry ${idx + 1} Description`, String(row?.description || '-')],
+            [`Entry ${idx + 1} Date`, String(row?.date || '—')],
+            [`Entry ${idx + 1} Description`, String(row?.description || '—')],
             [`Entry ${idx + 1} Debit`, currencyCellText(row?.debit || 0)],
             [`Entry ${idx + 1} Credit`, currencyCellText(row?.credit || 0)],
             [`Entry ${idx + 1} Balance`, currencyCellText(row?.balance || 0)],
           ]))
           : statementRows.map((row) => ([
-            String(row?.date || '-'),
-            String(row?.description || '-'),
+            String(row?.date || '—'),
+            String(row?.description || '—'),
             currencyCellText(row?.debit || 0),
             currencyCellText(row?.credit || 0),
             currencyCellText(row?.balance || 0),
@@ -1047,5 +1064,3 @@ export const generateTenantPdf = async ({
     return { ok: false, error: error.message };
   }
 };
-
-

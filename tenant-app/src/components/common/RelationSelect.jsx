@@ -141,7 +141,7 @@ const RelationSelect = ({
           </span>
         </span>
         <span className="pr-4">
-          <ChevronDown className={`h-4 w-4 shrink-0 text-[var(--c-muted)] transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+          <ChevronDown strokeWidth={1.5} className={`h-4 w-4 shrink-0 text-[var(--c-muted)] transition-transform ${isOpen ? 'rotate-180' : ''}`} />
         </span>
       </button>
 
@@ -190,7 +190,7 @@ const RelationSelect = ({
                       />
                     </span>
                     <span className="min-w-0 flex-1 truncate text-sm font-bold">{item.label}</span>
-                    {isSelected ? <Check className="h-4 w-4 shrink-0 text-[var(--c-accent)]" /> : null}
+                    {isSelected ? <Check strokeWidth={1.5} className="h-4 w-4 shrink-0 text-[var(--c-accent)]" /> : null}
                   </button>
                 );
               })

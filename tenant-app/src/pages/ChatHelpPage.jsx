@@ -1,12 +1,11 @@
 import PageShell from '../components/layout/PageShell';
-import { InfoIcon } from '../components/icons/AppIcons';
 
 const ChatHelpPage = () => {
   return (
     <PageShell
       title="Chat Agent"
       subtitle="AI support workspace for guided actions."
-      icon={InfoIcon}
+      iconKey="notifications"
     >
       <div className="rounded-2xl border border-[var(--c-border)] bg-[color:color-mix(in_srgb,var(--c-surface)_86%,transparent)] p-4">
         <div className="flex items-center gap-3">

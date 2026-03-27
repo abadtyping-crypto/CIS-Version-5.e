@@ -26,7 +26,7 @@ const RefundLogPage = () => {
   return (
     <PageShell
       title="Refund & Cancellation Log"
-      icon={History}
+      iconKey="recycleBin"
       widthPreset="data"
       actionSlot={
         <p className="text-xs font-bold uppercase tracking-widest text-[var(--c-muted)]">
@@ -34,12 +34,12 @@ const RefundLogPage = () => {
         </p>
       }
     >
-      <div className="flex flex-col gap-4 relative" style={{ marginTop: 'var(--d-shell-header-h)' }}>
+      <div className="flex flex-col gap-4 relative">
         {loading ? (
              <p className="text-sm font-bold opacity-50 p-4 text-center">Loading refund logs...</p>
         ) : logs.length === 0 ? (
              <div className="compact-card glass border border-[var(--c-border)] shadow-sm text-center py-10 opacity-60 flex flex-col items-center">
-                 <History size={40} className="mb-3 text-[var(--c-muted)]" />
+                 <History strokeWidth={1.5} size={40} className="mb-3 text-[var(--c-muted)]" />
                  <p className="text-sm font-bold uppercase tracking-widest text-[var(--c-muted)]">No refund logs found</p>
              </div>
         ) : (
@@ -49,7 +49,7 @@ const RefundLogPage = () => {
                       <div className="flex justify-between items-start mb-3 border-b border-[var(--c-border)] pb-3">
                          <div>
                              <h4 className="font-bold text-base text-[var(--c-danger)] flex items-center gap-2">
-                                 <RotateCcw size={16} /> Refund Authorized
+                                 <RotateCcw strokeWidth={1.5} size={16} /> Refund Authorized
                              </h4>
                              <p className="text-[10px] font-black uppercase tracking-widest text-[var(--c-muted)] mt-1">
                                  ID: {log.refundLogId}
@@ -63,7 +63,7 @@ const RefundLogPage = () => {
 
                       <div className="flex flex-col gap-2 mb-4">
                           <p className="flex items-start gap-1.5 text-xs text-[var(--c-text)]">
-                              <AlertCircle size={14} className="mt-0.5 text-[var(--c-warning)] shrink-0" />
+                              <AlertCircle strokeWidth={1.5} size={14} className="mt-0.5 text-[var(--c-warning)] shrink-0" />
                               <span className="font-semibold line-clamp-3">{log.refundReason || 'No reason provided.'}</span>
                           </p>
                       </div>
@@ -80,7 +80,7 @@ const RefundLogPage = () => {
                              )}
                          </div>
                          <p className="flex items-center gap-1.5 text-[10px] font-bold text-[var(--c-muted)] uppercase tracking-widest">
-                             <Calendar size={12} />
+                             <Calendar strokeWidth={1.5} size={12} />
                              {log.createdAt ? new Date(log.createdAt?.seconds * 1000 || log.createdAt).toLocaleDateString() : 'N/A'}
                          </p>
                       </div>

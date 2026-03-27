@@ -62,21 +62,21 @@ const PortalListItem = ({ portal, onEdit, onDelete, onOpen, systemAssets }) => {
                     actionLabel="Open portal detail"
                     className="hover:text-[var(--c-accent)]"
                 >
-                    <ExternalLink className="h-3.5 w-3.5" />
+                    <ExternalLink strokeWidth={1.5} className="h-3.5 w-3.5" />
                 </ActionBtn>
                 <ActionBtn
                     onClick={onEdit}
                     actionLabel="Edit portal"
                     className="hover:text-[var(--c-accent)]"
                 >
-                    <Pencil className="h-3.5 w-3.5" />
+                    <Pencil strokeWidth={1.5} className="h-3.5 w-3.5" />
                 </ActionBtn>
                 <ActionBtn
                     onClick={onDelete}
                     actionLabel="Delete portal"
                     className="hover:text-rose-400"
                 >
-                    <Trash2 className="h-3.5 w-3.5" />
+                    <Trash2 strokeWidth={1.5} className="h-3.5 w-3.5" />
                 </ActionBtn>
             </div>
         </div>
@@ -171,7 +171,7 @@ const PortalSetupSection = ({ isOpen, onToggle, refreshKey }) => {
             onClick={handleAddNew}
             className="compact-action flex items-center gap-1.5 rounded-xl bg-[var(--c-accent)] px-3 text-xs font-semibold text-white shadow-sm transition hover:opacity-90"
         >
-            <Plus className="h-3.5 w-3.5" />
+            <Plus strokeWidth={1.5} className="h-3.5 w-3.5" />
             Add New Portal
         </button>
     );
@@ -192,14 +192,14 @@ const PortalSetupSection = ({ isOpen, onToggle, refreshKey }) => {
                     </div>
                 ) : portals.length === 0 ? (
                     <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-[var(--c-border)] bg-[var(--c-panel)] py-8">
-                        <Building2 className="h-8 w-8 text-[var(--c-muted)]/40" />
+                        <Building2 strokeWidth={1.5} className="h-8 w-8 text-[var(--c-muted)]/40" />
                         <p className="text-xs text-[var(--c-muted)]">No portals configured yet.</p>
                         <button
                             type="button"
                             onClick={handleAddNew}
                             className="compact-action flex items-center gap-1.5 rounded-xl border border-[var(--c-accent)]/40 px-4 text-xs font-semibold text-[var(--c-accent)] transition hover:bg-[var(--c-accent)]/10"
                         >
-                            <Plus className="h-3.5 w-3.5" />
+                            <Plus strokeWidth={1.5} className="h-3.5 w-3.5" />
                             Create your first portal
                         </button>
                     </div>

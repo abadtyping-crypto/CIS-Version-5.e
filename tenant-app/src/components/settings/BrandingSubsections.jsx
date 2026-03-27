@@ -38,7 +38,7 @@ export const CompanyInfoSection = React.memo(({
 }) => (
   <section className="space-y-3">
     <div className="flex items-center gap-2 border-b border-(--c-border) pb-2 text-(--c-accent)">
-      <Building2 className="h-5 w-5" />
+      <Building2 strokeWidth={1.5} className="h-5 w-5" />
       <span className="text-sm font-bold uppercase tracking-wider text-(--c-text)">Company Information</span>
     </div>
     
@@ -64,6 +64,26 @@ export const CompanyInfoSection = React.memo(({
         />
         {errors.brandName ? <p className="mt-1 text-xs text-rose-600">{errors.brandName}</p> : null}
       </label>
+
+      <div className="auto-fit-span-full">
+        <label className="flex items-center gap-3 p-4 rounded-2xl bg-(--c-panel) border border-(--c-border) cursor-pointer transition hover:bg-(--c-surface)">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-(--c-accent)/10 text-(--c-accent)">
+            <MapPin strokeWidth={1.5} className="h-6 w-6" />
+          </div>
+          <div className="flex-1">
+            <p className="text-xs font-bold uppercase tracking-widest text-(--c-text)">Branding Address Source</p>
+            <p className="text-[10px] text-(--c-muted)">Choose if PDFs use the tenant profile address or a custom branding address.</p>
+          </div>
+          <select 
+            value={form.addressSource || 'tenant'} 
+            onChange={(e) => updateField('addressSource', e.target.value)}
+            className="rounded-xl bg-(--c-surface) border border-(--c-border) px-4 py-2 text-xs font-bold text-(--c-text) outline-none focus:ring-2 focus:ring-(--c-accent)/20 transition"
+          >
+            <option value="tenant">Tenant Profile</option>
+            <option value="custom">Brand Specific Address</option>
+          </select>
+        </label>
+      </div>
 
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
@@ -91,7 +111,7 @@ export const CompanyInfoSection = React.memo(({
                     onClick={() => removeArrayField('landlines', idx)} 
                     className="flex h-[56px] w-[56px] shrink-0 items-center justify-center rounded-2xl bg-[var(--c-surface)] text-[var(--c-muted)] transition-all duration-300 hover:bg-rose-500/10 hover:text-rose-400 border border-[var(--c-border)]"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 strokeWidth={1.5} className="w-4 h-4" />
                   </button>
                 )}
               </div>
@@ -112,7 +132,7 @@ export const CompanyInfoSection = React.memo(({
             <div className="flex items-center justify-between">
               <span className={labelClass}>Company Addresses</span>
               <button type="button" onClick={() => addArrayField('addresses')} className="text-xs font-semibold text-(--c-accent) hover:underline flex items-center gap-1">
-                <Plus className="w-3 h-3" /> Add Address
+                <Plus strokeWidth={1.5} className="w-3 h-3" /> Add Address
               </button>
             </div>
         <div className="space-y-3">
@@ -133,7 +153,7 @@ export const CompanyInfoSection = React.memo(({
                   onClick={() => removeArrayField('addresses', idx)}
                   className="flex h-[72px] w-[56px] mt-6 shrink-0 items-center justify-center rounded-2xl bg-[var(--c-surface)] text-[var(--c-muted)] transition-all duration-300 hover:bg-rose-500/10 hover:text-rose-400 border border-[var(--c-border)]"
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <Trash2 strokeWidth={1.5} className="w-4 h-4" />
                 </button>
               )}
             </div>
@@ -240,7 +260,7 @@ export const SocialMediaSection = React.memo(({
   <section className="space-y-4">
     <div className="flex items-center justify-between gap-2 border-b border-(--c-border) pb-2 text-(--c-accent)">
       <div className="flex items-center gap-2">
-        <Share2 className="h-5 w-5" />
+        <Share2 strokeWidth={1.5} className="h-5 w-5" />
         <span className="text-sm font-bold uppercase tracking-wider text-(--c-text)">Social Media</span>
       </div>
       {activeSocialKeys.length < socialPlatforms.length ? (
@@ -249,7 +269,7 @@ export const SocialMediaSection = React.memo(({
           onClick={addSocialPlatform}
           className="flex items-center gap-1.5 rounded-lg bg-(--c-accent)/10 px-3 py-1.5 text-xs font-bold text-(--c-accent) transition hover:bg-(--c-accent)/20"
         >
-          <Plus className="h-3.5 w-3.5" />
+          <Plus strokeWidth={1.5} className="h-3.5 w-3.5" />
           Add Link
         </button>
       ) : null}
@@ -285,7 +305,7 @@ export const SocialMediaSection = React.memo(({
                   className="flex h-9 w-9 items-center justify-center rounded-xl bg-(--c-panel) text-(--c-muted) border border-(--c-border) hover:bg-rose-500/10 hover:text-rose-500 hover:border-rose-500/30 transition shadow-sm"
                   title="Remove link"
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 strokeWidth={1.5} className="h-4 w-4" />
                 </button>
               </div>
               
@@ -316,13 +336,12 @@ export const BankDetailsSection = React.memo(({
   updateBankDetailField,
   addBankDetail,
   removeBankDetail,
-  labelClass,
-  inputClass
+  labelClass
 }) => (
   <section className="space-y-4">
     <div className="flex items-center justify-between gap-2 border-b border-(--c-border) pb-2 text-(--c-accent)">
       <div className="flex items-center gap-2">
-        <Banknote className="h-5 w-5" />
+        <Banknote strokeWidth={1.5} className="h-5 w-5" />
         <span className="text-sm font-bold uppercase tracking-wider text-(--c-text)">Bank Details</span>
       </div>
       <button
@@ -331,7 +350,7 @@ export const BankDetailsSection = React.memo(({
         className="flex items-center gap-1.5 rounded-lg bg-(--c-accent)/10 px-3 py-1.5 text-xs font-bold text-(--c-accent) transition hover:bg-(--c-accent)/20"
         style={{ display: 'none' }}
       >
-        <Plus className="h-3.5 w-3.5" />
+        <Plus strokeWidth={1.5} className="h-3.5 w-3.5" />
         Add Bank
       </button>
     </div>
@@ -357,7 +376,7 @@ export const BankDetailsSection = React.memo(({
                   onClick={() => removeBankDetail(index)}
                   className="flex h-[32px] items-center gap-1 rounded-lg border border-rose-500/30 bg-rose-500/10 px-2.5 text-[11px] font-semibold text-rose-600 transition hover:bg-rose-500/20"
                 >
-                  <Trash2 className="h-3.5 w-3.5" />
+                  <Trash2 strokeWidth={1.5} className="h-3.5 w-3.5" />
                   Remove
                 </button>
               ) : null}
@@ -433,7 +452,7 @@ export const BankDetailsSection = React.memo(({
                   onClick={addBankDetail}
                   className="inline-flex items-center gap-1.5 rounded-lg border border-(--c-accent) bg-(--c-accent)/10 px-3 py-2 text-[11px] font-bold text-(--c-accent) transition hover:bg-(--c-accent)/16"
                 >
-                  <Plus className="h-3.5 w-3.5" />
+                  <Plus strokeWidth={1.5} className="h-3.5 w-3.5" />
                   Add Bank
                 </button>
               </div>
@@ -458,7 +477,7 @@ export const LogoLibrarySection = React.memo(({
   return (
     <section className="space-y-4">
     <div className="flex items-center gap-2 border-b border-(--c-border) pb-2 text-(--c-accent)">
-      <Library className="h-5 w-5" />
+      <Library strokeWidth={1.5} className="h-5 w-5" />
       <span className="text-sm font-bold uppercase tracking-wider text-(--c-text)">Logo Library</span>
     </div>
 
@@ -486,7 +505,7 @@ export const LogoLibrarySection = React.memo(({
                 <img src={slot.url} alt={slot.name} className="h-full w-full object-contain p-1" />
               ) : (
                 <div className="flex flex-col items-center gap-1 opacity-40">
-                  <Image className="h-4 w-4" />
+                  <Image strokeWidth={1.5} className="h-4 w-4" />
                   <span className="text-[10px] font-bold uppercase tracking-tighter">No Logo</span>
                 </div>
               )}
@@ -518,7 +537,7 @@ export const LogoLibrarySection = React.memo(({
                     onClick={() => removeLogoSlot(slot.slotId)}
                     className="flex h-7 w-7 items-center justify-center rounded-md bg-rose-500/10 text-rose-500 transition hover:bg-rose-500 hover:text-white"
                   >
-                    <Trash2 className="h-3.5 w-3.5" />
+                    <Trash2 strokeWidth={1.5} className="h-3.5 w-3.5" />
                   </button>
                 )}
               </div>
@@ -546,7 +565,7 @@ export const LogoUsageSection = React.memo(({
 }) => (
   <section className="space-y-4">
     <div className="flex items-center gap-2 border-b border-(--c-border) pb-2 text-(--c-accent)">
-      <Layout className="h-5 w-5" />
+      <Layout strokeWidth={1.5} className="h-5 w-5" />
       <span className="text-sm font-bold uppercase tracking-wider text-(--c-text)">Integration Mapping</span>
     </div>
 
@@ -569,7 +588,7 @@ export const LogoUsageSection = React.memo(({
                   <option key={opt.slotId} value={opt.slotId}>{opt.name || `Logo Slot ${opt.slotId.split('_')[1]}`}</option>
                 ))}
               </select>
-              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-(--c-muted) pointer-events-none" />
+              <ChevronDown strokeWidth={1.5} className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-(--c-muted) pointer-events-none" />
             </div>
           </div>
         ))}
@@ -596,9 +615,9 @@ export const LogoEditorSection = React.memo(({
   logoUploading,
   logoErrors
 }) => {
+  const [cropPosition, setCropPosition] = React.useState({ x: 0, y: 0 });
   if (!activeLogoEditorSlotId) return null;
   const targetSlot = logoLibrary.find(s => s.slotId === activeLogoEditorSlotId);
-  const [cropPosition, setCropPosition] = React.useState({ x: 0, y: 0 });
   
   return createPortal(
     <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/60 backdrop-blur-md p-3">
@@ -607,7 +626,7 @@ export const LogoEditorSection = React.memo(({
         <div className="flex items-center justify-between border-b border-white/5 bg-white/5 px-3 py-2.5">
           <div className="flex items-center gap-3">
             <div className="h-7 w-7 flex items-center justify-center rounded-lg bg-(--c-accent) text-white shadow-lg shadow-(--c-accent)/20">
-              <Image className="h-3.5 w-3.5" />
+              <Image strokeWidth={1.5} className="h-3.5 w-3.5" />
             </div>
             <div>
               <h3 className="text-sm font-bold text-white uppercase tracking-tight">Quick Crop</h3>
@@ -615,7 +634,7 @@ export const LogoEditorSection = React.memo(({
             </div>
           </div>
           <button onClick={closeLogoEditor} className="h-7 w-7 flex items-center justify-center rounded-full hover:bg-white/10 text-white/40 hover:text-white transition-all">
-            <X className="h-4 w-4" /> 
+            <X strokeWidth={1.5} className="h-4 w-4" /> 
           </button>
         </div>
 
@@ -626,19 +645,19 @@ export const LogoEditorSection = React.memo(({
               <Cropper
                 image={logoSourceUrl}
                 crop={cropPosition}
-                zoom={1}
-                rotation={0}
+                zoom={logoZoom || 1}
+                rotation={logoRotation || 0}
                 aspect={1}
-                cropShape="rect"
-                showGrid
-                zoomWithScroll={false}
                 onCropChange={setCropPosition}
+                onZoomChange={setLogoZoom}
+                onRotationChange={setRotationWrapper}
                 onCropComplete={onCropComplete}
+                classes={{ containerClassName: 'h-full w-full' }}
               />
             ) : (
               <label className="flex h-full w-full cursor-pointer flex-col items-center justify-center gap-4 transition hover:bg-white/[0.04]">
                 <div className="h-12 w-12 flex items-center justify-center rounded-full bg-white/5 text-white/20 border border-dashed border-white/10">
-                  <Plus className="h-6 w-6" />
+                  <Plus strokeWidth={1.5} className="h-6 w-6" />
                 </div>
                 <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Click to load image</span>
                 <input type="file" hidden accept="image/*" onChange={onLogoEditorFileChange} />
@@ -664,7 +683,7 @@ export const LogoEditorSection = React.memo(({
           {logoErrors[activeLogoEditorSlotId] && (
             <div className="mt-3 rounded-xl bg-rose-500/10 p-3">
               <p className="text-[10px] font-bold text-rose-400 uppercase flex items-center gap-2">
-                <Trash2 className="h-3.5 w-3.5" /> {logoErrors[activeLogoEditorSlotId]}
+                <Trash2 strokeWidth={1.5} className="h-3.5 w-3.5" /> {logoErrors[activeLogoEditorSlotId]}
               </p>
             </div>
           )}

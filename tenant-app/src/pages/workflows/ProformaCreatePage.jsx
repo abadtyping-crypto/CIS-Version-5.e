@@ -77,7 +77,7 @@ const ProformaCreatePage = () => {
   return (
     <PageShell
       title="Create Proforma"
-      icon={FileText}
+      iconKey="proformaInvoices"
       widthPreset="form"
       actionSlot={
         <button
@@ -85,12 +85,12 @@ const ProformaCreatePage = () => {
           onClick={handleSave}
           disabled={loading}
         >
-          <Save size={18} />
+          <Save strokeWidth={1.5} size={18} />
           {loading ? 'Saving...' : 'Save Proforma'}
         </button>
       }
     >
-      <div className="flex flex-col gap-6" style={{ marginTop: 'var(--d-shell-header-h)' }}>
+      <div className="flex flex-col gap-6">
         
         {/* Client Selection Card */}
         <div className="compact-card glass border border-[var(--c-border)] shadow-sm">
@@ -108,7 +108,7 @@ const ProformaCreatePage = () => {
               onClick={addItem}
               className="flex items-center gap-1 rounded-lg border border-[var(--c-ring)] bg-[var(--c-accent-soft)] px-3 py-1 text-xs font-bold text-[var(--c-accent)] hover:bg-[var(--c-accent)] hover:text-white transition-colors"
             >
-              <Plus size={14} /> Add Item
+              <Plus strokeWidth={1.5} size={14} /> Add Item
             </button>
           </div>
 
@@ -140,14 +140,14 @@ const ProformaCreatePage = () => {
                         onClick={() => updateItem(index, 'quantity', Math.max(1, (Number(item.quantity) || 1) + 1))}
                         className="flex h-1/2 items-center justify-center bg-[var(--c-surface)] text-[var(--c-muted)] transition hover:text-[var(--c-accent)]"
                       >
-                        <ChevronUp size={12} />
+                        <ChevronUp strokeWidth={1.5} size={12} />
                       </button>
                       <button
                         type="button"
                         onClick={() => updateItem(index, 'quantity', Math.max(1, (Number(item.quantity) || 1) - 1))}
                         className="flex h-1/2 items-center justify-center border-t border-[var(--c-border)] bg-[var(--c-surface)] text-[var(--c-muted)] transition hover:text-[var(--c-accent)]"
                       >
-                        <ChevronDown size={12} />
+                        <ChevronDown strokeWidth={1.5} size={12} />
                       </button>
                     </div>
                   </div>
@@ -169,7 +169,7 @@ const ProformaCreatePage = () => {
                     className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-50 text-rose-500 hover:bg-rose-100 transition-colors"
                     title="Remove item"
                   >
-                    <Trash2 size={16} />
+                    <Trash2 strokeWidth={1.5} size={16} />
                   </button>
                 )}
               </div>

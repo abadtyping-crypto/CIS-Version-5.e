@@ -423,7 +423,7 @@ const ApplicationIconLibrarySection = () => {
         {visibleTab === 'local' && !lockToUniversal && (
           <section className="space-y-4">
             <div className="flex items-center gap-2 border-b border-[var(--c-border)] pb-2 text-[var(--c-accent)]">
-              <Layout className="h-5 w-5" />
+              <Layout strokeWidth={1.5} className="h-5 w-5" />
               <span className="text-sm font-bold uppercase tracking-wider text-[var(--c-text)]">
                 {isEditing ? 'Edit Icon Details' : 'Add New Icon'}
               </span>
@@ -524,7 +524,7 @@ const ApplicationIconLibrarySection = () => {
         {/* Section 2: Library Items */}
         <section className="space-y-4">
           <div className="flex items-center gap-2 border-b border-[var(--c-border)] pb-2 text-[var(--c-accent)]">
-            <Library className="h-5 w-5" />
+            <Library strokeWidth={1.5} className="h-5 w-5" />
             <span className="text-sm font-bold uppercase tracking-wider text-[var(--c-text)]">
                {visibleTab === 'universal' ? 'Universal Developer Icons' : 'Local Library Items'}
             </span>
@@ -599,7 +599,7 @@ const ApplicationIconLibrarySection = () => {
                               <div className="min-w-0 flex-1">
                                 <p className="truncate text-sm font-bold text-[var(--c-text)]">{row.iconName}</p>
                                 <div className="flex items-center gap-1 mt-0.5">
-                                   <Globe className="h-3 w-3 text-sky-500" />
+                                   <Globe strokeWidth={1.5} className="h-3 w-3 text-sky-500" />
                                    <p className="truncate text-[10px] font-medium text-sky-500 uppercase tracking-widest">Universal</p>
                                 </div>
                               </div>

@@ -165,7 +165,7 @@ const MethodPill = ({ method, isSelected, isCustom, onToggle, onRemove, firestor
             ) : MethodIcon ? (
                 <MethodIcon className="h-4 w-4 text-[var(--c-muted)]" />
             ) : (
-                <Zap className="h-4 w-4 text-[var(--c-muted)]" />
+                <Zap strokeWidth={1.5} className="h-4 w-4 text-[var(--c-muted)]" />
             )}
         </div>
 
@@ -201,7 +201,7 @@ const MethodPill = ({ method, isSelected, isCustom, onToggle, onRemove, firestor
                     className="ml-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-[var(--c-muted)] opacity-0 transition hover:text-rose-400 group-hover:opacity-100"
                     aria-label={`Remove ${method.label}`}
                 >
-                    <X className="h-3.5 w-3.5" />
+                    <X strokeWidth={1.5} className="h-3.5 w-3.5" />
                 </button>
             )}
         </div>
@@ -910,7 +910,7 @@ const PortalFormPage = ({ embedded = false }) => {
                                     onClick={handleOpenLogoStudio}
                                     className="flex items-center gap-2 rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] px-4 py-2.5 text-xs font-bold text-[var(--c-text)] transition hover:border-[var(--c-accent)] hover:text-[var(--c-accent)]"
                                 >
-                                    <ImagePlus className="h-4 w-4" />
+                                    <ImagePlus strokeWidth={1.5} className="h-4 w-4" />
                                     {logoPreviewUrl ? 'Adjust Logo' : 'Upload Logo'}
                                 </button>
                                 {logoPreviewUrl && (
@@ -919,7 +919,7 @@ const PortalFormPage = ({ embedded = false }) => {
                                         onClick={handleLogoClear}
                                         className="flex items-center gap-1.5 rounded-xl border border-rose-500/30 px-3 py-2.5 text-xs font-bold text-rose-400 transition hover:bg-rose-500/10"
                                     >
-                                        <X className="h-3.5 w-3.5" />
+                                        <X strokeWidth={1.5} className="h-3.5 w-3.5" />
                                         Remove
                                     </button>
                                 )}
@@ -938,7 +938,7 @@ const PortalFormPage = ({ embedded = false }) => {
                                 </div>
                             ) : (
                                 <div className="flex h-24 w-24 items-center justify-center rounded-2xl border border-dashed border-[var(--c-border)] bg-[var(--c-surface)]">
-                                    <ImagePlus className="h-8 w-8 text-[var(--c-muted)]/50" />
+                                    <ImagePlus strokeWidth={1.5} className="h-8 w-8 text-[var(--c-muted)]/50" />
                                 </div>
                             )}
                             <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--c-muted)]">Logo Preview</span>
@@ -992,7 +992,7 @@ const PortalFormPage = ({ embedded = false }) => {
                             onClick={() => setIsAddCategoryOpen((value) => !value)}
                             className="flex items-center gap-1.5 rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] px-3 py-2 text-xs font-bold text-[var(--c-text)] transition hover:border-[var(--c-accent)] hover:text-[var(--c-accent)]"
                         >
-                            <Plus className="h-3.5 w-3.5" />
+                            <Plus strokeWidth={1.5} className="h-3.5 w-3.5" />
                             Add Custom Category
                         </button>
                     </div>
@@ -1023,7 +1023,7 @@ const PortalFormPage = ({ embedded = false }) => {
                                 onClick={() => { setIsAddCategoryOpen(false); setNewCategoryName(''); }}
                                 className="rounded-lg p-2 text-[var(--c-muted)] transition hover:text-[var(--c-text)]"
                             >
-                                <X className="h-4 w-4" />
+                                <X strokeWidth={1.5} className="h-4 w-4" />
                             </button>
                         </div>
                     )}
@@ -1044,7 +1044,7 @@ const PortalFormPage = ({ embedded = false }) => {
                                         aria-label={`Remove ${cat.label}`}
                                         title={`Remove ${cat.label}`}
                                     >
-                                        <X className="h-3.5 w-3.5" />
+                                        <X strokeWidth={1.5} className="h-3.5 w-3.5" />
                                     </button>
                                 ) : null}
                             </div>
@@ -1061,7 +1061,7 @@ const PortalFormPage = ({ embedded = false }) => {
                             onClick={() => setIsAddMethodOpen((v) => !v)}
                             className="flex items-center gap-1.5 rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] px-3 py-2 text-xs font-bold text-[var(--c-text)] transition hover:border-[var(--c-accent)] hover:text-[var(--c-accent)]"
                         >
-                            <Plus className="h-3.5 w-3.5" />
+                            <Plus strokeWidth={1.5} className="h-3.5 w-3.5" />
                             Add Custom
                         </button>
                     </div>
@@ -1094,7 +1094,7 @@ const PortalFormPage = ({ embedded = false }) => {
                                 onClick={() => { setIsAddMethodOpen(false); setNewMethodName(''); }}
                                 className="rounded-lg p-2 text-[var(--c-muted)] transition hover:text-[var(--c-text)]"
                             >
-                                <X className="h-4 w-4" />
+                                <X strokeWidth={1.5} className="h-4 w-4" />
                             </button>
                         </div>
                     )}
@@ -1140,7 +1140,7 @@ const PortalFormPage = ({ embedded = false }) => {
                         onClick={() => navigate(`/t/${tenantId}/portal-management`)}
                         className="flex items-center gap-2 rounded-xl border border-[var(--c-border)] px-6 py-3 text-sm font-bold text-[var(--c-text)] transition hover:bg-[var(--c-panel)]"
                     >
-                        <ArrowLeft className="h-4 w-4" />
+                        <ArrowLeft strokeWidth={1.5} className="h-4 w-4" />
                         Cancel
                     </button>
                 </div>
@@ -1160,7 +1160,7 @@ const PortalFormPage = ({ embedded = false }) => {
                                     onClick={handleCancelLogoStudio}
                                     className="rounded-lg p-1.5 text-[var(--c-muted)] transition hover:text-[var(--c-text)]"
                                 >
-                                    <X className="h-4 w-4" />
+                                    <X strokeWidth={1.5} className="h-4 w-4" />
                                 </button>
                             </div>
 

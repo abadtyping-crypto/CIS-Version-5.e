@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useLocation } from 'react-router-dom';
 import Cropper from 'react-easy-crop';
 import {
   Check,
@@ -26,11 +25,22 @@ import {
 } from 'firebase/firestore';
 import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { ProtectedLayout } from '../components/layout/ProtectedLayout';
+import { normalizePageID } from '../lib/pageIdNormalization';
 import { db, storage } from '../lib/firebase';
+import GenericSelectField from '../../../tenant-app/src/components/common/GenericSelectField';
 
 const MAX_VIDEO_SIZE_BYTES = 2 * 1024 * 1024; // 2MB
 const IMAGE_ACCEPT = 'image/png,image/jpeg,image/webp,image/gif';
 const VIDEO_ACCEPT = 'video/mp4,video/webm,video/quicktime';
+const SOVEREIGN_PAGE_REGISTRY = Object.freeze([
+  { route: 'dashboard', label: 'Dashboard' },
+  { route: 'daily-transactions', label: 'Daily Transactions' },
+  { route: 'receive-payments', label: 'Receive Payments' },
+  { route: 'portal-management', label: 'Portal Management' },
+  { route: 'clients-onboarding', label: 'Clients Onboarding' },
+  { route: 'expenses', label: 'Expenses' },
+  { route: 'invoices', label: 'Invoices' },
+]);
 
 const toSafeDocId = (value, fallback = 'instruction') => {
   const normalized = String(value || '')
@@ -42,14 +52,6 @@ const toSafeDocId = (value, fallback = 'instruction') => {
 };
 
 const toCleanName = (value) => String(value || '').trim();
-
-const normalizePageIdFromPathname = (pathname) => {
-  const raw = String(pathname || '').trim();
-  if (!raw) return '';
-  const cleaned = raw.replace(/^\/+/, '').replace(/\/+$/, '');
-  const firstSegment = cleaned.split('/')[0] || '';
-  return firstSegment.toLowerCase();
-};
 
 const extractStoragePathFromUrl = (url) => {
   if (!url || typeof url !== 'string') return null;
@@ -116,24 +118,24 @@ const getImageBlobFromCrop = (imageSrc, pixelCrop) => {
 };
 
 export const InstructionsLibraryPage = () => {
-  const location = useLocation();
-  const currentPageId = useMemo(
-    () => normalizePageIdFromPathname(location.pathname),
-    [location.pathname],
-  );
-
   const [rows, setRows] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
 
-  const [headerHelpEnabled, setHeaderHelpEnabled] = useState(true);
-  const [headerInstructionId, setHeaderInstructionId] = useState('');
-  const [isHeaderLinkLoading, setIsHeaderLinkLoading] = useState(true);
-  const [isHeaderLinkSaving, setIsHeaderLinkSaving] = useState(false);
-  const [headerLinkStatus, setHeaderLinkStatus] = useState('');
-  const [headerLinkError, setHeaderLinkError] = useState('');
+  const [pageRegistry, setPageRegistry] = useState(() =>
+    SOVEREIGN_PAGE_REGISTRY.map(({ route, label }) => ({
+      route: normalizePageID(route),
+      label,
+      instructionUID: '',
+      isHelpEnabled: false,
+    })),
+  );
+  const [isRegistryLoading, setIsRegistryLoading] = useState(true);
+  const [isRegistrySaving, setIsRegistrySaving] = useState(false);
+  const [registryStatus, setRegistryStatus] = useState('');
+  const [registryError, setRegistryError] = useState('');
 
   const [isCropOpen, setIsCropOpen] = useState(false);
   const [cropImageSrc, setCropImageSrc] = useState('');
@@ -191,24 +193,32 @@ export const InstructionsLibraryPage = () => {
 
   useEffect(() => {
     const run = async () => {
-      if (!currentPageId) return;
-      setIsHeaderLinkLoading(true);
-      setHeaderLinkError('');
-      setHeaderLinkStatus('');
+      setIsRegistryLoading(true);
+      setRegistryError('');
+      setRegistryStatus('');
       try {
-        const ref = doc(db, 'global_header_configs', currentPageId);
-        const snap = await getDoc(ref);
-        const data = snap.exists() ? snap.data() : null;
-        setHeaderHelpEnabled(data?.isHelpEnabled !== false);
-        setHeaderInstructionId(String(data?.instructionID || ''));
+        const nextRegistry = await Promise.all(
+          SOVEREIGN_PAGE_REGISTRY.map(async ({ route, label }) => {
+            const normalizedRoute = normalizePageID(route);
+            const snap = await getDoc(doc(db, 'global_page_instructions', normalizedRoute));
+            const data = snap.exists() ? (snap.data() || {}) : {};
+            return {
+              route: normalizedRoute,
+              label,
+              instructionUID: String(data?.instructionUID || '').trim(),
+              isHelpEnabled: data?.isHelpEnabled === true,
+            };
+          }),
+        );
+        setPageRegistry(nextRegistry);
       } catch (err) {
-        setHeaderLinkError(err?.message || 'Failed to load current page header config.');
+        setRegistryError(err?.message || 'Failed to load Sovereign Page Registry.');
       } finally {
-        setIsHeaderLinkLoading(false);
+        setIsRegistryLoading(false);
       }
     };
-    run();
-  }, [currentPageId]);
+    void run();
+  }, []);
 
   const rowsById = useMemo(() => {
     const map = {};
@@ -217,6 +227,13 @@ export const InstructionsLibraryPage = () => {
     });
     return map;
   }, [rows]);
+
+  const instructionOptions = useMemo(() => (
+    rows.map((row) => ({
+      value: row.id,
+      label: `${row.instructionName || row.id} (${row.id})`,
+    }))
+  ), [rows]);
 
   const resetCropState = () => {
     setIsCropOpen(false);
@@ -516,27 +533,37 @@ export const InstructionsLibraryPage = () => {
     }
   };
 
-  const handleSaveHeaderLink = async () => {
-    if (!currentPageId) return;
-    setIsHeaderLinkSaving(true);
-    setHeaderLinkError('');
-    setHeaderLinkStatus('');
-    try {
-      const ref = doc(db, 'global_header_configs', currentPageId);
-      const snap = await getDoc(ref);
-      const payload = {
-        isHelpEnabled: Boolean(headerHelpEnabled),
-        instructionID: String(headerInstructionId || '').trim(),
-        updatedAt: serverTimestamp(),
-      };
-      if (!snap.exists()) payload.createdAt = serverTimestamp();
+  const updatePageRegistryRow = (route, patch) => {
+    const normalizedRoute = normalizePageID(route);
+    setPageRegistry((prev) => prev.map((item) => (
+      item.route === normalizedRoute ? { ...item, ...patch } : item
+    )));
+  };
 
-      await setDoc(ref, payload, { merge: true });
-      setHeaderLinkStatus('Saved. Header config updated for this page.');
+  const handleSavePageRegistry = async () => {
+    setIsRegistrySaving(true);
+    setRegistryError('');
+    setRegistryStatus('');
+    try {
+      await Promise.all(
+        pageRegistry.map(async (item) => {
+          const ref = doc(db, 'global_page_instructions', item.route);
+          const snap = await getDoc(ref);
+          const payload = {
+            routeName: item.route,
+            instructionUID: String(item.instructionUID || '').trim(),
+            isHelpEnabled: Boolean(item.isHelpEnabled),
+            updatedAt: serverTimestamp(),
+          };
+          if (!snap.exists()) payload.createdAt = serverTimestamp();
+          await setDoc(ref, payload, { merge: true });
+        }),
+      );
+      setRegistryStatus('Saved. Sovereign Page Registry updated.');
     } catch (err) {
-      setHeaderLinkError(err?.message || 'Failed to update header config for this page.');
+      setRegistryError(err?.message || 'Failed to save Sovereign Page Registry.');
     } finally {
-      setIsHeaderLinkSaving(false);
+      setIsRegistrySaving(false);
     }
   };
 
@@ -553,68 +580,85 @@ export const InstructionsLibraryPage = () => {
         <div className="rounded-2xl border border-blue-200 bg-blue-50 p-6 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <p className="text-sm font-black text-slate-800">Header Link (This Page)</p>
+              <p className="text-sm font-black text-slate-800">Sovereign Page Registry</p>
               <p className="text-xs font-semibold text-slate-600">
-                Writes to <span className="font-black">global_header_configs/{currentPageId || '—'}</span>
+                Centralized help routing for tenant pages via <span className="font-black">global_page_instructions/&lt;route_name&gt;</span>
               </p>
             </div>
             <button
               type="button"
-              onClick={handleSaveHeaderLink}
-              disabled={isHeaderLinkSaving || isHeaderLinkLoading || !currentPageId}
+              onClick={handleSavePageRegistry}
+              disabled={isRegistrySaving || isRegistryLoading}
               className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-xs font-black uppercase tracking-widest text-white transition hover:opacity-90 disabled:opacity-50"
             >
-              {isHeaderLinkSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-              Save Link
+              {isRegistrySaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+              Save Registry
             </button>
           </div>
 
-          {headerLinkError ? (
+          {registryError ? (
             <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-bold text-rose-700">
-              {headerLinkError}
+              {registryError}
             </div>
           ) : null}
 
-          {headerLinkStatus ? (
+          {registryStatus ? (
             <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs font-bold text-emerald-700">
-              {headerLinkStatus}
+              {registryStatus}
             </div>
           ) : null}
 
-          <div className="mt-4 grid gap-4 md:grid-cols-3">
-            <label className="text-xs font-black uppercase tracking-wider text-slate-600">
-              Help Enabled
-              <select
-                value={headerHelpEnabled ? 'true' : 'false'}
-                disabled={isHeaderLinkLoading}
-                onChange={(event) => setHeaderHelpEnabled(event.target.value === 'true')}
-                className="mt-1 w-full rounded-xl border border-blue-200 bg-white px-3 py-2.5 text-sm font-bold text-slate-800 outline-none focus:border-blue-500 disabled:opacity-60"
+          <div className="mt-4 overflow-hidden rounded-2xl border border-blue-100 bg-white">
+            <div className="grid h-14 grid-cols-[1.15fr_2fr_0.95fr] items-center gap-4 border-b border-blue-100 bg-blue-100/70 px-4 text-[11px] font-black uppercase tracking-[0.18em] text-slate-700">
+              <span>Tenant Route</span>
+              <span>InstructionUID</span>
+              <span>Help Enabled</span>
+            </div>
+            {pageRegistry.map((item) => (
+              <div
+                key={item.route}
+                className="grid h-14 grid-cols-[1.15fr_2fr_0.95fr] items-center gap-4 border-b border-slate-100 px-4 last:border-b-0"
               >
-                <option value="true">Enabled</option>
-                <option value="false">Disabled</option>
-              </select>
-            </label>
-
-            <label className="md:col-span-2 text-xs font-black uppercase tracking-wider text-slate-600">
-              Instruction Set (instructionID)
-              <select
-                value={headerInstructionId}
-                disabled={isHeaderLinkLoading || isLoading}
-                onChange={(event) => setHeaderInstructionId(event.target.value)}
-                className="mt-1 w-full rounded-xl border border-blue-200 bg-white px-3 py-2.5 text-sm font-bold text-slate-800 outline-none focus:border-blue-500 disabled:opacity-60"
-              >
-                <option value="">None</option>
-                {rows.map((row) => (
-                  <option key={row.id} value={row.id}>
-                    {row.instructionName || row.id}
-                  </option>
-                ))}
-              </select>
-            </label>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-black text-slate-800">{item.label}</p>
+                  <p className="truncate text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">{item.route}</p>
+                </div>
+                <GenericSelectField
+                  value={item.instructionUID}
+                  onChange={(value) => updatePageRegistryRow(item.route, { instructionUID: String(value || '') })}
+                  options={instructionOptions}
+                  placeholder="Map instruction UID"
+                  disabled={isRegistryLoading || isLoading}
+                />
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => updatePageRegistryRow(item.route, { isHelpEnabled: !item.isHelpEnabled })}
+                    disabled={isRegistryLoading}
+                    className={`relative inline-flex h-8 w-14 items-center rounded-full border transition ${
+                      item.isHelpEnabled
+                        ? 'border-emerald-500 bg-emerald-500'
+                        : 'border-slate-300 bg-slate-200'
+                    }`}
+                    aria-pressed={item.isHelpEnabled}
+                    aria-label={`Toggle help for ${item.label}`}
+                  >
+                    <span
+                      className={`inline-block h-6 w-6 rounded-full bg-white shadow transition ${
+                        item.isHelpEnabled ? 'translate-x-7' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                  <span className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-700">
+                    {item.isHelpEnabled ? 'On' : 'Off'}
+                  </span>
+                </div>
+              </div>
+            ))}
           </div>
 
           <p className="mt-3 text-[10px] font-black uppercase tracking-widest text-blue-700">
-            Tip: Use this to bind a help instruction set to the header for this route.
+            Legacy help mapping via <span className="font-black">global_header_configs</span> is deprecated. Tenant help now resolves from the Sovereign Page Registry.
           </p>
         </div>
 

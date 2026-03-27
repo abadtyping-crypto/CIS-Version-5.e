@@ -162,18 +162,18 @@ export default function ClientDetailsPageV2() {
                     onClick={() => setLibView('cloud')}
                     className={`flex items-center gap-2 rounded-xl px-4 py-2 text-[10px] font-black uppercase transition-all ${libView === 'cloud' ? 'bg-[var(--c-surface)] text-[var(--c-accent)] shadow-sm' : 'text-[var(--c-muted)]'}`}
                   >
-                    <FolderOpen size={14} /> Cloud Files
+                    <FolderOpen strokeWidth={1.5} size={14} /> Cloud Files
                   </button>
                   <button
                     onClick={() => setLibView('local')}
                     className={`flex items-center gap-2 rounded-xl px-4 py-2 text-[10px] font-black uppercase transition-all ${libView === 'local' ? 'bg-[var(--c-surface)] text-[var(--c-accent)] shadow-sm' : 'text-[var(--c-muted)]'}`}
                   >
-                    <HardDrive size={14} /> Local Archive
+                    <HardDrive strokeWidth={1.5} size={14} /> Local Archive
                   </button>
                 </div>
                 {platform === PLATFORM_ELECTRON && libView === 'local' && (
                    <span className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-[9px] font-black uppercase text-emerald-600 border border-emerald-100">
-                     <CheckCircle2 size={10} /> Electron Bridge Active
+                     <CheckCircle2 strokeWidth={1.5} size={10} /> Electron Bridge Active
                    </span>
                 )}
               </div>
@@ -185,11 +185,11 @@ export default function ClientDetailsPageV2() {
                     <div key={docItem.id} className="compact-card glass border border-[var(--c-border)] p-4 flex flex-col gap-3 group">
                       <div className="flex items-start justify-between">
                         <div className="rounded-xl bg-white p-2.5 shadow-inner text-[var(--c-accent)]">
-                          <FileText size={18} />
+                          <FileText strokeWidth={1.5} size={18} />
                         </div>
                         {docItem.expiryDate && (
                           <div className={`flex items-center gap-1 rounded-lg px-2 py-0.5 text-[9px] font-black uppercase ${new Date(docItem.expiryDate) < new Date() ? 'bg-rose-50 text-rose-600' : 'bg-amber-50 text-amber-600'}`}>
-                            <AlertCircle size={10} /> {new Date(docItem.expiryDate) < new Date() ? 'Expired' : 'Expiring'}
+                            <AlertCircle strokeWidth={1.5} size={10} /> {new Date(docItem.expiryDate) < new Date() ? 'Expired' : 'Expiring'}
                           </div>
                         )}
                       </div>
@@ -203,7 +203,7 @@ export default function ClientDetailsPageV2() {
                           onClick={() => docItem.isLocal ? openLocalFile(docItem.localPath) : window.open(docItem.cloudUrl, '_blank')}
                           className="flex items-center gap-1.5 text-[10px] font-black uppercase text-[var(--c-accent)] hover:underline"
                         >
-                          View <ExternalLink size={12} />
+                          View <ExternalLink strokeWidth={1.5} size={12} />
                         </button>
                       </div>
                     </div>
@@ -211,7 +211,7 @@ export default function ClientDetailsPageV2() {
                 
                 {records.documents.filter(doc => libView === 'local' ? doc.isLocal : !doc.isLocal).length === 0 && (
                   <div className="col-span-full py-20 text-center">
-                    <FolderOpen size={48} className="mx-auto mb-4 text-[var(--c-muted)] opacity-20" />
+                    <FolderOpen strokeWidth={1.5} size={48} className="mx-auto mb-4 text-[var(--c-muted)] opacity-20" />
                     <p className="text-[10px] font-black uppercase tracking-widest text-[var(--c-muted)]">No {libView} files found for this client</p>
                   </div>
                 )}

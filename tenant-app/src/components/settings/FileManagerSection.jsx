@@ -33,9 +33,9 @@ const ConnectionBadge = ({ connected, email, onDisconnect, onConnect, isConnecti
     }`}
   >
     {connected ? (
-      <CheckCircle2 className="h-5 w-5 text-emerald-400 shrink-0" />
+      <CheckCircle2 strokeWidth={1.5} className="h-5 w-5 text-emerald-400 shrink-0" />
     ) : (
-      <XCircle className="h-5 w-5 text-(--c-muted) shrink-0" />
+      <XCircle strokeWidth={1.5} className="h-5 w-5 text-(--c-muted) shrink-0" />
     )}
     <div className="flex-1 min-w-0">
       <p className={`text-sm font-bold ${connected ? 'text-emerald-400' : 'text-(--c-muted)'}`}>
@@ -57,7 +57,7 @@ const ConnectionBadge = ({ connected, email, onDisconnect, onConnect, isConnecti
         onClick={onConnect}
         className="shrink-0 inline-flex items-center gap-2 rounded-lg bg-indigo-500 px-4 py-1.5 text-xs font-bold text-white transition hover:bg-indigo-600 disabled:opacity-50"
       >
-        {isConnecting ? <Loader2 className="h-3 w-3 animate-spin" /> : <ShieldCheck className="h-3 w-3" />}
+        {isConnecting ? <Loader2 strokeWidth={1.5} className="h-3 w-3 animate-spin" /> : <ShieldCheck strokeWidth={1.5} className="h-3 w-3" />}
         {isConnecting ? 'Authenticating...' : 'Sign in with Google'}
       </button>
     )}
@@ -191,7 +191,7 @@ const FileManagerSection = () => {
       <div className="space-y-6">
         {/* Info banner */}
         <div className="flex items-start gap-3 rounded-xl border border-indigo-500/20 bg-indigo-500/5 px-4 py-3">
-          <Info className="mt-0.5 h-4 w-4 shrink-0 text-indigo-400" />
+          <Info strokeWidth={1.5} className="mt-0.5 h-4 w-4 shrink-0 text-indigo-400" />
           <p className="text-xs font-medium text-indigo-300 leading-relaxed">
             Google Drive integration requires a{' '}
             <a
@@ -201,7 +201,7 @@ const FileManagerSection = () => {
               className="underline hover:text-indigo-200 inline-flex items-center gap-0.5"
             >
               Google Cloud OAuth 2.0 Client
-              <ExternalLink className="h-3 w-3 ml-0.5" />
+              <ExternalLink strokeWidth={1.5} className="h-3 w-3 ml-0.5" />
             </a>{' '}
             with the <strong>Google Drive API</strong> enabled. Generating a refresh token is required to maintain persistent access without re-authentication.
           </p>
@@ -219,7 +219,7 @@ const FileManagerSection = () => {
         {/* OAuth Credentials */}
         <div className="rounded-xl bg-(--c-panel)/60 p-4 space-y-1">
           <div className="flex items-center gap-2 mb-3">
-            <Key className="h-4 w-4 text-(--c-accent)" />
+            <Key strokeWidth={1.5} className="h-4 w-4 text-(--c-accent)" />
             <h3 className="text-xs font-bold uppercase tracking-wider text-(--c-muted)">
               OAuth 2.0 Credentials
             </h3>
@@ -281,7 +281,7 @@ const FileManagerSection = () => {
         {/* Drive Settings */}
         <div className="rounded-xl bg-(--c-panel)/60 p-4 space-y-1">
           <div className="flex items-center gap-2 mb-3">
-            <FolderOpen className="h-4 w-4 text-(--c-accent)" />
+            <FolderOpen strokeWidth={1.5} className="h-4 w-4 text-(--c-accent)" />
             <h3 className="text-xs font-bold uppercase tracking-wider text-(--c-muted)">
               Drive Settings
             </h3>
@@ -326,7 +326,7 @@ const FileManagerSection = () => {
 
         {/* Quick-link to generate token */}
         <div className="flex items-center gap-3 rounded-xl border border-(--c-border) bg-(--c-panel)/40 px-4 py-3">
-          <RefreshCw className="h-4 w-4 text-(--c-accent) shrink-0" />
+          <RefreshCw strokeWidth={1.5} className="h-4 w-4 text-(--c-accent) shrink-0" />
           <p className="text-xs font-medium text-(--c-muted)">
             Need a refresh token?{' '}
             <a
@@ -336,7 +336,7 @@ const FileManagerSection = () => {
               className="text-(--c-accent) hover:underline inline-flex items-center gap-0.5"
             >
               Use Google OAuth Playground
-              <ExternalLink className="h-3 w-3 ml-0.5" />
+              <ExternalLink strokeWidth={1.5} className="h-3 w-3 ml-0.5" />
             </a>{' '}
             — select the Drive scope, authorize, and copy the refresh token here.
           </p>
@@ -350,7 +350,7 @@ const FileManagerSection = () => {
             disabled={isSaving}
             className="inline-flex items-center gap-2 rounded-xl bg-(--c-accent) px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-(--c-accent)/20 transition hover:opacity-90 disabled:opacity-50"
           >
-            {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}
+            {isSaving && <Loader2 strokeWidth={1.5} className="h-4 w-4 animate-spin" />}
             {isSaving ? 'Saving…' : 'Save Drive Configuration'}
           </button>
           {status.message && (

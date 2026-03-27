@@ -57,7 +57,7 @@ const TaskManagementPage = () => {
   return (
     <PageShell
       title="Task Management"
-      icon={CheckSquare}
+      iconKey="tasksTracking"
       widthPreset="data"
       actionSlot={
         <p className="text-xs font-bold uppercase tracking-widest text-[var(--c-muted)]">
@@ -65,12 +65,12 @@ const TaskManagementPage = () => {
         </p>
       }
     >
-      <div className="flex flex-col gap-6 relative" style={{ marginTop: 'var(--d-shell-header-h)' }}>
+      <div className="flex flex-col gap-6 relative">
         {loading ? (
            <p className="text-center text-sm font-bold opacity-50 p-4">Loading tasks...</p>
         ) : Object.keys(groupedTasks).length === 0 ? (
            <div className="compact-card glass border border-[var(--c-border)] shadow-sm text-center py-10 opacity-60 flex flex-col items-center">
-              <CheckSquare size={40} className="mb-3 text-[var(--c-muted)]" />
+              <CheckSquare strokeWidth={1.5} size={40} className="mb-3 text-[var(--c-muted)]" />
               <p className="text-sm font-bold uppercase tracking-widest text-[var(--c-muted)]">No tasks found</p>
            </div>
         ) : (
@@ -114,13 +114,13 @@ const TaskManagementPage = () => {
                                   <div className="grid grid-cols-2 gap-3 mb-4">
                                       <div>
                                           <p className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-[var(--c-muted)] mb-1">
-                                             <AlertCircle size={10} /> Amount
+                                             <AlertCircle strokeWidth={1.5} size={10} /> Amount
                                           </p>
                                           <p className="font-semibold text-sm">AED {Number(task.amount || 0).toLocaleString()}</p>
                                       </div>
                                       <div>
                                           <p className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-[var(--c-muted)] mb-1">
-                                             <Users size={10} /> Assignee
+                                             <Users strokeWidth={1.5} size={10} /> Assignee
                                           </p>
                                           <p className="font-semibold text-sm truncate">{task.assignedTo || 'Unassigned'}</p>
                                       </div>
@@ -129,7 +129,7 @@ const TaskManagementPage = () => {
                                   <div className="bg-[color:color-mix(in_srgb,var(--c-panel)_80%,transparent)] -mx-4 -mb-4 px-4 py-3 rounded-b-2xl border-t border-[var(--c-border)] flex items-center justify-between">
                                       <div className="flex-1 min-w-0 pr-2">
                                          <p className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-[var(--c-muted)] mb-0.5">
-                                            <Calendar size={10} /> Deadline
+                                            <Calendar strokeWidth={1.5} size={10} /> Deadline
                                          </p>
                                          {deadlineEditId === task.taskId ? (
                                              <div className="flex items-center gap-2">

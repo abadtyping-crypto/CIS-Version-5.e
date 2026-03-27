@@ -228,11 +228,11 @@ const TitleBar = () => {
                     <div className={submenuClasses}>
                         <button onClick={toggleTheme} className="flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-left text-[11px] font-semibold text-[var(--c-text)] hover:bg-[color:color-mix(in_srgb,var(--c-surface)_60%,transparent)] transition">
                             <span>Toggle Dark/Light</span>
-                            {theme !== 'system' && <Check size={10} />}
+                            {theme !== 'system' && <Check strokeWidth={1.5} size={10} />}
                         </button>
                         <button onClick={() => toggleTheme('system')} className="flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-left text-[11px] font-semibold text-[var(--c-text)] hover:bg-[color:color-mix(in_srgb,var(--c-surface)_60%,transparent)] transition">
                             <span>System Settings</span>
-                            {theme === 'system' && <Check size={10} />}
+                            {theme === 'system' && <Check strokeWidth={1.5} size={10} />}
                         </button>
                     </div>
                 </div>
@@ -247,7 +247,7 @@ const TitleBar = () => {
                         {DESKTOP_WALLPAPERS && DESKTOP_WALLPAPERS.map(wp => (
                             <button key={wp.id} onClick={() => updateAppearance({ wallpaper: wp.id })} className="flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-left text-[11px] font-semibold text-[var(--c-text)] hover:bg-[color:color-mix(in_srgb,var(--c-surface)_60%,transparent)] transition">
                                 <span className="truncate">{wp.label}</span>
-                                {appearance?.wallpaper === wp.id && <Check size={10} className="shrink-0" />}
+                                {appearance?.wallpaper === wp.id && <Check strokeWidth={1.5} size={10} className="shrink-0" />}
                             </button>
                         ))}
                     </div>
@@ -263,7 +263,7 @@ const TitleBar = () => {
                         {DESKTOP_FONT_FAMILIES && DESKTOP_FONT_FAMILIES.map(ff => (
                             <button key={ff.id} onClick={() => updateAppearance({ fontFamily: ff.id })} className="flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-left text-[11px] font-semibold text-[var(--c-text)] hover:bg-[color:color-mix(in_srgb,var(--c-surface)_60%,transparent)] transition">
                                 <span>{ff.label}</span>
-                                {appearance?.fontFamily === ff.id && <Check size={10} />}
+                                {appearance?.fontFamily === ff.id && <Check strokeWidth={1.5} size={10} />}
                             </button>
                         ))}
                     </div>
@@ -279,7 +279,7 @@ const TitleBar = () => {
                         {DESKTOP_FONT_SCALES && DESKTOP_FONT_SCALES.map(fs => (
                             <button key={fs.id} onClick={() => updateAppearance({ fontScale: fs.id })} className="flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-left text-[11px] font-semibold text-[var(--c-text)] hover:bg-[color:color-mix(in_srgb,var(--c-surface)_60%,transparent)] transition">
                                 <span>{fs.label}</span>
-                                {appearance?.fontScale === fs.id && <Check size={10} />}
+                                {appearance?.fontScale === fs.id && <Check strokeWidth={1.5} size={10} />}
                             </button>
                         ))}
                     </div>
@@ -291,7 +291,7 @@ const TitleBar = () => {
                 <div className="px-1.5">
                     <button onClick={() => updateAppearance({ glassEnabled: !(appearance?.glassEnabled !== false) })} className="flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-left text-[11px] font-semibold text-[var(--c-text)] hover:bg-[color:color-mix(in_srgb,var(--c-panel)_60%,transparent)] transition">
                         <span>Glass Effect</span>
-                        {appearance?.glassEnabled !== false && <Check size={10} />}
+                        {appearance?.glassEnabled !== false && <Check strokeWidth={1.5} size={10} />}
                     </button>
                 </div>
 
@@ -358,13 +358,13 @@ const TitleBar = () => {
                             className="flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-left text-[11px] font-semibold text-[var(--c-text)] hover:bg-[color:color-mix(in_srgb,var(--c-surface)_60%,transparent)] transition"
                         >
                             <span>No Default (Normal)</span>
-                            {!defaultEmirate && <Check size={10} />}
+                            {!defaultEmirate && <Check strokeWidth={1.5} size={10} />}
                         </button>
                         <div className="my-1 border-t border-[var(--c-border)]" />
                         {EMIRATE_OPTIONS.map(em => (
                             <button key={em.value} onClick={() => handleSetDefaultEmirate(em.value)} className="flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-left text-[11px] font-semibold text-[var(--c-text)] hover:bg-[color:color-mix(in_srgb,var(--c-surface)_60%,transparent)] transition">
                                 <span>{em.label}</span>
-                                {defaultEmirate === em.value && <Check size={10} />}
+                                {defaultEmirate === em.value && <Check strokeWidth={1.5} size={10} />}
                             </button>
                         ))}
                     </div>
@@ -498,7 +498,7 @@ const TitleBar = () => {
                         title="Always on Top (AOD)"
                         aria-label="Always on Top (AOD)"
                     >
-                        <MonitorUp size={12} className={globalConfig.isAlwaysOnTop ? 'animate-pulse' : ''} />
+                        <MonitorUp strokeWidth={1.5} size={12} className={globalConfig.isAlwaysOnTop ? 'animate-pulse' : ''} />
                         <span className="hidden sm:inline-block">AOD</span>
                     </button>
 
@@ -522,7 +522,7 @@ const TitleBar = () => {
                         aria-expanded={layoutMenuOpen}
                         aria-haspopup="menu"
                     >
-                        <LayoutTemplate size={12} />
+                        <LayoutTemplate strokeWidth={1.5} size={12} />
                         <span className="hidden sm:inline-block">Layout</span>
                     </button>
 
@@ -532,19 +532,19 @@ const TitleBar = () => {
                         onClick={() => window.electron.windowControls.minimize()}
                         className="flex h-full w-10 items-center justify-center text-[var(--c-muted)] transition hover:bg-[var(--c-panel)] hover:text-[var(--c-text)]"
                     >
-                        <Minus size={14} />
+                        <Minus strokeWidth={1.5} size={14} />
                     </button>
                     <button
                         onClick={() => window.electron.windowControls.maximize()}
                         className="flex h-full w-10 items-center justify-center text-[var(--c-muted)] transition hover:bg-[var(--c-panel)] hover:text-[var(--c-text)]"
                     >
-                        {isWindowMaximized ? <Copy size={12} /> : <Square size={12} />}
+                        {isWindowMaximized ? <Copy strokeWidth={1.5} size={12} /> : <Square strokeWidth={1.5} size={12} />}
                     </button>
                     <button
                         onClick={() => window.electron.windowControls.close()}
                         className="flex h-full w-10 items-center justify-center text-[var(--c-muted)] transition hover:bg-[var(--c-danger)] hover:text-white"
                     >
-                        <X size={14} />
+                        <X strokeWidth={1.5} size={14} />
                     </button>
                 </div>
             </div>

@@ -149,7 +149,7 @@ const AppFooter = ({ appName = 'ACIS' }) => {
                   </div>
                 ) : (
                   <div className="flex h-full w-14 shrink-0 items-center justify-center" style={{ backgroundColor: `${accent}20` }}>
-                    <Megaphone className="h-4 w-4 shrink-0" style={{ color: accent }} />
+                    <Megaphone strokeWidth={1.5} className="h-4 w-4 shrink-0" style={{ color: accent }} />
                   </div>
                 )}
                 <span
@@ -170,7 +170,7 @@ const AppFooter = ({ appName = 'ACIS' }) => {
                     <span className="pr-10">{tickerText || 'Global update posted.'}</span>
                   </div>
                 </div>
-                {hasLink ? <ExternalLink className="h-3.5 w-3.5 shrink-0 text-[var(--c-muted)]" /> : null}
+                {hasLink ? <ExternalLink strokeWidth={1.5} className="h-3.5 w-3.5 shrink-0 text-[var(--c-muted)]" /> : null}
               </button>
             </div>
           ) : null}
@@ -197,11 +197,11 @@ const AppFooter = ({ appName = 'ACIS' }) => {
           <div className="w-full max-w-2xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
             <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
               <p className="inline-flex items-center gap-2 text-sm font-black text-slate-800">
-                <FileText className="h-4 w-4 text-slate-600" />
+                <FileText strokeWidth={1.5} className="h-4 w-4 text-slate-600" />
                 {legalModal === 'privacy' ? 'Privacy Policy' : 'Terms & Conditions'}
               </p>
               <button type="button" onClick={() => setLegalModal('')} className="rounded-lg border border-slate-200 p-1 text-slate-500 transition hover:text-slate-800">
-                <X className="h-4 w-4" />
+                <X strokeWidth={1.5} className="h-4 w-4" />
               </button>
             </div>
             <div className="max-h-[68vh] overflow-y-auto px-4 py-4">

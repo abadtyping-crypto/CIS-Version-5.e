@@ -211,7 +211,7 @@ const EmailTemplateSection = () => {
                                 : 'border-[var(--c-border)] text-[var(--c-muted)] hover:bg-[var(--c-panel)] hover:text-[var(--c-text)]'
                             }`}
                     >
-                        {previewMode ? <PenTool size={14} /> : <Eye size={14} />}
+                        {previewMode ? <PenTool strokeWidth={1.5} size={14} /> : <Eye strokeWidth={1.5} size={14} />}
                         {previewMode ? 'Edit Mode' : 'Live Preview'}
                     </button>
                 </div>
@@ -225,7 +225,7 @@ const EmailTemplateSection = () => {
                                 : 'border-[var(--c-border)] text-[var(--c-text)] bg-[var(--c-panel)]'
                             }`}
                     >
-                        {previewMode ? <PenTool size={14} /> : <Eye size={14} />}
+                        {previewMode ? <PenTool strokeWidth={1.5} size={14} /> : <Eye strokeWidth={1.5} size={14} />}
                         {previewMode ? 'Switch to Edit Builder' : 'See Branded Email Preview'}
                     </button>
                 </div>
@@ -312,7 +312,7 @@ const EmailTemplateSection = () => {
                         {activeTab === 'signature' && (
                             <div className="rounded-2xl border border-[var(--c-border)] bg-transparent p-4 sm:p-5">
                                 <div className="mb-4 flex items-start gap-4 p-4 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-900/50 rounded-xl">
-                                    <Mail className="text-indigo-500 shrink-0 mt-1" size={20} />
+                                    <Mail strokeWidth={1.5} className="text-indigo-500 shrink-0 mt-1" size={20} />
                                     <div>
                                         <p className="text-sm font-bold text-indigo-900 dark:text-indigo-200">Dynamic User Signatures</p>
                                         <p className="text-xs text-indigo-700/80 dark:text-indigo-300/80 mt-1 leading-relaxed">
@@ -370,7 +370,7 @@ const EmailTemplateSection = () => {
                             disabled={isSaving}
                             className="flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--c-accent)] px-8 py-3 text-sm font-bold text-white shadow-lg shadow-[var(--c-accent)]/20 transition hover:opacity-90 disabled:opacity-50 sm:w-auto"
                         >
-                            {isSaving ? <RefreshCw size={16} className="animate-spin" /> : 'Save & Compile'}
+                            {isSaving ? <RefreshCw strokeWidth={1.5} size={16} className="animate-spin" /> : 'Save & Compile'}
                         </button>
                     </div>
                 </div>

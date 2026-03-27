@@ -35,20 +35,20 @@ const ProgressButton = ({
 
       {isLoading && (
         <div className="absolute inset-0 flex items-center justify-center gap-2 animate-in fade-in zoom-in duration-300">
-          <RefreshCw className="h-4 w-4 animate-spin" />
+          <RefreshCw strokeWidth={1.5} className="h-4 w-4 animate-spin" />
           {loadingText && <span>{loadingText}</span>}
         </div>
       )}
 
       {isSuccess && (
         <div className="absolute inset-0 flex items-center justify-center gap-2 text-white animate-in slide-in-from-bottom duration-300">
-          <CheckCircle2 className="h-5 w-5" />
+          <CheckCircle2 strokeWidth={1.5} className="h-5 w-5" />
         </div>
       )}
 
       {isError && (
         <div className="absolute inset-0 flex items-center justify-center gap-2 text-white animate-in animate-shake duration-300">
-          <AlertCircle className="h-5 w-5" />
+          <AlertCircle strokeWidth={1.5} className="h-5 w-5" />
         </div>
       )}
     </button>

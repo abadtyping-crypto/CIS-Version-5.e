@@ -105,10 +105,9 @@ const TrackingPage = () => {
   return (
     <PageShell
       pageID="tracking"
-      iconKey="tracking"
+      iconKey="tasksTracking"
       title="Global Tracking Board"
       subtitle="Monitor application lifecycles and manage multi-stage delivery tracking."
-      icon={Layers}
       eyebrow="Workflow"
       widthPreset="data"
     >
@@ -172,7 +171,7 @@ const TrackingPage = () => {
                            onClick={() => removeNumber(idx)}
                            className="h-11 w-11 flex items-center justify-center rounded-xl border border-transparent text-[var(--c-muted)] hover:bg-rose-500/10 hover:text-rose-500 transition-colors shrink-0"
                          >
-                           <Trash2 size={16} />
+                           <Trash2 strokeWidth={1.5} size={16} />
                          </button>
                        )}
                     </div>
@@ -185,7 +184,7 @@ const TrackingPage = () => {
                 disabled={!activeTrackingId || isSaving}
                 className="w-full h-12 rounded-xl flex items-center justify-center gap-2 bg-[var(--c-accent)] text-white font-bold shadow-lg shadow-[var(--c-accent)]/20 hover:opacity-90 active:scale-95 transition-all text-sm disabled:opacity-50 disabled:pointer-events-none mt-4"
               >
-                {isSaving ? <RefreshCw className="animate-spin h-4 w-4" /> : <Save size={18} />}
+                {isSaving ? <RefreshCw strokeWidth={1.5} className="animate-spin h-4 w-4" /> : <Save strokeWidth={1.5} size={18} />}
                 {isSaving ? 'Processing...' : 'Commit to Registry'}
               </button>
             </div>
@@ -196,7 +195,7 @@ const TrackingPage = () => {
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
              <div className="relative flex-1 max-w-md">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--c-muted)] h-4 w-4" />
+                <Search strokeWidth={1.5} className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--c-muted)] h-4 w-4" />
                 <input
                   type="text"
                   placeholder="Search by ID or Tracking #..."
@@ -206,7 +205,7 @@ const TrackingPage = () => {
                 />
              </div>
              <button onClick={loadTrackings} className="h-11 px-4 rounded-2xl border border-[var(--c-border)] bg-[var(--c-surface)] text-[var(--c-muted)] hover:text-[var(--c-accent)] transition shadow-sm flex items-center gap-2 text-xs font-bold uppercase tracking-widest">
-                <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Refresh
+                <RefreshCw strokeWidth={1.5} size={14} className={loading ? 'animate-spin' : ''} /> Refresh
              </button>
           </div>
 
@@ -217,7 +216,7 @@ const TrackingPage = () => {
           ) : filteredTrackings.length === 0 ? (
              <div className="flex flex-col items-center justify-center p-20 border-2 border-dashed border-[var(--c-border)] rounded-3xl bg-[var(--c-surface)]">
                 <div className="w-16 h-16 rounded-full bg-[var(--c-panel)] flex items-center justify-center mb-4">
-                   <ClipboardList size={30} className="text-[var(--c-muted)]" />
+                   <ClipboardList strokeWidth={1.5} size={30} className="text-[var(--c-muted)]" />
                 </div>
                 <h3 className="text-lg font-bold text-[var(--c-text)]">No Nodes Found</h3>
                 <p className="text-sm text-[var(--c-muted)] mt-1">Refine your search or create a new tracking record.</p>
@@ -256,7 +255,7 @@ const TrackingPage = () => {
                                            onClick={(e) => handleCopy(n, e)}
                                            className="text-[var(--c-muted)] hover:text-[var(--c-accent)] transition-colors p-0.5"
                                          >
-                                            {copiedId === n ? <Check size={12} /> : <Copy size={12} />}
+                                            {copiedId === n ? <Check strokeWidth={1.5} size={12} /> : <Copy strokeWidth={1.5} size={12} />}
                                          </button>
                                       </div>
                                    ))
@@ -272,7 +271,7 @@ const TrackingPage = () => {
                          <div className="mt-6 pt-4 border-t border-[var(--c-border)] flex items-center justify-between">
                             <div className="flex items-center gap-2">
                                <div className="w-6 h-6 rounded-full bg-[var(--c-accent-soft)] flex items-center justify-center">
-                                  <RefreshCw size={10} className="text-[var(--c-accent)]" />
+                                  <RefreshCw strokeWidth={1.5} size={10} className="text-[var(--c-accent)]" />
                                </div>
                                <span className="text-[10px] font-bold text-[var(--c-muted)]">Sync'd</span>
                             </div>
@@ -281,7 +280,7 @@ const TrackingPage = () => {
                                  className="opacity-0 group-hover:opacity-100 h-8 w-8 flex items-center justify-center rounded-lg bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white transition-all duration-300"
                                  onClick={(e) => { e.stopPropagation(); setCancellationCtx({ id: trk.id, label: trk.transactionId || trk.id }); }}
                                >
-                                  <ShieldAlert size={14} />
+                                  <ShieldAlert strokeWidth={1.5} size={14} />
                                </button>
                             )}
                          </div>

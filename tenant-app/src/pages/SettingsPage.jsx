@@ -143,7 +143,7 @@ const SettingsPage = () => {
             className={`sticky top-3 z-20 h-fit rounded-2xl border border-(--c-border) bg-(--c-surface) p-1.5 shadow-sm transition-all duration-300 ease-in-out hidden lg:block ${isNavExpanded ? 'w-[232px]' : 'w-[58px]'}`}
           >
             <div className="mb-2 flex items-center gap-3 px-3 py-1">
-              <Settings className="h-4 w-4 shrink-0 text-(--c-accent)" />
+              <Settings strokeWidth={1.5} className="h-4 w-4 shrink-0 text-(--c-accent)" />
               <p className={`text-[10px] font-semibold uppercase tracking-[0.12em] text-(--c-muted) transition-all duration-300 whitespace-nowrap overflow-hidden ${isNavExpanded ? 'opacity-100' : 'opacity-0'}`}>
                 Settings
               </p>

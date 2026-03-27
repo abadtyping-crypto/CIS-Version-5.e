@@ -72,7 +72,7 @@ const GenericSelectField = ({
             {selectedOption ? selectedOption.label : placeholder}
           </span>
         </div>
-        <ChevronDown 
+        <ChevronDown strokeWidth={1.5} 
           size={18} 
           className={`shrink-0 text-[var(--c-muted)] transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} 
         />
@@ -105,7 +105,7 @@ const GenericSelectField = ({
                     }`}
                   >
                     <span className="truncate">{opt.label}</span>
-                    {isSelected && <Check size={16} />}
+                    {isSelected && <Check strokeWidth={1.5} size={16} />}
                   </button>
                 );
               })}

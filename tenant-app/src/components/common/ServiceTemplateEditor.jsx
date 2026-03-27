@@ -100,7 +100,7 @@ const IconLibraryPicker = ({
                 <img src={selectedIcon.iconUrl} alt="" className="h-full w-full object-cover" />
               ) : (
                 <div className="flex h-full w-full flex-col items-center justify-center gap-1 bg-[color:color-mix(in_srgb,var(--c-accent)_10%,transparent)] text-[var(--c-muted)]">
-                  <ImageIcon className="h-4 w-4" />
+                  <ImageIcon strokeWidth={1.5} className="h-4 w-4" />
                   <span className="text-[8px] font-semibold uppercase tracking-[0.16em]">No Icon</span>
                 </div>
               )}
@@ -119,7 +119,7 @@ const IconLibraryPicker = ({
             className={`${theme.chooseButton} inline-flex items-center gap-2`}
           >
             Choose
-            <ChevronDown className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+            <ChevronDown strokeWidth={1.5} className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
           </button>
         </div>
       </div>
@@ -152,14 +152,14 @@ const IconLibraryPicker = ({
             >
               <div className={theme.pickerTile}>
                 <div className="flex h-full w-full flex-col items-center justify-center gap-1 bg-[color:color-mix(in_srgb,var(--c-accent)_10%,transparent)] text-[var(--c-muted)]">
-                  <ImageIcon className="h-4 w-4" />
+                  <ImageIcon strokeWidth={1.5} className="h-4 w-4" />
                 </div>
               </div>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold">No library icon</p>
                 <p className={theme.helperText}>Use clean fallback tile</p>
               </div>
-              {!value ? <Check className="h-4 w-4 shrink-0" /> : null}
+              {!value ? <Check strokeWidth={1.5} className="h-4 w-4 shrink-0" /> : null}
             </button>
 
             {filteredIcons.length === 0 ? (
@@ -183,14 +183,14 @@ const IconLibraryPicker = ({
                         <img src={icon.iconUrl} alt="" className="h-full w-full object-cover" />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center bg-[color:color-mix(in_srgb,var(--c-accent)_10%,transparent)] text-[var(--c-muted)]">
-                          <ImageIcon className="h-4 w-4" />
+                          <ImageIcon strokeWidth={1.5} className="h-4 w-4" />
                         </div>
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-semibold">{icon.iconName}</p>
                     </div>
-                    {isSelected ? <Check className="h-4 w-4 shrink-0" /> : null}
+                    {isSelected ? <Check strokeWidth={1.5} className="h-4 w-4 shrink-0" /> : null}
                   </button>
                 );
               })

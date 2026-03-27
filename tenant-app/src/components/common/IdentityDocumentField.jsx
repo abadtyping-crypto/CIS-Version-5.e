@@ -202,7 +202,7 @@ const IdentityDocumentField = ({
             )}
           </span>
           <span className="pl-1">
-            <ChevronDown className={`h-3 w-3 text-[var(--c-muted)] transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+            <ChevronDown strokeWidth={1.5} className={`h-3 w-3 text-[var(--c-muted)] transition-transform ${isOpen ? 'rotate-180' : ''}`} />
           </span>
         </button>
 
@@ -228,7 +228,7 @@ const IdentityDocumentField = ({
             }`}
             title="Copy to clipboard"
           >
-            {isCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+            {isCopied ? <Check strokeWidth={1.5} className="h-4 w-4" /> : <Copy strokeWidth={1.5} className="h-4 w-4" />}
           </button>
         ) : (
           <button
@@ -238,7 +238,7 @@ const IdentityDocumentField = ({
             className="flex h-10 w-10 shrink-0 items-center justify-center text-[var(--c-muted)] transition-colors hover:text-[var(--c-accent)]"
             title="Paste from clipboard"
           >
-            <ClipboardPaste className="h-4 w-4" />
+            <ClipboardPaste strokeWidth={1.5} className="h-4 w-4" />
           </button>
         )}
       </div>
@@ -288,7 +288,7 @@ const IdentityDocumentField = ({
                     )}
                   </div>
                   <span className="min-w-0 flex-1 truncate text-sm font-bold">{config.label}</span>
-                  {isSelected && <Check className="h-4 w-4 shrink-0 text-[var(--c-accent)]" />}
+                  {isSelected && <Check strokeWidth={1.5} className="h-4 w-4 shrink-0 text-[var(--c-accent)]" />}
                 </button>
               );
             })}

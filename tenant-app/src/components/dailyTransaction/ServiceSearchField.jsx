@@ -129,11 +129,11 @@ const ServiceSearchField = ({
         }).slice(0, 20);
 
     const getTemplateIcon = (item) => {
-        if (!item) return <Search className="h-5 w-5" />;
+        if (!item) return <Search strokeWidth={1.5} className="h-5 w-5" />;
         const resolvedIconId = String(item?.iconId || item?.globalIconId || '').trim();
         const iconUrl = iconUrlById[resolvedIconId] || String(item?.iconUrl || '').trim();
         if (iconUrl) return <img src={iconUrl} className="h-full w-full object-cover rounded-[inherit]" alt="" />;
-        if (item?._isUniversal) return <Globe className="h-5 w-5 text-sky-500" />;
+        if (item?._isUniversal) return <Globe strokeWidth={1.5} className="h-5 w-5 text-sky-500" />;
 
         // Match Emirates
         const name = item?.name || '';
@@ -190,7 +190,7 @@ const ServiceSearchField = ({
                                     {selectedItem.name}
                                 </p>
                                 {selectedItem._isUniversal ? (
-                                    <Globe className="h-3.5 w-3.5 shrink-0 text-sky-500" title="Universal" />
+                                    <Globe strokeWidth={1.5} className="h-3.5 w-3.5 shrink-0 text-sky-500" title="Universal" />
                                 ) : null}
                             </div>
                             {selectedDescription ? (
@@ -206,7 +206,7 @@ const ServiceSearchField = ({
                 </div>
                 {isOpen && (
                     <div className={`flex items-center justify-center bg-[var(--c-surface)] ${isCompact ? 'h-7 w-7 rounded-md' : 'h-8 w-8 rounded-lg'}`}>
-                        <ChevronRight className="h-4 w-4 rotate-90 text-[var(--c-muted)]" />
+                        <ChevronRight strokeWidth={1.5} className="h-4 w-4 rotate-90 text-[var(--c-muted)]" />
                     </div>
                 )}
             </div>
@@ -263,7 +263,7 @@ const ServiceSearchField = ({
                                         onClick={() => onCreateNew?.()}
                                         className="compact-action flex items-center gap-2 mx-auto rounded-xl bg-[var(--c-accent)] px-4 text-[10px] font-semibold text-white uppercase shadow-lg shadow-[var(--c-accent)]/20"
                                     >
-                                        <Plus size={12} /> Create Custom
+                                        <Plus strokeWidth={1.5} size={12} /> Create Custom
                                     </button>
                                 ) : null}
                             </div>
@@ -281,7 +281,7 @@ const ServiceSearchField = ({
                                     </div>
                                     <div className="min-w-0 flex-1">
                                         <div className="flex items-center gap-2">
-                                            {item._isUniversal && universalEnabled ? <Globe className="h-3.5 w-3.5 shrink-0 text-sky-500" title="Universal" /> : null}
+                                            {item._isUniversal && universalEnabled ? <Globe strokeWidth={1.5} className="h-3.5 w-3.5 shrink-0 text-sky-500" title="Universal" /> : null}
                                             <p className="truncate text-sm font-semibold text-[var(--c-text)]">
                                                 {item.name}
                                             </p>

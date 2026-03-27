@@ -103,7 +103,7 @@ const QuickAddClientModal = ({ isOpen, onClose, onSuccess }) => {
             <p className="text-[10px] font-semibold text-[var(--c-muted)] uppercase italic">Create minimum-safe record</p>
           </div>
           <button onClick={onClose} className="rounded-lg p-1 text-[var(--c-muted)] hover:bg-[var(--c-surface)] hover:text-[var(--c-text)]">
-            <X size={18} />
+            <X strokeWidth={1.5} size={18} />
           </button>
         </header>
 
@@ -118,7 +118,7 @@ const QuickAddClientModal = ({ isOpen, onClose, onSuccess }) => {
                   : 'text-[var(--c-muted)] hover:text-[var(--c-text)]'
               }`}
             >
-              <User size={14} /> Individual
+              <User strokeWidth={1.5} size={14} /> Individual
             </button>
             <button
               type="button"
@@ -129,7 +129,7 @@ const QuickAddClientModal = ({ isOpen, onClose, onSuccess }) => {
                   : 'text-[var(--c-muted)] hover:text-[var(--c-text)]'
               }`}
             >
-              <Building2 size={14} /> Company
+              <Building2 strokeWidth={1.5} size={14} /> Company
             </button>
           </div>
 
@@ -154,7 +154,7 @@ const QuickAddClientModal = ({ isOpen, onClose, onSuccess }) => {
             <div className="space-y-1">
               <label className="text-[10px] font-black uppercase tracking-widest text-[var(--c-muted)]">Mobile Number</label>
               <div className="relative">
-                <Smartphone className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--c-muted)]" size={14} />
+                <Smartphone strokeWidth={1.5} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--c-muted)]" size={14} />
                 <input
                   type="tel"
                   name="primaryMobile"
@@ -171,7 +171,7 @@ const QuickAddClientModal = ({ isOpen, onClose, onSuccess }) => {
                 {activeType === 'individual' ? 'Emirates ID' : 'Trade License'}
               </label>
               <div className="relative">
-                <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--c-muted)]" size={14} />
+                <CreditCard strokeWidth={1.5} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--c-muted)]" size={14} />
                 <input
                   type="text"
                   name={activeType === 'individual' ? 'emiratesId' : 'tradeLicenseNumber'}
@@ -203,7 +203,7 @@ const QuickAddClientModal = ({ isOpen, onClose, onSuccess }) => {
               disabled={isSaving}
               className="flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-bold bg-[var(--c-accent)] text-white rounded-xl shadow-lg shadow-[var(--c-accent)]/20 hover:opacity-90 disabled:opacity-50 transition-all"
             >
-              {isSaving ? 'Directing...' : <><Save size={14} /> Save Client</>}
+              {isSaving ? 'Directing...' : <><Save strokeWidth={1.5} size={14} /> Save Client</>}
             </button>
           </div>
         </form>

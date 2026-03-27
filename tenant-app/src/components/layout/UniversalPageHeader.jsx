@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { HelpCircle } from 'lucide-react';
-import { fetchGlobalHeaderConfig } from '../../lib/backendStore';
+import { fetchGlobalHeaderConfig, fetchGlobalPageInstruction } from '../../lib/backendStore';
 import { NAV_ITEMS } from '../../config/appNavigation';
 import { resolvePageIconUrl } from '../../lib/pageIconAssets';
 import { DynamicAppIcon } from '../icons/AppIcons';
@@ -26,6 +26,7 @@ const UniversalPageHeader = ({
 }) => {
   const [loading, setLoading] = useState(Boolean(enableRemoteConfig && pageID));
   const [config, setConfig] = useState(null);
+  const [pageInstruction, setPageInstruction] = useState(null);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const outletContext = useOutletContext();
   const systemAssets = outletContext?.systemAssets || EMPTY_OBJ;
@@ -61,8 +62,6 @@ const UniversalPageHeader = ({
       descriptionText,
       iconUrl: effectiveIconKey ? resolvePageIconUrl(systemAssets, effectiveIconKey) : '',
       iconKey: effectiveIconKey,
-      instructionID: '',
-      isHelpEnabled: false,
     };
   }, [pageID, title, subtitle, iconKey, systemAssets]);
 
@@ -72,9 +71,13 @@ const UniversalPageHeader = ({
     let active = true;
     void (async () => {
       setLoading(true);
-      const res = await fetchGlobalHeaderConfig(pageID);
+      const [headerRes, instructionRes] = await Promise.all([
+        fetchGlobalHeaderConfig(pageID),
+        fetchGlobalPageInstruction(pageID),
+      ]);
       if (!active) return;
-      if (res.ok) setConfig(res.data);
+      if (headerRes.ok) setConfig(headerRes.data);
+      setPageInstruction(instructionRes.ok ? instructionRes.data : null);
       setLoading(false);
     })();
     return () => {
@@ -97,8 +100,9 @@ const UniversalPageHeader = ({
   const effectiveConfig = config || fallbackConfig;
   if (!effectiveConfig) return null;
 
-  const instructionID = String(effectiveConfig.instructionID || '').trim();
-  const helpEnabled = effectiveConfig.isHelpEnabled !== false;
+  const instructionID = String(pageInstruction?.instructionUID || '').trim();
+  const helpEnabled = pageInstruction?.isHelpEnabled === true;
+  const shouldRenderHelpButton = helpEnabled && Boolean(instructionID);
 
   return (
     <>
@@ -138,22 +142,18 @@ const UniversalPageHeader = ({
             <h1 className="truncate font-title text-xl font-black tracking-tight text-[var(--c-text)] sm:text-2xl md:text-[1.75rem] lg:text-[2.15rem]">
               {effectiveConfig.titleText}
             </h1>
-            {actionSlot || helpEnabled ? (
+            {actionSlot || shouldRenderHelpButton ? (
               <div className="flex shrink-0 items-center gap-2">
                 {actionSlot ? <div className="flex items-center">{actionSlot}</div> : null}
-                {helpEnabled ? (
+                {shouldRenderHelpButton ? (
                   <button
                     type="button"
-                    disabled={!instructionID}
                     onClick={() => setIsHelpOpen(true)}
-                    className={`group/help flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border bg-[var(--c-panel)] transition-all ${instructionID
-                      ? 'border-[var(--c-border)] text-[var(--c-muted)] hover:scale-105 hover:border-[var(--c-accent)] hover:bg-[var(--c-accent-soft)] hover:text-[var(--c-accent)] active:scale-95'
-                      : 'border-[var(--c-border)]/60 text-[var(--c-muted)]/50 opacity-70 cursor-not-allowed'
-                      }`}
+                    className="group/help flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] text-[var(--c-muted)] transition-all hover:scale-105 hover:border-[var(--c-accent)] hover:bg-[var(--c-accent-soft)] hover:text-[var(--c-accent)] active:scale-95"
                     aria-label="Get page help"
-                    title={instructionID ? 'Page Instructions' : 'No instructions configured'}
+                    title="Page Instructions"
                   >
-                    <HelpCircle className="h-5 w-5 transition-transform duration-300 group-hover/help:rotate-12" />
+                    <HelpCircle strokeWidth={1.5} className="h-5 w-5 transition-transform duration-300 group-hover/help:rotate-12" />
                   </button>
                 ) : null}
               </div>

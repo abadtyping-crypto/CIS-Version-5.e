@@ -67,8 +67,8 @@ const ProformaViewPage = () => {
     }
   };
 
-  if (loading) return <PageShell title="Loading..." icon={FileText}> <span className="p-4 block animate-pulse">Loading proforma...</span> </PageShell>;
-  if (error || !proforma) return <PageShell title="Not Found" icon={FileText}> <span className="p-4 block text-[var(--c-danger)]">{error}</span> </PageShell>;
+  if (loading) return <PageShell title="Loading..." iconKey="proformaInvoices"> <span className="p-4 block animate-pulse">Loading proforma...</span> </PageShell>;
+  if (error || !proforma) return <PageShell title="Not Found" iconKey="proformaInvoices"> <span className="p-4 block text-[var(--c-danger)]">{error}</span> </PageShell>;
 
   const derivedStatus = resolveProformaStatus(proforma, tasks);
   const statusStyle = getStatusBadgeStyle(derivedStatus);
@@ -77,7 +77,7 @@ const ProformaViewPage = () => {
   return (
     <PageShell
       title={`Proforma: ${proforma.id}`}
-      icon={FileText}
+      iconKey="proformaInvoices"
       widthPreset="form"
       actionSlot={
         <div className="flex items-center gap-3">
@@ -86,7 +86,7 @@ const ProformaViewPage = () => {
              className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--c-panel)] border border-[var(--c-border)] hover:bg-[var(--c-surface)] shadow-sm transition"
              title="Back"
           >
-             <ChevronLeft size={18} />
+             <ChevronLeft strokeWidth={1.5} size={18} />
           </button>
           {!isConverted ? (
              <button
@@ -94,18 +94,18 @@ const ProformaViewPage = () => {
                 onClick={handleConvertToTask}
                 disabled={converting}
              >
-                <Play size={18} fill="currentColor" />
+                <Play strokeWidth={1.5} size={18} fill="currentColor" />
                 {converting ? 'Converting...' : 'Convert to Tasks'}
              </button>
           ) : (
              <div className="flex h-10 items-center gap-2 rounded-xl bg-[var(--c-success-soft)] px-5 font-bold text-[var(--c-success)] border border-[var(--c-success)] shadow-sm">
-                <CheckCircle2 size={18} /> Tasks Generated
+                <CheckCircle2 strokeWidth={1.5} size={18} /> Tasks Generated
              </div>
           )}
         </div>
       }
     >
-      <div className="flex flex-col gap-6" style={{ marginTop: 'var(--d-shell-header-h)' }}>
+      <div className="flex flex-col gap-6">
         
         <div className="compact-card glass border border-[var(--c-border)] shadow-sm flex items-center justify-between">
             <div>

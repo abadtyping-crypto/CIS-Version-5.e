@@ -276,7 +276,7 @@ const NotificationsPage = () => {
               {item.actionTakenBy ? (
                 <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-900/20 dark:text-emerald-300">
                   <div className="flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4" />
+                    <CheckCircle2 strokeWidth={1.5} className="h-4 w-4" />
                     <span>
                       Action taken by {item.actionTakenByUser?.displayName || item.actionTakenBy}
                       {item.actionTakenLabel ? ` (${item.actionTakenLabel})` : ''}

@@ -91,7 +91,7 @@ const SatelliteWidget = () => {
                 aria-label={`Copy ${client.name}`}
                 style={{ WebkitAppRegion: 'no-drag' }}
               >
-                <ClipboardCopy className="h-4 w-4" />
+                <ClipboardCopy strokeWidth={1.5} className="h-4 w-4" />
               </button>
               <button
                 type="button"
@@ -100,7 +100,7 @@ const SatelliteWidget = () => {
                 aria-label={`Track ${client.name}`}
                 style={{ WebkitAppRegion: 'no-drag' }}
               >
-                <Target className="h-4 w-4" />
+                <Target strokeWidth={1.5} className="h-4 w-4" />
               </button>
             </div>
           </div>

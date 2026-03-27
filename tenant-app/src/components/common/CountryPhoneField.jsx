@@ -160,7 +160,7 @@ const CountryPhoneField = ({
           aria-expanded={isOpen}
         >
           <div className="flex items-center pb-0.5"><FlagSprite iso2={selectedCountry.iso2} /></div>
-          <ChevronDown className={`h-4 w-4 text-[var(--c-muted)] transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+          <ChevronDown strokeWidth={1.5} className={`h-4 w-4 text-[var(--c-muted)] transition-transform ${isOpen ? 'rotate-180' : ''}`} />
         </button>
         <div className="flex items-center justify-center border-r border-[var(--c-border)] bg-[var(--c-panel)] px-4 text-sm font-semibold text-[var(--c-text)]">
           +{selectedCountry.dialCode}
@@ -196,7 +196,7 @@ const CountryPhoneField = ({
           className="flex h-10 w-10 shrink-0 items-center justify-center text-[var(--c-muted)] hover:text-[var(--c-accent)] transition-colors"
           title="Paste from clipboard"
         >
-          <ClipboardPaste className="h-4 w-4" />
+          <ClipboardPaste strokeWidth={1.5} className="h-4 w-4" />
         </button>
         {onAppend ? (
           <button
@@ -205,7 +205,7 @@ const CountryPhoneField = ({
             className="flex h-10 w-10 shrink-0 items-center justify-center border-l border-[var(--c-border)] bg-[var(--c-panel)] text-[var(--c-muted)] transition hover:bg-[color:color-mix(in_srgb,var(--c-accent)_10%,var(--c-panel))] hover:text-[var(--c-accent)]"
             aria-label="Add additional number"
           >
-            <Plus className="h-4 w-4" />
+            <Plus strokeWidth={1.5} className="h-4 w-4" />
           </button>
         ) : null}
       </div>
@@ -257,7 +257,7 @@ const CountryPhoneField = ({
                       <span className="block truncate text-sm font-bold">{country.name}</span>
                       <span className="block text-xs font-semibold text-[var(--c-muted)]">+{country.dialCode}</span>
                     </span>
-                    {isSelected ? <Check className="h-4 w-4 shrink-0 text-[var(--c-accent)]" /> : null}
+                    {isSelected ? <Check strokeWidth={1.5} className="h-4 w-4 shrink-0 text-[var(--c-accent)]" /> : null}
                   </button>
                 );
               })

@@ -237,7 +237,7 @@ const QuickAddServiceTemplateModal = ({ isOpen, onClose, onCreated }) => {
         <div className="flex items-center justify-between border-b border-slate-700 px-5 py-3.5">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-sky-400/35 bg-sky-500/15 text-sky-300">
-              <ImageIcon className="h-4.5 w-4.5" />
+              <ImageIcon strokeWidth={1.5} className="h-4.5 w-4.5" />
             </div>
             <div>
               <p className="text-sm font-semibold tracking-widest text-sky-300 uppercase">Application Studio</p>
@@ -250,7 +250,7 @@ const QuickAddServiceTemplateModal = ({ isOpen, onClose, onCreated }) => {
             className="rounded-xl border border-slate-600 bg-slate-800 p-2 text-slate-300 transition hover:text-white"
             aria-label="Close quick add"
           >
-            <X className="h-4 w-4" />
+            <X strokeWidth={1.5} className="h-4 w-4" />
           </button>
         </div>
 

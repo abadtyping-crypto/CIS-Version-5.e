@@ -457,7 +457,7 @@ const CompanyRegistrationForm = ({ activeType, tenantId, user, onCancel, onSucce
                         <label className="flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-[var(--c-muted)]">
                             <span>Trade Name *</span>
                             <span className="inline-flex cursor-help text-[var(--c-muted)]" title="Trade Name as per License.">
-                                <CircleHelp className="h-3.5 w-3.5" />
+                                <CircleHelp strokeWidth={1.5} className="h-3.5 w-3.5" />
                             </span>
                         </label>
                         <InputActionField

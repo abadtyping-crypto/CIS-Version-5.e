@@ -313,7 +313,7 @@ const DependentRegistrationForm = ({ activeType, tenantId, user, onCancel, onSuc
                         onClick={() => setIsBulkImportOpen(true)}
                         className="flex items-center gap-2 rounded-xl bg-amber-500/10 px-4 py-2 text-[11px] font-bold text-amber-600 border border-amber-500/20 hover:bg-amber-500 hover:text-white transition-all shadow-sm"
                     >
-                        <Upload size={14} />
+                        <Upload strokeWidth={1.5} size={14} />
                         Bulk Import List
                     </button>
                     <div className="text-right border-l border-[var(--c-border)] pl-4">

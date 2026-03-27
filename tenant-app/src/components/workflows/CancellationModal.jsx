@@ -51,7 +51,7 @@ const CancellationModal = ({ entityType, entityId, entityLabel, onClose, onSucce
            {/* Header */}
            <div className="bg-[var(--c-panel)] px-5 py-4 flex items-center justify-between border-b border-[var(--c-border)]">
               <div className="flex items-center gap-2 text-[var(--c-danger)]">
-                 <AlertTriangle size={20} />
+                 <AlertTriangle strokeWidth={1.5} size={20} />
                  <h2 className="font-title text-base font-black tracking-widest uppercase">
                     Cancel {entityLabel}
                  </h2>
@@ -91,7 +91,7 @@ const CancellationModal = ({ entityType, entityId, entityLabel, onClose, onSucce
                      onChange={(e) => setRequiresApproval(e.target.checked)}
                   />
                   <span className="text-[10px] font-black uppercase tracking-widest text-[var(--c-muted)] flex items-center gap-1">
-                      <ShieldCheck size={12} /> Test Manager Approval Block
+                      <ShieldCheck strokeWidth={1.5} size={12} /> Test Manager Approval Block
                   </span>
               </label>
 

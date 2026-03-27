@@ -22,14 +22,14 @@ const PageShell = ({
   const enableRemoteConfig = Boolean(pageID);
 
   return (
-    <section className="compact-page">
+    <section className="compact-page pt-[3.7rem]">
       <div className={`compact-page ${effectiveMaxWidth}`}>
         {(derivedPageID || title) ? (
           <UniversalPageHeader
             pageID={derivedPageID}
             title={title}
             subtitle={subtitle}
-            icon={Icon}
+            icon={iconKey ? undefined : Icon}
             iconKey={iconKey}
             actionSlot={actionSlot}
             enableRemoteConfig={enableRemoteConfig}

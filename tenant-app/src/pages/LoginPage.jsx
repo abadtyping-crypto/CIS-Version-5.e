@@ -222,14 +222,14 @@ const LoginPage = () => {
         }}
         className="mb-4 flex items-center gap-2 text-sm font-bold text-[var(--c-muted)] hover:text-[var(--c-text)] transition"
       >
-        <ArrowLeft size={16} /> Back to Sign In
+        <ArrowLeft strokeWidth={1.5} size={16} /> Back to Sign In
       </button>
       <form onSubmit={onForgotPassword} className="space-y-5">
         <div className="space-y-1">
           <label className="text-xs font-bold uppercase tracking-wider text-[var(--c-muted)]">Recovery Email</label>
           <div className="relative">
             <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-[var(--c-muted)]">
-              <Mail size={18} />
+              <Mail strokeWidth={1.5} size={18} />
             </div>
             <input
               type="email"
@@ -248,7 +248,7 @@ const LoginPage = () => {
         )}
         {resetMessage && (
           <div className="flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3 text-sm font-bold text-emerald-500">
-            <CheckCircle2 className="shrink-0" size={18} />
+            <CheckCircle2 strokeWidth={1.5} className="shrink-0" size={18} />
             {resetMessage}
           </div>
         )}
@@ -285,7 +285,7 @@ const LoginPage = () => {
         }}
         className="mb-4 flex items-center gap-2 text-sm font-bold text-[var(--c-muted)] hover:text-[var(--c-text)] transition"
       >
-        <ArrowLeft size={16} /> Back to Sign In
+        <ArrowLeft strokeWidth={1.5} size={16} /> Back to Sign In
       </button>
       <div className="mb-6 space-y-2 text-center">
         <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-emerald-500/10 text-emerald-500 shadow-inner">
@@ -299,7 +299,7 @@ const LoginPage = () => {
           <label className="text-xs font-bold uppercase tracking-wider text-[var(--c-muted)]">Phone Number</label>
           <div className="relative">
             <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-[var(--c-muted)]">
-              <Phone size={18} />
+              <Phone strokeWidth={1.5} size={18} />
             </div>
             <input
               type="tel"
@@ -324,7 +324,7 @@ const LoginPage = () => {
             }`}
         >
           <div className="relative z-10 flex items-center justify-center gap-2">
-            {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Send size={18} />}
+            {loading ? <RefreshCw strokeWidth={1.5} className="h-4 w-4 animate-spin" /> : <Send strokeWidth={1.5} size={18} />}
             {loading ? 'Sending OTP...' : 'Send OTP via WhatsApp'}
           </div>
         </button>
@@ -340,11 +340,11 @@ const LoginPage = () => {
         }}
         className="mb-4 flex items-center gap-2 text-sm font-bold text-[var(--c-muted)] hover:text-[var(--c-text)] transition"
       >
-        <ArrowLeft size={16} /> Back
+        <ArrowLeft strokeWidth={1.5} size={16} /> Back
       </button>
       <div className="mb-6 space-y-2 text-center">
         <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-[var(--c-accent)]/10 text-[var(--c-accent)] shadow-inner">
-          <ShieldCheck size={32} />
+          <ShieldCheck strokeWidth={1.5} size={32} />
         </div>
         <h3 className="text-lg font-black text-[var(--c-text)]">Verify OTP</h3>
         <p className="text-xs font-semibold text-[var(--c-muted)]">
@@ -401,7 +401,7 @@ const LoginPage = () => {
         <label className="text-xs font-bold uppercase tracking-wider text-[var(--c-muted)]">Username</label>
         <div className="relative">
           <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-[var(--c-muted)]">
-            <User size={18} />
+            <User strokeWidth={1.5} size={18} />
           </div>
           <input
             type="text"
@@ -417,7 +417,7 @@ const LoginPage = () => {
         <label className="text-xs font-bold uppercase tracking-wider text-[var(--c-muted)]">Password</label>
         <div className="relative">
           <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-[var(--c-muted)]">
-            <Lock size={18} />
+            <Lock strokeWidth={1.5} size={18} />
           </div>
           <input
             type={showPassword ? 'text' : 'password'}
@@ -431,7 +431,7 @@ const LoginPage = () => {
             onClick={() => setShowPassword(!showPassword)}
             className="absolute inset-y-0 right-0 flex items-center pr-4 text-[var(--c-muted)] hover:text-[var(--c-text)] transition"
           >
-            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            {showPassword ? <EyeOff strokeWidth={1.5} size={18} /> : <Eye strokeWidth={1.5} size={18} />}
           </button>
         </div>
       </div>
@@ -530,11 +530,11 @@ const LoginPage = () => {
     <div className="mt-8 flex flex-col items-center">
       <div className="flex items-center gap-4 text-xs font-bold text-[var(--c-muted)]">
         <button onClick={() => setShowPrivacy(true)} className="flex items-center gap-1.5 hover:text-[var(--c-text)] transition">
-          <FileText size={14} /> Privacy Policy
+          <FileText strokeWidth={1.5} size={14} /> Privacy Policy
         </button>
         <span>&bull;</span>
         <button onClick={() => setShowSupport(true)} className="flex items-center gap-1.5 hover:text-[var(--c-text)] transition">
-          <LifeBuoy size={14} /> Support
+          <LifeBuoy strokeWidth={1.5} size={14} /> Support
         </button>
       </div>
       <p className="mt-3 text-center text-xs font-semibold text-[var(--c-muted)]/60">
@@ -547,11 +547,11 @@ const LoginPage = () => {
     <div className="mt-4 flex flex-col items-center">
       <div className="flex items-center gap-4 text-[11px] font-bold text-[var(--c-muted)]">
         <button onClick={() => setShowPrivacy(true)} className="flex items-center gap-1.5 hover:text-[var(--c-text)] transition">
-          <FileText size={13} /> Privacy Policy
+          <FileText strokeWidth={1.5} size={13} /> Privacy Policy
         </button>
         <span>&bull;</span>
         <button onClick={() => setShowSupport(true)} className="flex items-center gap-1.5 hover:text-[var(--c-text)] transition">
-          <LifeBuoy size={13} /> Support
+          <LifeBuoy strokeWidth={1.5} size={13} /> Support
         </button>
       </div>
     </div>
@@ -576,7 +576,7 @@ const LoginPage = () => {
         <div className={`fixed right-4 z-50 w-full max-w-sm animate-in slide-in-from-top-4 fade-in duration-500 ${isElectronRuntime && hasNativeTitleBar ? 'top-12' : 'top-4'}`}>
           <div className="flex items-start gap-3 rounded-2xl border border-[var(--c-accent)]/20 bg-[var(--c-surface)] p-4 shadow-2xl backdrop-blur-xl">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[var(--c-accent)]/20 to-blue-500/20 text-[var(--c-accent)]">
-              <BellRing size={20} />
+              <BellRing strokeWidth={1.5} size={20} />
             </div>
             <div className="flex-1">
               <h4 className="text-sm font-bold text-[var(--c-text)]">{loginSettings.announcement.title || 'Announcement'}</h4>
@@ -586,7 +586,7 @@ const LoginPage = () => {
               )}
             </div>
             <button onClick={() => setShowAnnouncement(false)} className="text-[var(--c-muted)] hover:text-[var(--c-text)]">
-              <X size={16} />
+              <X strokeWidth={1.5} size={16} />
             </button>
           </div>
         </div>
@@ -679,12 +679,12 @@ const LoginPage = () => {
               <div className="flex items-center justify-between border-b border-[var(--c-border)] p-5">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--c-accent)]/10 text-[var(--c-accent)]">
-                    <ShieldAlert size={20} />
+                    <ShieldAlert strokeWidth={1.5} size={20} />
                   </div>
                   <h3 className="text-lg font-bold text-[var(--c-text)]">Privacy & Policy</h3>
                 </div>
                 <button onClick={() => setShowPrivacy(false)} className="rounded-xl p-2 text-[var(--c-muted)] hover:bg-[var(--c-panel)] hover:text-[var(--c-text)]">
-                  <X size={20} />
+                  <X strokeWidth={1.5} size={20} />
                 </button>
               </div>
               <div className="flex-1 overflow-y-auto p-6">
@@ -714,12 +714,12 @@ const LoginPage = () => {
               <div className="flex items-center justify-between border-b border-[var(--c-border)] p-5">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-500/10 text-orange-500">
-                    <LifeBuoy size={20} />
+                    <LifeBuoy strokeWidth={1.5} size={20} />
                   </div>
                   <h3 className="text-lg font-bold text-[var(--c-text)]">Support Desk</h3>
                 </div>
                 <button onClick={() => setShowSupport(false)} className="rounded-xl p-2 text-[var(--c-muted)] hover:bg-[var(--c-panel)] hover:text-[var(--c-text)]">
-                  <X size={20} />
+                  <X strokeWidth={1.5} size={20} />
                 </button>
               </div>
 
@@ -727,7 +727,7 @@ const LoginPage = () => {
                 {supportForm.priority === 'Urgent' && loginSettings?.supportInfo && (loginSettings.supportInfo.whatsapp || loginSettings.supportInfo.email) && (
                   <div className="mb-6 rounded-2xl border border-rose-500/20 bg-rose-500/5 p-4 animate-in slide-in-from-top-2">
                     <div className="flex gap-3">
-                      <AlertTriangle className="shrink-0 text-rose-500" size={20} />
+                      <AlertTriangle strokeWidth={1.5} className="shrink-0 text-rose-500" size={20} />
                       <div>
                         <h4 className="text-sm font-bold text-rose-500">Urgent Support Contact</h4>
                         <p className="mt-1 text-xs font-semibold text-[var(--c-text)]">For immediate emergency assistance, please contact us directly:</p>

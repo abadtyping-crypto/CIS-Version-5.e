@@ -77,7 +77,7 @@ const PortalSelectField = ({
             className="compact-icon-action inline-flex items-center justify-center rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] text-[var(--c-muted)] transition hover:border-[var(--c-accent)] hover:text-[var(--c-text)]"
             aria-label={showBalance ? 'Hide balance' : 'Show balance'}
           >
-            {showBalance ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            {showBalance ? <EyeOff strokeWidth={1.5} className="h-4 w-4" /> : <Eye strokeWidth={1.5} className="h-4 w-4" />}
           </button>
         </div>
       ) : null}

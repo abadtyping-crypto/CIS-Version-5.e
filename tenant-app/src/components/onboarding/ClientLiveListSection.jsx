@@ -297,7 +297,7 @@ const ClientLiveListSection = ({ tenantId, user, refreshKey = 0 }) => {
           onClick={loadRows}
           className="compact-action inline-flex items-center gap-2 rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] px-3 text-xs font-semibold text-[var(--c-text)] hover:border-[var(--c-accent)]"
         >
-          <RefreshCcw size={14} />
+          <RefreshCcw strokeWidth={1.5} size={14} />
           Refresh
         </button>
       </div>
@@ -317,7 +317,7 @@ const ClientLiveListSection = ({ tenantId, user, refreshKey = 0 }) => {
         <label className="md:col-span-4">
           <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--c-muted)]">Search</span>
           <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--c-muted)]" />
+            <Search strokeWidth={1.5} className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--c-muted)]" />
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
@@ -405,7 +405,7 @@ const ClientLiveListSection = ({ tenantId, user, refreshKey = 0 }) => {
                 >
                   <img src={creator.avatar} alt={creator.name} className="h-6 w-6 shrink-0 rounded-full object-cover" />
                   <span className="truncate">{creator.name}</span>
-                  <ExternalLink size={12} />
+                  <ExternalLink strokeWidth={1.5} size={12} />
                 </Link>
                 <span className={`inline-flex items-center rounded-lg border px-2 py-0.5 text-[11px] font-semibold leading-5 ${getStatusBadgeClass(item.status)}`}>
                   {toTitleCase(item.status || 'active')}
@@ -417,7 +417,7 @@ const ClientLiveListSection = ({ tenantId, user, refreshKey = 0 }) => {
                   onClick={() => openEdit(item)}
                   className="inline-flex h-8 items-center gap-1 rounded-lg border border-[var(--c-border)] px-2.5 text-xs font-semibold text-[var(--c-text)] hover:border-[var(--c-accent)]"
                 >
-                  <Edit3 size={13} />
+                  <Edit3 strokeWidth={1.5} size={13} />
                   Edit
                 </button>
                 <button
@@ -425,7 +425,7 @@ const ClientLiveListSection = ({ tenantId, user, refreshKey = 0 }) => {
                   onClick={() => handleDelete(item)}
                   className="inline-flex h-8 items-center gap-1 rounded-lg border border-rose-300 bg-rose-50 px-2.5 text-xs font-semibold text-rose-700 hover:bg-rose-100"
                 >
-                  <Trash2 size={13} />
+                  <Trash2 strokeWidth={1.5} size={13} />
                   Delete
                 </button>
               </div>
@@ -504,7 +504,7 @@ const ClientLiveListSection = ({ tenantId, user, refreshKey = 0 }) => {
                       >
                         <img src={creator.avatar} alt={creator.name} className="h-6 w-6 shrink-0 rounded-full object-cover" />
                         <span className="truncate">{creator.name}</span>
-                        <ExternalLink size={12} />
+                        <ExternalLink strokeWidth={1.5} size={12} />
                       </Link>
                     </td>
                     <td className="px-3 py-3 whitespace-nowrap">
@@ -519,7 +519,7 @@ const ClientLiveListSection = ({ tenantId, user, refreshKey = 0 }) => {
                           onClick={() => openEdit(item)}
                           className="inline-flex h-8 items-center gap-1 rounded-lg border border-[var(--c-border)] px-2 text-[11px] font-semibold text-[var(--c-text)] hover:border-[var(--c-accent)]"
                         >
-                          <Edit3 size={13} />
+                          <Edit3 strokeWidth={1.5} size={13} />
                           Edit
                         </button>
                         <button
@@ -527,7 +527,7 @@ const ClientLiveListSection = ({ tenantId, user, refreshKey = 0 }) => {
                           onClick={() => handleDelete(item)}
                           className="inline-flex h-8 items-center gap-1 rounded-lg border border-rose-300 bg-rose-50 px-2 text-[11px] font-semibold text-rose-700 hover:bg-rose-100"
                         >
-                          <Trash2 size={13} />
+                          <Trash2 strokeWidth={1.5} size={13} />
                           Delete
                         </button>
                       </div>
@@ -577,7 +577,7 @@ const ClientLiveListSection = ({ tenantId, user, refreshKey = 0 }) => {
                 <p className="text-xs text-[var(--c-muted)]">System ID and financial fields are locked.</p>
               </div>
               <button type="button" onClick={() => setEditingRow(null)} className="compact-icon-action rounded-lg border border-[var(--c-border)]">
-                <X size={16} />
+                <X strokeWidth={1.5} size={16} />
               </button>
             </div>
 
@@ -693,7 +693,7 @@ const ClientLiveListSection = ({ tenantId, user, refreshKey = 0 }) => {
                 onClick={handleSaveEdit}
                 className="inline-flex items-center gap-2 rounded-xl bg-[var(--c-accent)] px-4 py-2 text-sm font-semibold text-white"
               >
-                <Save size={15} />
+                <Save strokeWidth={1.5} size={15} />
                 Save
               </button>
             </div>

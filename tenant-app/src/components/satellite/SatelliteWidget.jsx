@@ -29,7 +29,7 @@ const SatelliteWidget = () => {
         style={{ WebkitAppRegion: 'drag' }}
       >
         <div className="flex items-center gap-2">
-          <Pin className="h-4 w-4 text-[var(--c-accent)]" />
+          <Pin strokeWidth={1.5} className="h-4 w-4 text-[var(--c-accent)]" />
           <span>Always on Top</span>
         </div>
         <button
@@ -38,7 +38,7 @@ const SatelliteWidget = () => {
           style={{ WebkitAppRegion: 'no-drag' }}
           aria-label="Close to tray"
         >
-          <X className="h-4 w-4" />
+          <X strokeWidth={1.5} className="h-4 w-4" />
         </button>
       </div>
 
@@ -65,14 +65,14 @@ const SatelliteWidget = () => {
                 className="flex h-8 w-8 items-center justify-center rounded-xl text-[var(--c-muted)] transition hover:bg-[var(--c-accent)]/10 hover:text-[var(--c-accent)]"
                 aria-label="Copy"
               >
-                <ClipboardCopy className="h-4 w-4" />
+                <ClipboardCopy strokeWidth={1.5} className="h-4 w-4" />
               </button>
               <button
                 type="button"
                 className="flex h-8 w-8 items-center justify-center rounded-xl text-[var(--c-muted)] transition hover:bg-[var(--c-accent)]/10 hover:text-[var(--c-accent)]"
                 aria-label="Track"
               >
-                <Target className="h-4 w-4" />
+                <Target strokeWidth={1.5} className="h-4 w-4" />
               </button>
             </div>
           </div>

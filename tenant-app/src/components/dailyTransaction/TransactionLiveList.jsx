@@ -163,7 +163,7 @@ const TransactionLiveList = ({ tenantId, refreshKey }) => {
                                                 <span className="font-semibold text-[var(--c-text)]">{row.transactionId || row.id}</span>
                                             </div>
                                             <p className="mt-1 flex items-center gap-1.5 text-[10px] text-[var(--c-muted)]">
-                                                <Clock className="h-2.5 w-2.5" />
+                                                <Clock strokeWidth={1.5} className="h-2.5 w-2.5" />
                                                 {new Date(row.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                             </p>
                                         </td>
@@ -187,7 +187,7 @@ const TransactionLiveList = ({ tenantId, refreshKey }) => {
                                             <div className="flex items-center justify-center gap-2">
                                                 {isLocked ? (
                                                     <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-orange-500/10 text-orange-500" aria-label="Invoiced and locked">
-                                                        <Lock className="h-4 w-4" />
+                                                        <Lock strokeWidth={1.5} className="h-4 w-4" />
                                                     </div>
                                                 ) : (
                                                     <>
@@ -198,7 +198,7 @@ const TransactionLiveList = ({ tenantId, refreshKey }) => {
                                                                 className="compact-icon-action flex items-center justify-center rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] text-rose-500 transition hover:bg-rose-500 hover:text-white disabled:opacity-50"
                                                                 aria-label="Soft Delete"
                                                             >
-                                                                <Trash2 className="h-4 w-4" />
+                                                                <Trash2 strokeWidth={1.5} className="h-4 w-4" />
                                                             </button>
                                                         ) : null}
                                                     </>

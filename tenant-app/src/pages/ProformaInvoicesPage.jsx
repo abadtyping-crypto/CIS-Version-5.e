@@ -885,7 +885,7 @@ const ProformaInvoicesPage = () => {
               }}
               className={`flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-bold transition ${isCreateMode ? activeTabClass : 'bg-[var(--c-panel)] text-[var(--c-muted)] hover:bg-[color:color-mix(in_srgb,var(--c-panel)_80%,transparent)]'}`}
             >
-              <Plus size={14} />
+              <Plus strokeWidth={1.5} size={14} />
               Create Proforma
             </button>
             <button
@@ -896,7 +896,7 @@ const ProformaInvoicesPage = () => {
               }}
               className={`flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-bold transition ${!isCreateMode ? activeTabClass : 'bg-[var(--c-panel)] text-[var(--c-muted)] hover:bg-[color:color-mix(in_srgb,var(--c-panel)_80%,transparent)]'}`}
             >
-              <FileText size={14} />
+              <FileText strokeWidth={1.5} size={14} />
               Existing Proforma
             </button>
           </div>
@@ -910,7 +910,7 @@ const ProformaInvoicesPage = () => {
               }`}
               onClick={() => setQuoteSearchOpen(true)}
             >
-              <Search size={14} className="shrink-0 text-[var(--c-muted)]" />
+              <Search strokeWidth={1.5} size={14} className="shrink-0 text-[var(--c-muted)]" />
               <input
                 type="text"
                 value={quotationSearch}
@@ -921,10 +921,10 @@ const ProformaInvoicesPage = () => {
               />
               {quotationSearch ? (
                 <button type="button" onClick={e => { e.stopPropagation(); setQuotationSearch(''); }} className="text-[var(--c-muted)] hover:text-rose-400">
-                  <X size={12} />
+                  <X strokeWidth={1.5} size={12} />
                 </button>
               ) : null}
-              <ChevronDown size={12} className={`shrink-0 text-[var(--c-muted)] transition-transform ${quoteSearchOpen ? 'rotate-180' : ''}`} />
+              <ChevronDown strokeWidth={1.5} size={12} className={`shrink-0 text-[var(--c-muted)] transition-transform ${quoteSearchOpen ? 'rotate-180' : ''}`} />
             </div>
 
             {quoteSearchOpen && (() => {
@@ -1033,7 +1033,7 @@ const ProformaInvoicesPage = () => {
               <div className="flex items-center justify-between gap-3 border-b border-[var(--c-border)] pb-4 mb-5">
                 <div className="flex items-center gap-3">
                   <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-[var(--c-panel)] text-[var(--c-accent)] border border-[var(--c-border)]">
-                    {isCreateMode ? <Plus size={18} /> : <FileText size={18} />}
+                    {isCreateMode ? <Plus strokeWidth={1.5} size={18} /> : <FileText strokeWidth={1.5} size={18} />}
                   </div>
                   <div>
                     <h2 className="text-base font-black text-[var(--c-text)]">{isCreateMode ? 'Draft New Proforma' : (selectedProforma?.displayRef || 'Document Viewer')}</h2>
@@ -1057,7 +1057,7 @@ const ProformaInvoicesPage = () => {
                     className={`flex items-center gap-3 rounded-xl border px-3 py-3 text-left transition ${clientMode === 'existing' ? 'border-[var(--c-accent)] bg-[color:color-mix(in_srgb,var(--c-accent)_10%,var(--c-surface))]' : 'border-[var(--c-border)] bg-[var(--c-panel)]'}`}
                   >
                     <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${clientMode === 'existing' ? 'bg-[var(--c-accent)] text-white' : 'bg-[var(--c-surface)] text-[var(--c-accent)]'}`}>
-                      <Users className="h-5 w-5" />
+                      <Users strokeWidth={1.5} className="h-5 w-5" />
                     </span>
                     <span className="min-w-0">
                       <span className="block text-sm font-black text-[var(--c-text)]">Existing Client</span>
@@ -1074,7 +1074,7 @@ const ProformaInvoicesPage = () => {
                     className={`flex items-center gap-3 rounded-xl border px-3 py-3 text-left transition ${clientMode === 'manual' ? 'border-[var(--c-accent)] bg-[color:color-mix(in_srgb,var(--c-accent)_10%,var(--c-surface))]' : 'border-[var(--c-border)] bg-[var(--c-panel)]'}`}
                   >
                     <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${clientMode === 'manual' ? 'bg-[var(--c-accent)] text-white' : 'bg-[var(--c-surface)] text-[var(--c-accent)]'}`}>
-                      <UserPlus className="h-5 w-5" />
+                      <UserPlus strokeWidth={1.5} className="h-5 w-5" />
                     </span>
                     <span className="min-w-0">
                       <span className="block text-sm font-black text-[var(--c-text)]">Add Client Here</span>
@@ -1097,7 +1097,7 @@ const ProformaInvoicesPage = () => {
                           onClick={() => setManualClient((prev) => ({ ...prev, clientType: 'company' }))}
                           className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-left text-xs font-black transition ${manualClient.clientType === 'company' ? 'border-[var(--c-accent)] bg-[color:color-mix(in_srgb,var(--c-accent)_10%,var(--c-surface))] text-[var(--c-accent)]' : 'border-[var(--c-border)] bg-[var(--c-surface)] text-[var(--c-muted)]'}`}
                         >
-                          <Building2 className="h-4 w-4" />
+                          <Building2 strokeWidth={1.5} className="h-4 w-4" />
                           Company
                         </button>
                         <button
@@ -1105,7 +1105,7 @@ const ProformaInvoicesPage = () => {
                           onClick={() => setManualClient((prev) => ({ ...prev, clientType: 'individual' }))}
                           className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-left text-xs font-black transition ${manualClient.clientType === 'individual' ? 'border-[var(--c-accent)] bg-[color:color-mix(in_srgb,var(--c-accent)_10%,var(--c-surface))] text-[var(--c-accent)]' : 'border-[var(--c-border)] bg-[var(--c-surface)] text-[var(--c-muted)]'}`}
                         >
-                          <User className="h-4 w-4" />
+                          <User strokeWidth={1.5} className="h-4 w-4" />
                           Individual
                         </button>
                       </div>
@@ -1277,7 +1277,7 @@ const ProformaInvoicesPage = () => {
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="flex items-start gap-3">
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[color:color-mix(in_srgb,var(--c-accent)_14%,transparent)] text-[var(--c-accent)]">
-                      <Tags className="h-4 w-4" />
+                      <Tags strokeWidth={1.5} className="h-4 w-4" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-base font-bold text-[var(--c-text)]">Add Services</p>
@@ -1326,7 +1326,7 @@ const ProformaInvoicesPage = () => {
                           className="mt-2 flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] text-[var(--c-text)] transition hover:border-[var(--c-accent)] hover:text-[var(--c-accent)]"
                           aria-label="Add new application template"
                         >
-                          <Plus className="h-5 w-5" />
+                          <Plus strokeWidth={1.5} className="h-5 w-5" />
                         </button>
                       ) : null}
                     </div>
@@ -1348,7 +1348,7 @@ const ProformaInvoicesPage = () => {
                               className="flex h-1/2 items-center justify-center bg-[var(--c-surface)] text-[var(--c-muted)] transition hover:text-[var(--c-accent)]"
                               aria-label="Increase quantity"
                             >
-                              <ChevronUp className="h-3.5 w-3.5" />
+                              <ChevronUp strokeWidth={1.5} className="h-3.5 w-3.5" />
                             </button>
                             <button
                               type="button"
@@ -1356,7 +1356,7 @@ const ProformaInvoicesPage = () => {
                               className="flex h-1/2 items-center justify-center border-t border-[var(--c-border)] bg-[var(--c-surface)] text-[var(--c-muted)] transition hover:text-[var(--c-accent)]"
                               aria-label="Decrease quantity"
                             >
-                              <ChevronDown className="h-3.5 w-3.5" />
+                              <ChevronDown strokeWidth={1.5} className="h-3.5 w-3.5" />
                             </button>
                           </div>
                         </div>
@@ -1454,7 +1454,7 @@ const ProformaInvoicesPage = () => {
                                     className="inline-flex h-8 w-8 cursor-grab items-center justify-center rounded-lg text-[var(--c-muted)] transition hover:text-[var(--c-accent)] active:cursor-grabbing"
                                     aria-label="Drag to reorder"
                                   >
-                                    <GripVertical className="h-4 w-4" />
+                                    <GripVertical strokeWidth={1.5} className="h-4 w-4" />
                                   </button>
                                   <span className="rounded-md bg-[var(--c-surface)] px-1.5 py-0.5 text-[10px] font-black tracking-wider text-[var(--c-muted)]">
                                     {String(index + 1).padStart(2, '0')}
@@ -1520,7 +1520,7 @@ const ProformaInvoicesPage = () => {
                                       className="flex h-1/2 items-center justify-center bg-[var(--c-panel)] text-[var(--c-muted)] transition hover:text-[var(--c-accent)]"
                                       aria-label="Increase quantity"
                                     >
-                                      <ChevronUp className="h-3.5 w-3.5" />
+                                      <ChevronUp strokeWidth={1.5} className="h-3.5 w-3.5" />
                                     </button>
                                     <button
                                       type="button"
@@ -1528,7 +1528,7 @@ const ProformaInvoicesPage = () => {
                                       className="flex h-1/2 items-center justify-center border-t border-[var(--c-border)] bg-[var(--c-panel)] text-[var(--c-muted)] transition hover:text-[var(--c-accent)]"
                                       aria-label="Decrease quantity"
                                     >
-                                      <ChevronDown className="h-3.5 w-3.5" />
+                                      <ChevronDown strokeWidth={1.5} className="h-3.5 w-3.5" />
                                     </button>
                                   </div>
                                 </div>
@@ -1554,7 +1554,7 @@ const ProformaInvoicesPage = () => {
                                   className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-rose-300/70 bg-rose-50 text-rose-600 transition hover:bg-rose-100"
                                   aria-label="Remove item"
                                 >
-                                  <Trash2 className="h-4 w-4" />
+                                  <Trash2 strokeWidth={1.5} className="h-4 w-4" />
                                 </button>
                               </div>
                             </div>
@@ -1642,7 +1642,7 @@ const ProformaInvoicesPage = () => {
               {isCreateMode && (
                 <div className="mt-6 rounded-2xl border-2 border-[var(--c-accent)]/20 bg-[var(--c-accent)]/5 p-4">
                   <div className="flex items-center gap-2 mb-4">
-                    <History size={16} className="text-[var(--c-accent)]" />
+                    <History strokeWidth={1.5} size={16} className="text-[var(--c-accent)]" />
                     <h3 className="text-xs font-black uppercase tracking-widest text-[var(--c-accent)]">Advance Payment (Optional)</h3>
                   </div>
                   <div className="grid gap-4 md:grid-cols-2">
@@ -1711,8 +1711,8 @@ const ProformaInvoicesPage = () => {
                           <button type="button" onClick={handleCancel} className="rounded-xl border border-rose-100 bg-rose-50 text-rose-600 px-4 py-2 text-[11px] font-black uppercase flex items-center gap-2">Cancel Proforma</button>
                         </>
                       )}
-                      <button type="button" onClick={handleDownloadPdf} className="rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] px-4 py-2 text-[11px] font-black uppercase flex items-center gap-2"><Download size={14} /> PDF</button>
-                      <button type="button" onClick={handleEmail} className="rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] px-4 py-2 text-[11px] font-black uppercase flex items-center gap-2"><Mail size={14} /> Email</button>
+                      <button type="button" onClick={handleDownloadPdf} className="rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] px-4 py-2 text-[11px] font-black uppercase flex items-center gap-2"><Download strokeWidth={1.5} size={14} /> PDF</button>
+                      <button type="button" onClick={handleEmail} className="rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] px-4 py-2 text-[11px] font-black uppercase flex items-center gap-2"><Mail strokeWidth={1.5} size={14} /> Email</button>
                       {selectedProforma.status !== 'cancelled' && (
                         <button type="button" onClick={() => navigate(`/t/${tenantId}/receive-payments?proformaId=${selectedId}`)} className="rounded-xl border border-[var(--c-accent)] bg-[var(--c-accent)]/10 px-4 py-2 text-[11px] font-black uppercase text-[var(--c-accent)]">Receive Balance</button>
                       )}
@@ -1720,7 +1720,7 @@ const ProformaInvoicesPage = () => {
                   )}
                   {isCreateMode && (
                     <button type="button" onClick={handleSaveClick} disabled={isSaving} className="rounded-xl bg-[var(--c-accent)] px-8 py-2 text-xs font-black uppercase text-white shadow-lg shadow-[var(--c-accent)]/20 flex items-center gap-2 disabled:opacity-50">
-                      <Save size={16} /> Generate Proforma
+                      <Save strokeWidth={1.5} size={16} /> Generate Proforma
                     </button>
                   )}
                 </div>

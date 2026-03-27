@@ -28,15 +28,15 @@ const ConfirmDialog = ({
   return (
     <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4">
       <div 
-        className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+        className="absolute inset-0 bg-slate-900/40 backdrop-blur-md"
         onClick={handleCancel}
       />
       
-      <div className="relative w-full max-w-sm overflow-hidden rounded-2xl bg-[var(--c-surface)] shadow-2xl ring-1 ring-slate-900/5 animate-in zoom-in-95 duration-200">
+      <div className="relative w-full max-w-sm overflow-hidden rounded-2xl bg-[var(--c-surface)] shadow-2xl border border-[var(--c-border)] animate-in zoom-in-95 duration-200">
         <div className="p-6">
           <div className="flex items-start gap-4">
             <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${isDangerous ? 'bg-rose-100 text-rose-600' : 'bg-[var(--c-accent)]/10 text-[var(--c-accent)]'}`}>
-              <AlertTriangle className="h-5 w-5" />
+              <AlertTriangle strokeWidth={1.5} className="h-5 w-5" />
             </div>
             <div className="flex-1 pt-1">
               <h3 className="text-base font-black text-[var(--c-text)] space-y-2">{title}</h3>
@@ -49,14 +49,14 @@ const ConfirmDialog = ({
           <button
             type="button"
             onClick={handleCancel}
-            className="rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] px-4 py-2 text-xs font-black uppercase tracking-wider text-[var(--c-muted)] transition hover:border-[var(--c-text)] hover:text-[var(--c-text)]"
+            className="rounded-2xl border border-[var(--c-border)] bg-[var(--c-surface)] px-4 py-2 text-xs font-black uppercase tracking-wider text-[var(--c-muted)] transition hover:border-[var(--c-text)] hover:text-[var(--c-text)]"
           >
             {cancelText}
           </button>
           <button
             type="button"
             onClick={onConfirm}
-            className={`rounded-xl px-4 py-2 text-xs font-black uppercase tracking-wider text-white shadow-lg transition hover:opacity-90 active:scale-95 ${isDangerous ? 'bg-rose-600 shadow-rose-600/20' : 'bg-[var(--c-accent)] shadow-[var(--c-accent)]/20'}`}
+            className={`rounded-2xl px-4 py-2 text-xs font-black uppercase tracking-wider text-white shadow-lg transition hover:opacity-90 active:scale-95 ${isDangerous ? 'bg-rose-600 shadow-rose-600/20' : 'bg-[var(--c-accent)] shadow-[var(--c-accent)]/20'}`}
           >
             {confirmText}
           </button>

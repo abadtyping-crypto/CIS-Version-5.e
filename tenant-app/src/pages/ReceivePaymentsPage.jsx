@@ -153,11 +153,11 @@ const ReceivePaymentsPage = () => {
       iconKey="receivePayments"
       widthPreset="form"
     >
-      <div className="flex flex-col gap-6" style={{ marginTop: 'var(--d-shell-header-h)' }}>
+      <div className="flex flex-col gap-6">
         
         {status && (
           <div className={`rounded-xl border p-4 flex items-center gap-3 animate-in fade-in slide-in-from-top-2 ${statusType === 'error' ? 'bg-rose-50 border-rose-200 text-rose-700' : 'bg-emerald-50 border-emerald-200 text-emerald-700'}`}>
-            {statusType === 'error' ? <AlertCircle size={18} /> : <CheckCircle2 size={18} />}
+            {statusType === 'error' ? <AlertCircle strokeWidth={1.5} size={18} /> : <CheckCircle2 strokeWidth={1.5} size={18} />}
             <span className="text-sm font-bold">{status}</span>
           </div>
         )}
@@ -172,7 +172,7 @@ const ReceivePaymentsPage = () => {
                 onClick={resetForm}
                 className="flex items-center gap-2 rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] px-4 py-2 text-xs font-black text-[var(--c-text)] hover:bg-[var(--c-surface)] transition"
               >
-                <RefreshCcw className="h-4 w-4" /> Reset
+                <RefreshCcw strokeWidth={1.5} className="h-4 w-4" /> Reset
               </button>
           </div>
 
@@ -239,7 +239,7 @@ const ReceivePaymentsPage = () => {
                       </span>
                       {remainingProformaBalance === 0 && numericAmount > 0 && (
                         <span className="inline-flex items-center gap-1 rounded bg-emerald-100 px-2 py-0.5 text-[10px] font-black uppercase text-emerald-700">
-                          Clear <CheckCircle2 size={10} />
+                          Clear <CheckCircle2 strokeWidth={1.5} size={10} />
                         </span>
                       )}
                     </div>
@@ -282,9 +282,9 @@ const ReceivePaymentsPage = () => {
             <button
               onClick={handleSubmit}
               disabled={isSaving || !selectedProformaId || numericAmount <= 0}
-              className="flex h-12 min-w-[200px] items-center justify-center gap-2 rounded-2xl bg-[var(--c-accent)] px-8 font-black text-white shadow-lg shadow-[var(--c-accent)]/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-40 disabled:scale-100"
+              className="flex h-14 min-w-[200px] items-center justify-center gap-2 rounded-2xl bg-[var(--c-accent)] px-8 font-black text-white shadow-lg shadow-[var(--c-accent)]/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-40 disabled:scale-100"
             >
-              <Wallet size={20} />
+              <Wallet strokeWidth={1.5} size={20} />
               {isSaving ? 'Processing...' : 'Record Payment'}
             </button>
           </div>

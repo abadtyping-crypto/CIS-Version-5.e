@@ -1088,7 +1088,6 @@ const QuotationPage = () => {
       iconKey="quotations"
       title="Quotation Workspace"
       subtitle="Create, review, and manage client quotations before they move into proforma conversion."
-      icon={FileText}
       eyebrow="Quotation"
       widthPreset="data"
     >
@@ -1102,7 +1101,7 @@ const QuotationPage = () => {
                 ? activeTabClass
                 : 'bg-[var(--c-panel)] text-[var(--c-muted)] hover:bg-[color:color-mix(in_srgb,var(--c-panel)_80%,transparent)]'}`}
             >
-              <Plus className="h-4 w-4" />
+              <Plus strokeWidth={1.5} className="h-4 w-4" />
               Create Quotation
             </button>
             <button
@@ -1112,7 +1111,7 @@ const QuotationPage = () => {
                 ? activeTabClass
                 : 'bg-[var(--c-panel)] text-[var(--c-muted)] hover:bg-[color:color-mix(in_srgb,var(--c-panel)_80%,transparent)]'}`}
             >
-              <FileText className="h-4 w-4" />
+              <FileText strokeWidth={1.5} className="h-4 w-4" />
               Existing Quotations
             </button>
           </div>
@@ -1143,7 +1142,7 @@ const QuotationPage = () => {
                     className={`flex items-center gap-3 rounded-xl border px-3 py-3 text-left transition ${clientMode === 'manual' ? activeChoiceCardClass : 'border-[var(--c-border)] bg-[var(--c-panel)]'}`}
                   >
                     <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${clientMode === 'manual' ? activeChoiceIconClass : 'bg-[var(--c-surface)] text-[var(--c-accent)]'}`}>
-                      <UserPlus className="h-5 w-5" />
+                      <UserPlus strokeWidth={1.5} className="h-5 w-5" />
                     </span>
                     <span className="min-w-0">
                       <span className="block text-sm font-black text-[var(--c-text)]">New Client</span>
@@ -1160,7 +1159,7 @@ const QuotationPage = () => {
                     className={`flex items-center gap-3 rounded-xl border px-3 py-3 text-left transition ${clientMode === 'existing' ? activeChoiceCardClass : 'border-[var(--c-border)] bg-[var(--c-panel)]'}`}
                   >
                     <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${clientMode === 'existing' ? activeChoiceIconClass : 'bg-[var(--c-surface)] text-[var(--c-accent)]'}`}>
-                      <Users className="h-5 w-5" />
+                      <Users strokeWidth={1.5} className="h-5 w-5" />
                     </span>
                     <span className="min-w-0">
                       <span className="block text-sm font-black text-[var(--c-text)]">Existing Client</span>
@@ -1334,7 +1333,7 @@ const QuotationPage = () => {
             <div className="rounded-2xl border border-[var(--c-border)] bg-[var(--c-surface)] p-4 shadow-sm space-y-4">
               <div className="flex items-start gap-3">
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[color:color-mix(in_srgb,var(--c-accent)_14%,transparent)] text-[var(--c-accent)]">
-                  <FileText className="h-4 w-4" />
+                  <FileText strokeWidth={1.5} className="h-4 w-4" />
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-base font-bold text-[var(--c-text)]">Description</p>
@@ -1358,7 +1357,7 @@ const QuotationPage = () => {
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="flex items-start gap-3">
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[color:color-mix(in_srgb,var(--c-accent)_14%,transparent)] text-[var(--c-accent)]">
-                    <Tags className="h-4 w-4" />
+                    <Tags strokeWidth={1.5} className="h-4 w-4" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-base font-bold text-[var(--c-text)]">Add Services</p>
@@ -1399,7 +1398,7 @@ const QuotationPage = () => {
                       className="mt-2 flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] text-[var(--c-text)] transition hover:border-[var(--c-accent)] hover:text-[var(--c-accent)]"
                       aria-label="Add new application template"
                     >
-                      <Plus className="h-5 w-5" />
+                      <Plus strokeWidth={1.5} className="h-5 w-5" />
                     </button>
                   ) : null}
                 </div>
@@ -1509,7 +1508,7 @@ const QuotationPage = () => {
                               className="inline-flex h-8 w-8 cursor-grab items-center justify-center rounded-lg text-[var(--c-muted)] transition hover:text-[var(--c-accent)] active:cursor-grabbing"
                               aria-label="Drag to reorder"
                             >
-                              <GripVertical className="h-4 w-4" />
+                              <GripVertical strokeWidth={1.5} className="h-4 w-4" />
                             </button>
                             <span className="rounded-md bg-[var(--c-surface)] px-1.5 py-0.5 text-[10px] font-black tracking-wider text-[var(--c-muted)]">
                               {String(index + 1).padStart(2, '0')}
@@ -1575,7 +1574,7 @@ const QuotationPage = () => {
                                 className="flex h-1/2 items-center justify-center bg-[var(--c-panel)] text-[var(--c-muted)] transition hover:text-[var(--c-accent)]"
                                 aria-label="Increase quantity"
                               >
-                                <ChevronUp className="h-3.5 w-3.5" />
+                                <ChevronUp strokeWidth={1.5} className="h-3.5 w-3.5" />
                               </button>
                               <button
                                 type="button"
@@ -1583,7 +1582,7 @@ const QuotationPage = () => {
                                 className="flex h-1/2 items-center justify-center border-t border-[var(--c-border)] bg-[var(--c-panel)] text-[var(--c-muted)] transition hover:text-[var(--c-accent)]"
                                 aria-label="Decrease quantity"
                               >
-                                <ChevronDown className="h-3.5 w-3.5" />
+                                <ChevronDown strokeWidth={1.5} className="h-3.5 w-3.5" />
                               </button>
                             </div>
                           </div>
@@ -1609,7 +1608,7 @@ const QuotationPage = () => {
                             className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-rose-300/70 bg-rose-50 text-rose-600 transition hover:bg-rose-100"
                             aria-label="Remove item"
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 strokeWidth={1.5} className="h-4 w-4" />
                           </button>
                         </div>
                       </div>
@@ -1650,7 +1649,7 @@ const QuotationPage = () => {
                   className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)] text-[var(--c-text)] transition hover:border-[var(--c-accent)] hover:text-[var(--c-accent)] disabled:cursor-not-allowed disabled:opacity-35"
                   aria-label="Add term and condition"
                 >
-                  <Plus className="h-5 w-5" />
+                  <Plus strokeWidth={1.5} className="h-5 w-5" />
                 </button>
               </div>
 
@@ -1682,7 +1681,7 @@ const QuotationPage = () => {
                             className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] text-[var(--c-muted)] transition hover:border-rose-400/60 hover:bg-rose-500/10 hover:text-rose-400"
                             aria-label={`Remove condition ${index + 1}`}
                           >
-                            <X className="h-4 w-4" />
+                            <X strokeWidth={1.5} className="h-4 w-4" />
                           </button>
                         </div>
                       </div>
@@ -1738,7 +1737,7 @@ const QuotationPage = () => {
                       onClick={() => void handleEmail(selectedQuotation)}
                       className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)] px-4 py-3 text-xs font-black text-[var(--c-text)] disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      <Mail className="h-4 w-4" />
+                      <Mail strokeWidth={1.5} className="h-4 w-4" />
                       Email
                     </button>
                     <button
@@ -1747,7 +1746,7 @@ const QuotationPage = () => {
                       onClick={() => void handleClone(selectedQuotation)}
                       className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)] px-4 py-3 text-xs font-black text-[var(--c-text)] disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      <Copy className="h-4 w-4" />
+                      <Copy strokeWidth={1.5} className="h-4 w-4" />
                       Clone
                     </button>
                     <button
@@ -1756,7 +1755,7 @@ const QuotationPage = () => {
                       onClick={() => void handleExtend(selectedQuotation)}
                       className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)] px-4 py-3 text-xs font-black text-[var(--c-text)] disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      <RefreshCcw className="h-4 w-4" />
+                      <RefreshCcw strokeWidth={1.5} className="h-4 w-4" />
                       Extend
                     </button>
                     <button
@@ -1765,7 +1764,7 @@ const QuotationPage = () => {
                       onClick={() => void handleAccept(selectedQuotation)}
                       className="inline-flex items-center justify-center gap-2 rounded-2xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-xs font-black text-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      <CheckCircle2 className="h-4 w-4" />
+                      <CheckCircle2 strokeWidth={1.5} className="h-4 w-4" />
                       Accept
                     </button>
                     <button
@@ -1774,7 +1773,7 @@ const QuotationPage = () => {
                       onClick={() => void handleCancel(selectedQuotation)}
                       className="inline-flex items-center justify-center gap-2 rounded-2xl border border-rose-300 bg-rose-50 px-4 py-3 text-xs font-black text-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      <Ban className="h-4 w-4" />
+                      <Ban strokeWidth={1.5} className="h-4 w-4" />
                       Cancel
                     </button>
                   </div>

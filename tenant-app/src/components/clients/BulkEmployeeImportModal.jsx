@@ -186,7 +186,7 @@ const BulkEmployeeImportModal = ({ isOpen, onClose, tenantId, user, onSuccess, p
             <header className="flex h-18 shrink-0 items-center justify-between border-b border-[var(--c-border)] bg-[var(--c-surface)] px-10 shadow-xl z-20">
                 <div className="flex items-center gap-6">
                     <div className="flex h-12 w-12 items-center justify-center rounded-2xl brand-gradient-bg shadow-lg">
-                        <Fingerprint size={28} className="text-white" />
+                        <Fingerprint strokeWidth={1.5} size={28} className="text-white" />
                     </div>
                     <div>
                         <h1 className="text-xl font-black uppercase tracking-tight">Bulk Import Studio</h1>
@@ -204,14 +204,14 @@ const BulkEmployeeImportModal = ({ isOpen, onClose, tenantId, user, onSuccess, p
                                 <p className="text-[9px] font-black uppercase text-[var(--c-muted)] opacity-60">Authorized Sponsor</p>
                                 <p className="text-sm font-black text-[var(--c-accent)] uppercase">{sponsorName}</p>
                             </div>
-                            <ShieldCheck size={20} className="text-emerald-500" />
+                            <ShieldCheck strokeWidth={1.5} size={20} className="text-emerald-500" />
                         </div>
                     )}
                     <button
                         onClick={onClose}
                         className="flex items-center gap-3 rounded-xl border border-[var(--c-danger)]/20 bg-[var(--c-danger-soft)] px-5 py-2.5 text-xs font-black text-[var(--c-danger)] transition hover:bg-[var(--c-danger)] hover:text-white"
                     >
-                        <X size={16} />
+                        <X strokeWidth={1.5} size={16} />
                         EXIT
                     </button>
                 </div>
@@ -255,7 +255,7 @@ const BulkEmployeeImportModal = ({ isOpen, onClose, tenantId, user, onSuccess, p
                                             <div className="animate-spin h-20 w-20 border-8 border-[var(--c-accent)] border-t-transparent rounded-full" />
                                         ) : (
                                             <div className="text-center">
-                                                <Upload size={48} className="mx-auto text-[var(--c-accent)] mb-4" />
+                                                <Upload strokeWidth={1.5} size={48} className="mx-auto text-[var(--c-accent)] mb-4" />
                                                 <p className="font-black text-xl">DROP PDF / TXT FILE</p>
                                             </div>
                                         )}
@@ -307,7 +307,7 @@ const BulkEmployeeImportModal = ({ isOpen, onClose, tenantId, user, onSuccess, p
                                             <div className="p-4 flex items-center gap-4">
                                                 {/* Number Bubble */}
                                                 <div className="h-10 w-10 shrink-0 flex items-center justify-center rounded-xl bg-[var(--c-panel)] text-[12px] font-black border border-[var(--c-border)]">
-                                                    {isSuccess ? <Check size={18} className="text-emerald-500" /> : idx + 1}
+                                                    {isSuccess ? <Check strokeWidth={1.5} size={18} className="text-emerald-500" /> : idx + 1}
                                                 </div>
 
                                                 {/* LIVE EDITABLE FIELDS GRID */}
@@ -377,11 +377,11 @@ const BulkEmployeeImportModal = ({ isOpen, onClose, tenantId, user, onSuccess, p
                                                             Ignore
                                                         </label>
                                                         <button onClick={() => toggleCard(idx)} className={`p-2 rounded-lg transition ${isExpanded ? 'bg-[var(--c-accent)] text-white' : 'text-[var(--c-muted)]'}`}>
-                                                            <MoreHorizontal size={18} />
+                                                            <MoreHorizontal strokeWidth={1.5} size={18} />
                                                         </button>
                                                         {!isSuccess && (
                                                             <button onClick={() => removeEmployee(idx)} className="p-2 text-rose-300 hover:text-rose-600">
-                                                                <Trash2 size={18} />
+                                                                <Trash2 strokeWidth={1.5} size={18} />
                                                             </button>
                                                         )}
                                                     </div>

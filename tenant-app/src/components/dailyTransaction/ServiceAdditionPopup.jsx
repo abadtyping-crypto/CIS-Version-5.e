@@ -68,14 +68,14 @@ const ServiceAdditionPopup = ({ isOpen, onClose, onAdded }) => {
         <header className="flex items-center justify-between border-b border-[var(--c-border)] bg-[var(--c-panel)] px-6 py-4">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--c-accent)]/10 text-[var(--c-accent)] border border-[var(--c-accent)]/20">
-              <Box size={20} />
+              <Box strokeWidth={1.5} size={20} />
             </div>
             <div>
               <h2 className="text-sm font-black text-[var(--c-text)]">New Service Template</h2>
               <p className="text-[10px] font-bold uppercase text-[var(--c-muted)]">Add to your library</p>
             </div>
           </div>
-          <button onClick={onClose} className="rounded-full p-2 text-[var(--c-muted)] hover:bg-[var(--c-border)] transition"><X size={20} /></button>
+          <button onClick={onClose} className="rounded-full p-2 text-[var(--c-muted)] hover:bg-[var(--c-border)] transition"><X strokeWidth={1.5} size={20} /></button>
         </header>
 
         <div className="max-h-[70vh] overflow-y-auto p-6 space-y-5">
@@ -160,7 +160,7 @@ const ServiceAdditionPopup = ({ isOpen, onClose, onAdded }) => {
             disabled={isSaving}
             className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--c-accent)] py-3 text-sm font-black uppercase text-white shadow-xl shadow-[var(--c-accent)]/20 transition hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
           >
-            {isSaving ? 'Adding...' : <><Save size={18} /> Add to Library</>}
+            {isSaving ? 'Adding...' : <><Save strokeWidth={1.5} size={18} /> Add to Library</>}
           </button>
         </footer>
       </div>

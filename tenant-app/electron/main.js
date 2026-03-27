@@ -49,6 +49,9 @@ protocol.registerSchemesAsPrivileged([
 let mainWindow;
 let satelliteWindow;
 let satelliteState = { x: undefined, y: undefined };
+let downloadsWatcher;
+let lastDetectedPdfPath = '';
+let lastDetectedPdfAt = 0;
 let robotjs;
 
 try {
@@ -208,6 +211,29 @@ function createSatelliteWindow() {
     return satelliteWindow;
 }
 
+const emitPdfDetected = (data = {}) => {
+    const satellite = createSatelliteWindow();
+    const payload = {
+        type: 'PDF_DETECTED',
+        filePath: String(data?.filePath || ''),
+        fileName: String(data?.fileName || ''),
+        detectedAt: new Date().toISOString(),
+    };
+
+    if (satellite && !satellite.isDestroyed()) {
+        satellite.show();
+        satellite.focus();
+        satellite.setAlwaysOnTop(true, 'screen-saver');
+        satellite.webContents.send('pdf-detected', payload);
+        satellite.webContents.send('sync-event', payload);
+    }
+
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('pdf-detected', payload);
+        mainWindow.webContents.send('sync-event', payload);
+    }
+};
+
 ipcMain.on('satellite-copy-action', (_event, payload) => {
     const value = String(payload?.value ?? payload ?? '');
     if (value) {
@@ -232,11 +258,7 @@ ipcMain.on('satellite-copy-action', (_event, payload) => {
 });
 
 ipcMain.on('pdf-detected', (_event, data) => {
-    if (satelliteWindow && !satelliteWindow.isDestroyed()) {
-        satelliteWindow.show();
-        satelliteWindow.setAlwaysOnTop(true, 'screen-saver');
-        satelliteWindow.webContents.send('sync-event', { type: 'PDF_DETECTED', ...data });
-    }
+    emitPdfDetected(data);
 });
 
 ipcMain.handle('start-scraping', async (_event, { filePath }) => {
@@ -251,19 +273,22 @@ const setupDownloadsWatcher = () => {
         if (!existsSync(downloadsPath)) return;
 
         const { watch } = require('fs');
-        watch(downloadsPath, (eventType, filename) => {
+        downloadsWatcher?.close?.();
+        downloadsWatcher = watch(downloadsPath, (eventType, filename) => {
             if (eventType === 'rename' && filename?.toLowerCase()?.endsWith('.pdf')) {
                 const fullPath = join(downloadsPath, filename);
                 if (existsSync(fullPath)) {
-                    console.log('[Sovereign] New PDF detected in Downloads:', filename);
-                    if (satelliteWindow && !satelliteWindow.isDestroyed()) {
-                        satelliteWindow.show();
-                        satelliteWindow.webContents.send('sync-event', { 
-                            type: 'PDF_DETECTED', 
-                            filePath: fullPath, 
-                            fileName: filename 
-                        });
+                    const now = Date.now();
+                    if (fullPath === lastDetectedPdfPath && (now - lastDetectedPdfAt) < 1500) {
+                        return;
                     }
+                    lastDetectedPdfPath = fullPath;
+                    lastDetectedPdfAt = now;
+                    console.log('[Sovereign] New PDF detected in Downloads:', filename);
+                    emitPdfDetected({
+                        filePath: fullPath,
+                        fileName: filename,
+                    });
                 }
             }
         });
@@ -601,6 +626,8 @@ app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', () => {
+    downloadsWatcher?.close?.();
+    downloadsWatcher = null;
     if (process.platform !== 'darwin') {
         app.quit();
     }

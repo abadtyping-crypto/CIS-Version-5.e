@@ -1,15 +1,16 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { collection, doc, getDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
 import PageShell from '../components/layout/PageShell';
 import { useTenant } from '../context/useTenant';
 import { useAuth } from '../context/useAuth';
 import {
     generateNextTransactionId,
-    createDailyTransactionWithFinancials,
     fetchTenantPortals,
     fetchTenantClients,
 } from '../lib/backendStore';
-import { fetchTasks, updateTask } from '../lib/workflowStore';
+import { fetchTasks } from '../lib/workflowStore';
+import { db } from '../lib/firebaseConfig';
 import { createSyncEvent } from '../lib/syncEvents';
 import ClientSearchField from '../components/dailyTransaction/ClientSearchField';
 import ServiceSearchField from '../components/dailyTransaction/ServiceSearchField';
@@ -22,6 +23,7 @@ import PortalTransactionSelector from '../components/common/PortalTransactionSel
 import InputActionField from '../components/common/InputActionField';
 import { ENFORCE_UNIVERSAL_APPLICATION_UID } from '../lib/universalLibraryPolicy';
 import { canUserPerformAction } from '../lib/userControlPreferences';
+import { toSafeDocId } from '../lib/idUtils';
 
 const activeTabClass = 'bg-[var(--c-accent)] text-white shadow-lg shadow-[color-mix(in_srgb,var(--c-accent)_28%,transparent)]';
 const accentHeroClass = 'bg-[color:color-mix(in_srgb,var(--c-accent)_10%,var(--c-surface))] border-[var(--c-accent)]/20';
@@ -192,45 +194,174 @@ const DailyTransactionPage = () => {
         setError('');
 
         const selectedClient = selectedParent;
+        const actorUid = String(user?.uid || '').trim();
 
         try {
-            const txId = await generateNextTransactionId(tenantId, 'DTID');
-
-            const payload = {
-                transactionId: txId,
-                applicationId: selectedService?.id || null,
-                applicationDescription: String(selectedService?.description || '').trim(),
-                clientId: selectedClient?.id || clientToSave.id,
-                dependentId: selectedDependent?.id || null,
-                paidPortalId: selectedPortalId,
-                portalTransactionMethod: selectedPortalMethod,
-                govCharge: Number(govCharge || 0),
-                clientCharge: Number(clientCharge || 0),
-                profit: profit,
-                status: 'active',
-                invoiced: false,
-                createdBy: user.uid,
-                createdAt: new Date(transactionDate).toISOString(),
-            };
-
-            const res = await createDailyTransactionWithFinancials(tenantId, txId, payload);
-            if (!res.ok) {
-                setError(res.error || 'Failed to save transaction.');
+            if (!actorUid) {
+                setError('Authenticated user UID is required.');
                 return;
             }
 
-            await createSyncEvent({
+            const txId = await generateNextTransactionId(tenantId, 'DTID');
+            const clientId = String(selectedClient?.id || clientToSave.id || '').trim();
+            const dependentId = String(selectedDependent?.id || '').trim();
+            const portalId = String(selectedPortalId || '').trim();
+            const portalMethod = String(selectedPortalMethod || '').trim();
+            const applicationId = String(selectedService?.id || '').trim();
+            const applicationDescription = String(selectedService?.description || '').trim();
+            const safeGovCharge = Number(govCharge || 0);
+            const safeClientCharge = Number(clientCharge || 0);
+            const createdAtIso = new Date(transactionDate).toISOString();
+
+            const forbiddenIdentityKeys = ['userName', 'displayName'];
+
+            const payload = {
+                transactionId: txId,
+                applicationId: applicationId || null,
+                applicationDescription,
+                clientId,
+                dependentId: dependentId || null,
+                paidPortalId: portalId,
+                portalTransactionMethod: portalMethod,
+                govCharge: safeGovCharge,
+                clientCharge: safeClientCharge,
+                profit: profit,
+                status: 'active',
+                invoiced: false,
+                createdBy: actorUid,
+                updatedBy: actorUid,
+                createdAt: createdAtIso,
+                updatedAt: createdAtIso,
+            };
+
+            if (forbiddenIdentityKeys.some((key) => key in payload)) {
+                setError('Display identity fields are blocked. Only raw UID actor fields are allowed.');
+                return;
+            }
+
+            const dailyTxRef = doc(db, 'tenants', tenantId, 'dailyTransactions', txId);
+            const clientRef = doc(db, 'tenants', tenantId, 'clients', clientId);
+            const portalRef = doc(db, 'tenants', tenantId, 'portals', portalId);
+            const portalTxId = toSafeDocId(`${txId}-PORT`, 'portal_tx');
+            const portalTxRef = doc(db, 'tenants', tenantId, 'portalTransactions', portalTxId);
+            const negativeBalanceNotificationId = toSafeDocId(`negative_client_balance_${txId}`, 'ntf');
+            const notificationRef = doc(db, 'tenants', tenantId, 'notifications', negativeBalanceNotificationId);
+            const syncEventRef = doc(collection(db, 'tenants', tenantId, 'syncEvents'));
+            const taskRef = urlTaskId ? doc(db, 'tenants', tenantId, 'tasks', urlTaskId) : null;
+
+            const [clientSnap, portalSnap, taskSnap] = await Promise.all([
+                getDoc(clientRef),
+                getDoc(portalRef),
+                taskRef ? getDoc(taskRef) : Promise.resolve(null),
+            ]);
+
+            if (!clientSnap.exists()) {
+                setError('Selected client not found.');
+                return;
+            }
+            if (!portalSnap.exists()) {
+                setError('Selected portal not found.');
+                return;
+            }
+            if (taskRef && taskSnap && !taskSnap.exists()) {
+                setError('Linked task no longer exists.');
+                return;
+            }
+
+            const clientData = clientSnap.data() || {};
+            const portalData = portalSnap.data() || {};
+            const currentClientBalance = Number(clientData.balance ?? clientData.openingBalance ?? 0) || 0;
+            const currentPortalBalance = Number(portalData.balance ?? 0) || 0;
+            const nextClientBalance = currentClientBalance - safeClientCharge;
+            const nextPortalBalance = currentPortalBalance - safeGovCharge;
+            const softDeleteAudience = ['super admin', 'admin', 'manager', 'accountant', 'staff'];
+            const syncEvent = await createSyncEvent({
                 tenantId,
                 eventType: 'create',
                 entityType: 'transaction',
                 entityId: txId,
                 changedFields: Object.keys(payload),
-                createdBy: user.uid,
+                createdBy: actorUid,
             });
 
-            if (urlTaskId) {
-                await updateTask(tenantId, urlTaskId, { status: 'completed', transactionId: txId });
+            if (forbiddenIdentityKeys.some((key) => key in syncEvent)) {
+                setError('Sync payload contains blocked identity fields.');
+                return;
             }
+
+            const batch = writeBatch(db);
+            batch.set(dailyTxRef, {
+                ...payload,
+                updatedAt: serverTimestamp(),
+            });
+            batch.set(clientRef, {
+                openingBalance: nextClientBalance,
+                balance: nextClientBalance,
+                updatedAt: serverTimestamp(),
+                updatedBy: actorUid,
+            }, { merge: true });
+            batch.set(portalRef, {
+                balance: nextPortalBalance,
+                balanceType: nextPortalBalance < 0 ? 'negative' : 'positive',
+                updatedAt: serverTimestamp(),
+                updatedBy: actorUid,
+            }, { merge: true });
+
+            if (safeGovCharge > 0) {
+                batch.set(portalTxRef, {
+                    portalId,
+                    displayTransactionId: txId,
+                    amount: -safeGovCharge,
+                    type: 'Daily Transaction',
+                    category: 'Government Charge',
+                    method: portalMethod,
+                    description: `Government charge for ${txId}`,
+                    date: createdAtIso,
+                    entityType: 'transaction',
+                    entityId: txId,
+                    affectsPortalBalance: true,
+                    status: 'active',
+                    createdAt: serverTimestamp(),
+                    createdBy: actorUid,
+                    updatedAt: serverTimestamp(),
+                    updatedBy: actorUid,
+                });
+            }
+
+            if (nextClientBalance < 0) {
+                batch.set(notificationRef, {
+                    title: 'Insufficient Client Balance',
+                    message: `Transaction ${txId} resulted in a negative balance.`,
+                    eventKey: 'negativeClientBalance',
+                    tenantId,
+                    transactionId: txId,
+                    clientId,
+                    targetRoles: softDeleteAudience,
+                    routePath: `/t/${tenantId}/daily-transactions`,
+                    status: 'unread',
+                    createdAt: serverTimestamp(),
+                    createdBy: actorUid,
+                    updatedAt: serverTimestamp(),
+                    updatedBy: actorUid,
+                }, { merge: true });
+            }
+
+            batch.set(syncEventRef, {
+                ...syncEvent,
+                updatedAt: serverTimestamp(),
+                updatedBy: actorUid,
+            });
+
+            if (taskRef) {
+                batch.set(taskRef, {
+                    status: 'completed',
+                    transactionId: txId,
+                    updatedAt: serverTimestamp(),
+                    updatedBy: actorUid,
+                }, { merge: true });
+            }
+
+            await batch.commit();
 
             setSuccess(`Transaction ${txId} saved successfully!`);
             setRefreshListKey(prev => prev + 1);
@@ -274,7 +405,7 @@ const DailyTransactionPage = () => {
                         {/* Hero Header matching screenshot */}
                         <div className={`flex items-center gap-3 rounded-2xl p-4 shadow-sm ${accentHeroClass}`}>
                             <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${accentHeroIconClass}`}>
-                                <FileText size={20} />
+                                <FileText strokeWidth={1.5} size={20} />
                             </div>
                             <div>
                                 <h2 className="text-lg font-semibold text-[var(--c-text)]">Transaction Entry Details</h2>
@@ -308,7 +439,7 @@ const DailyTransactionPage = () => {
                                                     onClick={() => setIsQuickAddOpen(true)}
                                                     className="flex items-center gap-1 text-[10px] font-semibold uppercase text-[var(--c-accent)] hover:underline"
                                                 >
-                                                    <Plus size={10} /> Add
+                                                    <Plus strokeWidth={1.5} size={10} /> Add
                                                 </button>
                                             ) : null}
                                         </div>
@@ -383,7 +514,7 @@ const DailyTransactionPage = () => {
                                         </div>
                                         {isNegativeBalance ? (
                                             <div className="mt-3 flex items-center gap-2 rounded-xl border border-amber-300 bg-white/70 px-3 py-2 text-xs font-bold text-amber-700">
-                                                <AlertTriangle className="h-4 w-4" />
+                                                <AlertTriangle strokeWidth={1.5} className="h-4 w-4" />
                                                 Insufficient Client Balance. Transaction will still save and create a notification record.
                                             </div>
                                         ) : null}
@@ -437,7 +568,7 @@ const DailyTransactionPage = () => {
                                         onClick={() => setShowProfit(prev => !prev)}
                                         className="flex h-8 items-center gap-1.5 rounded-lg border border-[var(--c-border)] bg-[var(--c-panel)] px-2 text-[10px] font-bold uppercase text-[var(--c-muted)] transition-colors hover:text-[var(--c-accent)]"
                                     >
-                                        {showProfit ? <EyeOff size={14} /> : <Eye size={14} />}
+                                        {showProfit ? <EyeOff strokeWidth={1.5} size={14} /> : <Eye strokeWidth={1.5} size={14} />}
                                         {showProfit ? 'Hide Sensitives' : 'Show Profit'}
                                     </button>
                                 </div>

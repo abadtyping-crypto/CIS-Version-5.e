@@ -85,6 +85,24 @@ export const fetchGlobalHeaderConfig = async (pageID) => {
   }
 };
 
+export const fetchGlobalPageInstruction = async (pageID) => {
+  try {
+    const normalizedPageID = normalizePageID(pageID);
+    const docRef = doc(db, 'global_page_instructions', normalizedPageID);
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      return { ok: true, data: snap.data() };
+    }
+    return { ok: false, error: 'Page instruction not found' };
+  } catch (error) {
+    const message = toSafeError(error);
+    console.warn(
+      `[backendStore] global page instruction fetch failed global_page_instructions/${pageID} (normalized=${normalizePageID(pageID)}): ${message}`,
+    );
+    return { ok: false, error: message };
+  }
+};
+
 export const fetchGlobalInstructionAsset = async (instructionID) => {
   try {
     const safeId = String(instructionID || '').trim();
