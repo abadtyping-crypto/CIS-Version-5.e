@@ -31,6 +31,8 @@ import {
   sendTenantDocumentEmail,
   upsertTenantProformaInvoice,
   updateTenantProformaInvoiceStatus,
+  acceptTenantProformaInvoice,
+  linkProformaToTasks,
   cancelTenantProformaInvoice,
   generateDisplayDocumentRef,
   generateDisplayClientId,
@@ -44,13 +46,15 @@ import {
 } from '../lib/backendStore';
 import { fetchMergedServiceTemplates } from '../lib/serviceTemplateStore';
 import { fetchGlobalPortalLogoMap } from '../lib/portalLogoLibraryStore';
-import { TasksIcon } from '../components/icons/AppIcons';
+import { sendWhatsAppDocument } from '../lib/whatsappService';
+import { TasksIcon, WhatsAppColorIcon } from '../components/icons/AppIcons';
 import { toSafeDocId } from '../lib/idUtils';
 import { generateTenantPdf } from '../lib/pdfGenerator';
 import { createSyncEvent } from '../lib/syncEvents';
 import { DEFAULT_COUNTRY_PHONE_ISO2 } from '../lib/countryPhoneData';
 import { ENFORCE_UNIVERSAL_APPLICATION_UID } from '../lib/universalLibraryPolicy';
 import { normalizeLibraryDescription } from '../lib/serviceTemplateRules';
+import SignatureCard from '../components/common/SignatureCard';
 import {
   createMobileContact,
   getPrimaryMobileContact,
@@ -158,6 +162,7 @@ const ProformaInvoicesPage = () => {
   const location = useLocation();
   const { layoutMode } = useElectronLayoutMode();
   const statusRef = useRef(null);
+  const statusTimerRef = useRef(null);
   const quoteSearchRef = useRef(null);
 
   // Close quote search dropdown on outside click
@@ -195,7 +200,6 @@ const ProformaInvoicesPage = () => {
   const [advanceMethodId, setAdvanceMethodId] = useState('');
   const [advanceNote, setAdvanceNote] = useState('');
   const [sourceQuotationId, setSourceQuotationId] = useState('');
-  const [isLinkedToTask, setIsLinkedToTask] = useState(false);
   const [assignedUserIds, setAssignedUserIds] = useState([]);
   const [tenantUsers, setTenantUsers] = useState([]);
   const [refreshIncentive, setRefreshIncentive] = useState(0);
@@ -227,13 +231,27 @@ const ProformaInvoicesPage = () => {
     return next;
   }, [serviceTemplates]);
 
+  const tenantUserMap = useMemo(() => {
+    const next = {};
+    (tenantUsers || []).forEach((u) => {
+      const key = String(u.id || u.uid || '').trim();
+      if (key) next[key] = u;
+    });
+    return next;
+  }, [tenantUsers]);
+
   const resolveServiceMeta = useCallback((applicationId) => {
     if (!applicationId) return null;
     return serviceTemplateMap[String(applicationId)] || null;
   }, [serviceTemplateMap]);
 
   const pushStatus = (msg, type = 'info') => {
-    setStatus(msg); setStatusType(type);
+    setStatus(msg); 
+    setStatusType(type);
+    if (statusTimerRef.current) clearTimeout(statusTimerRef.current);
+    statusTimerRef.current = setTimeout(() => {
+      setStatus('');
+    }, 12000);
     window.requestAnimationFrame(() => statusRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
   };
   const openConfirm = (opts) => setConfirmDialog({ open: true, isDangerous: false, ...opts });
@@ -352,7 +370,6 @@ const ProformaInvoicesPage = () => {
       setAdvanceMethodId(row.advanceMethodId || '');
       setAdvanceNote(row.advanceNote || '');
       setDescription(row.description || '');
-      setIsLinkedToTask(!!row.isLinkedToTask);
       setAssignedUserIds(Array.isArray(row.assignedUserIds) ? row.assignedUserIds : []);
       setTrackingId(row.trackingId || '');
       setProformaDate(row.proformaDate || (row.createdAt ? new Date(row.createdAt.seconds * 1000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]));
@@ -728,8 +745,8 @@ const ProformaInvoicesPage = () => {
         sourceQuotationId: sourceQuotationId || null,
         trackingId: trackingId || '',
         description: description,
-        isLinkedToTask,
-        assignedUserIds: assignedUserIds,
+        isLinkedToTask: selectedProforma?.isLinkedToTask || false,
+        assignedUserIds: selectedProforma?.assignedUserIds || [],
         proformaDate,
         dependents: selectedDependents,
         status: selectedProforma?.status || 'drafted',
@@ -742,21 +759,6 @@ const ProformaInvoicesPage = () => {
       const res = await upsertTenantProformaInvoice(tenantId, proformaId, payload);
       if (!res.ok) throw new Error(res.error || 'Failed to save proforma.');
 
-      // Batch create tasks if integration is enabled
-      if (isLinkedToTask && items.length > 0) {
-        await Promise.all(items.map(item => createTenantTask(tenantId, {
-          title: `${item.name} (${displayRef})`,
-          description: `Task generated from Proforma ${displayRef}.\n\nApplication: ${item.name}\nQuantity: ${item.qty}`,
-          status: 'pending',
-          assignedUserIds: assignedUserIds,
-          clientId: clientId || '',
-          proformaId: proformaId,
-          trackingId: trackingId || '',
-          transactionNumbersSnapshot: [],
-          createdBy: user?.uid || '',
-          updatedBy: user?.uid || '',
-        })));
-      }
       if (advanceNum > 0 && clientId) {
         await recordClientPaymentWithFinancials(tenantId, toSafeDocId(`${displayRef}-ADV`, 'pay'), {
           clientId,
@@ -811,6 +813,61 @@ const ProformaInvoicesPage = () => {
       },
       onCancel: closeConfirm,
     });
+  };
+
+  const handleAcceptProforma = async () => {
+    if (!selectedId) return;
+    setActionOverlay({ open: true, kind: 'process', title: 'Accepting Proforma', subtitle: 'Updating record for operational handoff...', status: 'Processing...' });
+    const res = await acceptTenantProformaInvoice(tenantId, selectedId, user?.uid);
+    setActionOverlay({ open: false });
+    if (res.ok) {
+      pushStatus('Proforma accepted and ready for task assignment.', 'success');
+      loadData(selectedId);
+    } else {
+      pushStatus(res.error, 'error');
+    }
+  };
+
+  const handleTransferToTasks = async () => {
+    if (!selectedProforma || isSaving) return;
+    if (assignedUserIds.length === 0) {
+      pushStatus('Assign at least one responsible personnel.', 'error');
+      return;
+    }
+    setIsSaving(true);
+    setActionOverlay({
+      open: true,
+      kind: 'process',
+      title: 'Handoff to Tracking',
+      subtitle: 'Transferring applications to operational task management...',
+      status: 'Generating Tasks...',
+    });
+    try {
+      const { id: proformaId, displayRef, items, clientId, trackingId } = selectedProforma;
+      await Promise.all((items || []).map(item => createTenantTask(tenantId, {
+        title: `${item.name} (${displayRef})`,
+        description: `Task generated from Proforma ${displayRef}.\n\nApplication: ${item.name}\nQuantity: ${item.qty}`,
+        status: 'pending',
+        assignedUserIds: assignedUserIds,
+        clientId: clientId || '',
+        proformaId: proformaId,
+        trackingId: trackingId || '',
+        transactionNumbersSnapshot: [],
+        createdBy: user?.uid || '',
+        updatedBy: user?.uid || '',
+      })));
+      
+      const linkRes = await linkProformaToTasks(tenantId, proformaId, assignedUserIds, user?.uid);
+      if (!linkRes.ok) throw new Error(linkRes.error || 'Failed to link proforma to tasks.');
+      
+      pushStatus(`Tasks generated for ${displayRef}. Transferred to tracking system.`, 'success');
+      await loadData(proformaId);
+    } catch (e) {
+      pushStatus(e.message, 'error');
+    } finally {
+      setIsSaving(false);
+      setActionOverlay({ open: false });
+    }
   };
 
   const handleMarkAsSent = async () => {
@@ -894,10 +951,58 @@ const ProformaInvoicesPage = () => {
     }
   };
 
+  const handleWhatsApp = async () => {
+    if (!selectedProforma) return;
+    const phoneSnapshot = getPrimaryMobileContact(selectedProforma.clientSnapshot?.mobileContacts || []);
+    const phone = phoneSnapshot?.value ? String(phoneSnapshot.value).replace(/\D/g, '') : '';
+    
+    if (!phone) {
+      pushStatus('No mobile number available for WhatsApp.', 'error');
+      return;
+    }
+
+    setActionOverlay({
+      open: true,
+      kind: 'process',
+      title: 'Sending via WhatsApp',
+      subtitle: `Delivering proforma to +${phone}...`,
+      status: 'Uploading Document...',
+    });
+
+    try {
+      // 1. Generate PDF and get public URL
+      const pdfRes = await generateTenantPdf({ 
+        tenantId, 
+        documentType: 'nextInvoice', 
+        data: buildPdfData(selectedProforma), 
+        save: true, 
+        filename: `${selectedProforma.displayRef}.pdf` 
+      });
+      
+      if (!pdfRes.ok || !pdfRes.url) {
+        throw new Error(pdfRes.error || 'Failed to generate public PDF URL.');
+      }
+
+      // 2. Send via WhatsApp Service
+      const waRes = await sendWhatsAppDocument(tenantId, phone, pdfRes.url, `${selectedProforma.displayRef}.pdf`);
+      
+      if (waRes.ok) {
+        pushStatus(`Proforma sent to +${phone} via WhatsApp.`, 'success');
+      } else {
+        throw new Error(waRes.error);
+      }
+    } catch (e) {
+      pushStatus(e.message, 'error');
+    } finally {
+      setActionOverlay((prev) => ({ ...prev, open: false }));
+    }
+  };
+
   const statusBadgeClass = (status) => {
-    if (status === 'paid') return 'bg-emerald-100 text-emerald-700 border-emerald-200';
     if (status === 'partially_paid') return 'bg-amber-100 text-amber-700 border-amber-200';
     if (status === 'canceled') return 'bg-rose-100 text-rose-700 border-rose-200';
+    if (status === 'sent') return 'bg-blue-100 text-blue-700 border-blue-200';
+    if (status === 'accepted') return 'bg-purple-100 text-purple-700 border-purple-200';
     return 'bg-slate-100 text-slate-600 border-slate-200';
   };
 
@@ -1038,19 +1143,50 @@ const ProformaInvoicesPage = () => {
                 <p className="rounded-xl border border-dashed border-[var(--c-border)] p-4 text-xs text-[var(--c-muted)] text-center">No records yet.</p>
               ) : (
                 <div className="space-y-2 max-h-[420px] overflow-y-auto">
-                  {rows.map(item => (
-                    <button key={item.id} type="button" onClick={() => { setSelectedId(item.id); setIsCreateMode(false); }} className={`w-full rounded-xl border p-3 text-left transition ${selectedId === item.id ? 'border-[var(--c-accent)] bg-[var(--c-accent)]/5' : 'border-[var(--c-border)] bg-[var(--c-panel)]/50'}`}>
-                      <div className="flex items-center justify-between mb-1">
-                        <p className={`text-xs font-black ${selectedId === item.id ? 'text-[var(--c-accent)]' : 'text-[var(--c-text)]'}`}>{item.displayRef || item.id}</p>
-                        <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded-full border ${statusBadgeClass(item.status)}`}>{item.status || 'Draft'}</span>
-                      </div>
-                      <p className="truncate text-[10px] font-bold text-[var(--c-muted)]">{item.clientSnapshot?.name || item.clientSnapshot?.fullName || item.clientSnapshot?.tradeName || 'Client'}</p>
-                      <div className="mt-2 flex justify-between items-center">
-                        <CurrencyValue value={item.totalAmount} className="text-[11px] font-black text-[var(--c-text)]" iconSize="h-2.5 w-2.5" />
-                        <p className="text-[8px] font-bold text-[var(--c-muted)] uppercase">{new Date(item.createdAt).toLocaleDateString()}</p>
-                      </div>
-                    </button>
-                  ))}
+                  {rows.map(item => {
+                    const creator = tenantUserMap[String(item.createdBy || '')];
+                    // Handle potential Firestore Timestamps or JS Dates safely
+                    const createdAtRaw = item.createdAt;
+                    const dateObj = (createdAtRaw?.seconds) ? new Date(createdAtRaw.seconds * 1000) : new Date(createdAtRaw);
+                    const dateStr = isNaN(dateObj.getTime()) ? '-' : dateObj.toLocaleDateString();
+
+                    return (
+                      <button 
+                        key={item.id} 
+                        type="button" 
+                        onClick={() => { setSelectedId(item.id); setIsCreateMode(false); }} 
+                        className={`w-full rounded-2xl border p-4 text-left transition-all duration-200 ${selectedId === item.id ? 'border-[var(--c-accent)] bg-[var(--c-accent)]/[0.03] shadow-inner' : 'border-[var(--c-border)] bg-[var(--c-panel)]/40 hover:bg-[var(--c-panel)]/70'}`}
+                      >
+                        <div className="flex items-center justify-between gap-2 mb-3">
+                          <p className={`text-[12px] font-black tracking-tight ${selectedId === item.id ? 'text-[var(--c-accent)]' : 'text-[var(--c-text)]'}`}>{item.displayRef || item.id}</p>
+                          <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-lg border ${statusBadgeClass(item.status)}`}>{item.status || 'Draft'}</span>
+                        </div>
+                        
+                        <div className="flex items-center justify-between gap-3 mb-4">
+                           <div className="min-w-0 flex-1">
+                             <p className="truncate text-[11px] font-black text-[var(--c-muted)] uppercase tracking-wider">
+                               {item.clientSnapshot?.name || item.clientSnapshot?.fullName || item.clientSnapshot?.tradeName || 'Walk-in Client'}
+                             </p>
+                           </div>
+                           <div className="shrink-0">
+                             <SignatureCard 
+                               uid={item.createdBy || ''} 
+                               displayName={creator?.displayName || creator?.name || 'Staff'}
+                               avatarUrl={creator?.photoURL}
+                               className="h-8 shadow-sm transition-opacity group-hover:opacity-100 opacity-90"
+                             />
+                           </div>
+                        </div>
+
+                        <div className="flex justify-between items-center border-t border-[var(--c-border)] pt-3">
+                          <div className="flex items-center gap-1.5 grayscale opacity-90">
+                            <CurrencyValue value={item.totalAmount} className="text-[12px] font-black text-[var(--c-text)]" iconSize="h-3 w-3" />
+                          </div>
+                          <p className="text-[9px] font-black text-[var(--c-muted)] uppercase tracking-widest">{dateStr}</p>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -1628,55 +1764,58 @@ const ProformaInvoicesPage = () => {
                 </div>
               </div>
 
-              {/* Task Management Integration (Disabled by default) */}
-              {isCreateMode && (
-                <div className="mt-6 rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)]/30 p-5 shadow-sm">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="h-9 w-9 flex items-center justify-center rounded-xl bg-[var(--c-surface)] text-[var(--c-accent)] border border-[var(--c-border)]">
-                        <TasksIcon size={16} />
-                      </div>
-                      <div>
-                        <h3 className="text-xs font-black uppercase tracking-widest text-[var(--c-text)]">Task Management</h3>
-                        <p className="text-[9px] font-bold text-[var(--c-muted)]">Automatic transfer to operational tracking</p>
-                      </div>
+              {/* Task Management Integration — Only for Accepted Proformas not yet linked */}
+              {!isCreateMode && selectedProforma?.status === 'accepted' && !selectedProforma?.isLinkedToTask && (
+                <div className="mt-6 rounded-2xl border-2 border-[var(--c-accent)] bg-[var(--c-accent)]/5 p-5 shadow-sm">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="h-9 w-9 flex items-center justify-center rounded-xl bg-[var(--c-surface)] text-[var(--c-accent)] border border-[var(--c-border)] shadow-sm">
+                      <TasksIcon size={16} />
                     </div>
-                    <label className="relative inline-flex cursor-pointer items-center">
-                      <input type="checkbox" checked={isLinkedToTask} onChange={(e) => setIsLinkedToTask(e.target.checked)} className="peer sr-only" />
-                      <div className="h-6 w-11 rounded-full bg-slate-200 after:absolute after:top-[2px] after:left-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all peer-checked:bg-[var(--c-accent)] peer-checked:after:translate-x-full" />
-                    </label>
+                    <div>
+                      <h3 className="text-xs font-black uppercase tracking-widest text-[var(--c-text)]">Hand-off to Tracking</h3>
+                      <p className="text-[9px] font-bold text-[var(--c-muted)]">Operational task generation and assignment</p>
+                    </div>
                   </div>
 
-                  {isLinkedToTask && (
-                    <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
-                      <div className="rounded-xl bg-[var(--c-accent)]/5 border border-[var(--c-accent)]/10 p-3">
-                        <p className="text-[10px] font-bold text-[var(--c-accent)]">
-                          All applications listed above will be created as individual tasks in the tracking system once you generate this proforma.
-                        </p>
-                      </div>
-                      <div>
-                        <span className="text-[10px] font-black uppercase text-[var(--c-muted)] mb-1.5 block">Assign Responsible Personnel *</span>
-                        <div className="grid max-h-36 gap-2 overflow-y-auto rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] p-2 sm:grid-cols-2">
-                          {tenantUsers.map((u) => {
-                            const checked = assignedUserIds.includes(u.uid);
-                            return (
-                              <label key={u.uid} className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-bold transition cursor-pointer ${checked ? 'bg-[var(--c-accent)]/10 text-[var(--c-accent)] border border-[var(--c-accent)]/20' : 'bg-[var(--c-panel)] text-[var(--c-text)] border border-transparent hover:border-[var(--c-border)]'}`}>
-                                <input
-                                  type="checkbox"
-                                  className="accent-[var(--c-accent)]"
-                                  checked={checked}
-                                  onChange={() => {
-                                    setAssignedUserIds(prev => checked ? prev.filter(uid => uid !== u.uid) : [...prev, u.uid]);
-                                  }}
-                                />
-                                <span className="truncate">{u.displayName || u.email || u.uid}</span>
-                              </label>
-                            );
-                          })}
-                        </div>
+                  <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div className="rounded-xl bg-white/50 border border-[var(--c-accent)]/10 p-4">
+                      <p className="text-[10px] font-bold text-[var(--c-text)] leading-relaxed">
+                        Generate individual tasks for each application in this proforma. Assigned personnel will be notified to start processing.
+                      </p>
+                    </div>
+                    
+                    <div>
+                      <span className="text-[10px] font-black uppercase text-[var(--c-muted)] mb-2 block">Assign Responsible Personnel *</span>
+                      <div className="grid max-h-48 gap-2 overflow-y-auto rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] p-2 sm:grid-cols-2">
+                        {tenantUsers.map((u) => {
+                          const checked = assignedUserIds.includes(u.uid);
+                          return (
+                            <label key={u.uid} className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-bold transition cursor-pointer ${checked ? 'bg-[var(--c-accent)] text-white shadow-sm' : 'bg-[var(--c-panel)] text-[var(--c-text)] border border-transparent hover:border-[var(--c-border)]'}`}>
+                              <input
+                                type="checkbox"
+                                className="accent-white"
+                                checked={checked}
+                                onChange={() => {
+                                  setAssignedUserIds(prev => checked ? prev.filter(uid => uid !== u.uid) : [...prev, u.uid]);
+                                }}
+                              />
+                              <span className="truncate">{u.displayName || u.email || u.uid}</span>
+                            </label>
+                          );
+                        })}
                       </div>
                     </div>
-                  )}
+
+                    <button
+                      type="button"
+                      onClick={handleTransferToTasks}
+                      disabled={isSaving || assignedUserIds.length === 0}
+                      className="w-full rounded-xl bg-[var(--c-accent)] py-3 text-xs font-black uppercase text-white shadow-lg shadow-[var(--c-accent)]/20 transition hover:opacity-90 disabled:opacity-30 flex items-center justify-center gap-2"
+                    >
+                      <Plus size={16} strokeWidth={1.5} />
+                      Start Operational Tracking
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -1738,31 +1877,101 @@ const ProformaInvoicesPage = () => {
                 </div>
               )}
 
-              {/* Footer */}
-              <div className="mt-6 flex flex-wrap items-center justify-between gap-4 border-t border-[var(--c-border)] pt-5">
-                <button type="button" onClick={() => { resetCreateForm(); setIsCreateMode(false); }} className="rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] px-5 py-2 text-[11px] font-black uppercase text-[var(--c-muted)]">
-                  {isCreateMode ? 'Discard' : 'Clear'}
-                </button>
+              {/* Footer Actions */}
+              <div className="mt-8 flex flex-col gap-4 border-t border-[var(--c-border)] pt-6 lg:flex-row lg:items-center lg:justify-between">
                 <div className="flex items-center gap-3">
+                  <button 
+                    type="button" 
+                    onClick={() => { resetCreateForm(); setIsCreateMode(false); }} 
+                    className="rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] px-6 py-2.5 text-[11px] font-black uppercase tracking-wider text-[var(--c-muted)] transition hover:bg-[var(--c-border)] hover:text-[var(--c-text)]"
+                  >
+                    {isCreateMode ? 'Discard Draft' : 'Clear Form'}
+                  </button>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3 lg:justify-end">
                   {!isCreateMode && selectedProforma && (
                     <>
                       {selectedProforma.status !== 'cancelled' && (
                         <>
-                          <button type="button" onClick={handleEditMode} className="rounded-xl border border-[var(--c-border)] bg-amber-50 text-amber-600 px-4 py-2 text-[11px] font-black uppercase flex items-center gap-2">Edit Document</button>
-                          <button type="button" onClick={handleMarkAsSent} className="rounded-xl border border-[var(--c-border)] bg-blue-50 text-blue-600 px-4 py-2 text-[11px] font-black uppercase flex items-center gap-2">Mark as Sent</button>
-                          <button type="button" onClick={handleCancel} className="rounded-xl border border-rose-100 bg-rose-50 text-rose-600 px-4 py-2 text-[11px] font-black uppercase flex items-center gap-2">Cancel Proforma</button>
+                          <button 
+                            type="button" 
+                            onClick={handleEditMode} 
+                            className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-[10px] font-black uppercase tracking-tight text-amber-700 transition hover:bg-amber-100"
+                          >
+                            Edit
+                          </button>
+                          {(selectedProforma.status === 'drafted' || selectedProforma.status === 'sent') && (
+                            <button 
+                              type="button" 
+                              onClick={handleAcceptProforma} 
+                              className="rounded-xl border border-[var(--c-accent)] bg-[var(--c-accent)]/10 px-4 py-2.5 text-[10px] font-black uppercase tracking-tight text-[var(--c-accent)] transition hover:bg-[var(--c-accent)]/20"
+                            >
+                              Accept
+                            </button>
+                          )}
+                          <button 
+                            type="button" 
+                            onClick={handleMarkAsSent} 
+                            className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-[10px] font-black uppercase tracking-tight text-blue-700 transition hover:bg-blue-100"
+                          >
+                            Mark Sent
+                          </button>
+                          <button 
+                            type="button" 
+                            onClick={handleCancel} 
+                            className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-[10px] font-black uppercase tracking-tight text-rose-700 transition hover:bg-rose-100"
+                          >
+                            Cancel
+                          </button>
                         </>
                       )}
-                      <button type="button" onClick={handleDownloadPdf} className="rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] px-4 py-2 text-[11px] font-black uppercase flex items-center gap-2"><Download strokeWidth={1.5} size={14} /> PDF</button>
-                      <button type="button" onClick={handleEmail} className="rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] px-4 py-2 text-[11px] font-black uppercase flex items-center gap-2"><Mail strokeWidth={1.5} size={14} /> Email</button>
+                      
+                      <div className="h-6 w-px bg-[var(--c-border)] mx-1 hidden sm:block" />
+
+                      <button 
+                        type="button" 
+                        onClick={handleDownloadPdf} 
+                        className="rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] px-4 py-2.5 text-[10px] font-black uppercase tracking-tight text-[var(--c-text)] transition hover:bg-[var(--c-border)] flex items-center gap-2"
+                      >
+                        <Download strokeWidth={2} size={14} /> PDF
+                      </button>
+                      
+                      <button 
+                        type="button" 
+                        onClick={handleEmail} 
+                        className="rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] px-4 py-2.5 text-[10px] font-black uppercase tracking-tight text-[var(--c-text)] transition hover:bg-[var(--c-border)] flex items-center gap-2"
+                      >
+                        <Mail strokeWidth={2} size={14} /> Email
+                      </button>
+
+                      <button 
+                        type="button" 
+                        onClick={handleWhatsApp} 
+                        className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-[10px] font-black uppercase tracking-tight text-emerald-700 transition hover:bg-emerald-100 flex items-center gap-2"
+                      >
+                        <WhatsAppColorIcon className="h-4 w-4" /> WhatsApp
+                      </button>
+
                       {selectedProforma.status !== 'cancelled' && (
-                        <button type="button" onClick={() => navigate(`/t/${tenantId}/receive-payments?proformaId=${selectedId}`)} className="rounded-xl border border-[var(--c-accent)] bg-[var(--c-accent)]/10 px-4 py-2 text-[11px] font-black uppercase text-[var(--c-accent)]">Receive Balance</button>
+                        <button 
+                          type="button" 
+                          onClick={() => navigate(`/t/${tenantId}/receive-payments?proformaId=${selectedId}`)} 
+                          className="rounded-xl bg-[var(--c-accent)] px-5 py-2.5 text-[10px] font-black uppercase tracking-tight text-white shadow-lg shadow-[var(--c-accent)]/20 transition hover:opacity-90"
+                        >
+                          Receive Payment
+                        </button>
                       )}
                     </>
                   )}
                   {isCreateMode && (
-                    <button type="button" onClick={handleSaveClick} disabled={isSaving} className="rounded-xl bg-[var(--c-accent)] px-8 py-2 text-xs font-black uppercase text-white shadow-lg shadow-[var(--c-accent)]/20 flex items-center gap-2 disabled:opacity-50">
-                      <Save strokeWidth={1.5} size={16} /> Generate Proforma
+                    <button 
+                      type="button" 
+                      onClick={handleSaveClick} 
+                      disabled={isSaving} 
+                      className="rounded-xl bg-[var(--c-accent)] px-10 py-3 text-xs font-black uppercase tracking-widest text-white shadow-xl shadow-[var(--c-accent)]/30 flex items-center gap-2 disabled:opacity-50 transition transform active:scale-95"
+                    >
+                      <Save strokeWidth={2} size={16} /> Generate Proforma
                     </button>
                   )}
                 </div>

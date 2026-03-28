@@ -2120,6 +2120,28 @@ export const updateTenantProformaInvoiceStatus = async (tenantId, proformaId, st
   }
 };
 
+export const linkProformaToTasks = async (tenantId, proformaId, assignedUserIds, updatedBy) => {
+  try {
+    if (!tenantId || !proformaId) return { ok: false, error: 'Missing tenantId or proformaId.' };
+    const ref = doc(db, 'tenants', tenantId, 'proformaInvoices', proformaId);
+    await updateDoc(ref, {
+      isLinkedToTask: true,
+      assignedUserIds: assignedUserIds || [],
+      updatedAt: serverTimestamp(),
+      updatedBy: updatedBy || '',
+    });
+    return { ok: true };
+  } catch (error) {
+    const message = toSafeError(error);
+    console.warn(`[backendStore] proforma task linking failed: ${message}`);
+    return { ok: false, error: message };
+  }
+};
+
+export const acceptTenantProformaInvoice = async (tenantId, proformaId, updatedBy) => {
+  return updateTenantProformaInvoiceStatus(tenantId, proformaId, 'accepted', updatedBy);
+};
+
 const getPortalBalanceAdjustmentRequestRef = (tenantId, requestId) =>
   doc(db, 'tenants', tenantId, 'portalBalanceAdjustments', requestId);
 
