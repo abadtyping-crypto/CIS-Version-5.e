@@ -19,6 +19,7 @@ import { uploadBrandLogoAsset } from '../../lib/brandLogoStorage';
 import { getCroppedImg } from '../../lib/imageStudioUtils';
 import SettingCard from './SettingCard';
 import InputActionField from '../common/InputActionField';
+import ImageStudio from '../common/ImageStudio';
 
 // 1. DATA INTEGRITY - Recursive cleanPayload helper
 const cleanPayload = (data) => {
@@ -45,7 +46,7 @@ const ToggleSwitch = ({ checked, onChange }) => (
     aria-checked={checked}
     onClick={() => onChange(!checked)}
     className={`relative inline-flex h-6 w-10 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-      checked ? 'bg-(--c-accent)' : 'bg-(--c-muted)/30'
+    checked ? 'bg-[var(--c-accent)]' : 'bg-[color:color-mix(in_srgb,var(--c-muted)_30%,var(--c-panel))]'
     }`}
   >
     <span
@@ -124,7 +125,6 @@ const BrandingSovereign = () => {
     slotId: null,
     sourceUrl: '',
     zoom: 1,
-    cropPosition: { x: 0, y: 0 },
     croppedAreaPixels: null,
   });
 
@@ -204,7 +204,6 @@ const BrandingSovereign = () => {
       slotId,
       sourceUrl: src,
       zoom: 1,
-      cropPosition: { x: 0, y: 0 },
       croppedAreaPixels: null,
     });
   };
@@ -218,7 +217,7 @@ const BrandingSovereign = () => {
         ...p,
         [editorState.slotId]: { url, file: blob },
       }));
-      setEditorState({ isOpen: false, slotId: null, sourceUrl: '', zoom: 1, cropPosition: { x: 0, y: 0 }, croppedAreaPixels: null });
+      setEditorState({ isOpen: false, slotId: null, sourceUrl: '', zoom: 1, croppedAreaPixels: null });
     } catch (e) {
       console.error(e);
     }
@@ -286,7 +285,7 @@ const BrandingSovereign = () => {
     setIsSaving(false);
   };
 
-  const labelClass = 'text-[10px] font-bold uppercase tracking-widest text-(--c-muted)';
+  const labelClass = 'text-[10px] font-bold uppercase tracking-widest text-[var(--c-muted)]';
 
   return (
     <div className="space-y-6">
@@ -298,7 +297,7 @@ const BrandingSovereign = () => {
         <div className="space-y-8">
           {/* COMPANY INFO */}
           <section>
-            <h3 className="mb-4 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-(--c-accent)">
+            <h3 className="mb-4 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--c-accent)]">
               <Building2 className="h-4 w-4" /> Company Information
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -359,30 +358,30 @@ const BrandingSovereign = () => {
 
           {/* LOGO STUDIO */}
           <section>
-            <h3 className="mb-4 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-(--c-accent)">
+            <h3 className="mb-4 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--c-accent)]">
               <ImageIcon className="h-4 w-4" /> Logo Studio
             </h3>
             <div className="flex flex-wrap gap-4">
               {/* LOGO 1 */}
               <div
                 className={`flex w-40 flex-col gap-2 rounded-2xl border-2 p-3 transition ${
-                  activeLogoSlot === 1 ? 'border-(--c-accent) bg-(--c-accent)/5' : 'border-(--c-border)'
+                  activeLogoSlot === 1 ? 'border-[var(--c-accent)] bg-[color:color-mix(in_srgb,var(--c-accent)_5%,var(--c-panel))]' : 'border-[var(--c-border)]'
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold text-(--c-muted)">LOGO 1</span>
+                  <span className="text-[10px] font-bold text-[var(--c-muted)]">LOGO 1</span>
                   {logos[1].url && activeLogoSlot !== 1 && (
                     <button onClick={() => setActiveLogoSlot(1)}>
-                      <CheckCircle2 className="h-4 w-4 text-(--c-muted) hover:text-(--c-text)" />
+                      <CheckCircle2 className="h-4 w-4 text-[var(--c-muted)] hover:text-[var(--c-text)]" />
                     </button>
                   )}
-                  {activeLogoSlot === 1 && <CheckCircle2 className="h-4 w-4 text-(--c-accent)" />}
+                  {activeLogoSlot === 1 && <CheckCircle2 className="h-4 w-4 text-[var(--c-accent)]" />}
                 </div>
-                <label className="flex h-32 cursor-pointer items-center justify-center overflow-hidden rounded-xl border border-dashed border-(--c-border) bg-(--c-surface) hover:bg-(--c-panel)">
+                <label className="flex h-32 cursor-pointer items-center justify-center overflow-hidden rounded-xl border border-dashed border-[var(--c-border)] bg-[var(--c-surface)] hover:bg-[var(--c-panel)]">
                   {logos[1].url ? (
                     <img src={logos[1].url} alt="L1" className="h-full w-full object-contain p-2" />
                   ) : (
-                    <Plus className="h-6 w-6 text-(--c-muted)" />
+                    <Plus className="h-6 w-6 text-[var(--c-muted)]" />
                   )}
                   <input type="file" hidden accept="image/*" onChange={(e) => openEditor(1, e)} />
                 </label>
@@ -392,23 +391,23 @@ const BrandingSovereign = () => {
               {logos[1].url && (
                 <div
                   className={`flex w-40 flex-col gap-2 rounded-2xl border-2 p-3 transition ${
-                    activeLogoSlot === 2 ? 'border-(--c-accent) bg-(--c-accent)/5' : 'border-(--c-border)'
+                    activeLogoSlot === 2 ? 'border-[var(--c-accent)] bg-[color:color-mix(in_srgb,var(--c-accent)_5%,var(--c-panel))]' : 'border-[var(--c-border)]'
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold text-(--c-muted)">LOGO 2</span>
+                    <span className="text-[10px] font-bold text-[var(--c-muted)]">LOGO 2</span>
                     {logos[2].url && activeLogoSlot !== 2 && (
                       <button onClick={() => setActiveLogoSlot(2)}>
-                        <CheckCircle2 className="h-4 w-4 text-(--c-muted) hover:text-(--c-text)" />
+                        <CheckCircle2 className="h-4 w-4 text-[var(--c-muted)] hover:text-[var(--c-text)]" />
                       </button>
                     )}
-                    {activeLogoSlot === 2 && <CheckCircle2 className="h-4 w-4 text-(--c-accent)" />}
+                    {activeLogoSlot === 2 && <CheckCircle2 className="h-4 w-4 text-[var(--c-accent)]" />}
                   </div>
-                  <label className="flex h-32 cursor-pointer items-center justify-center overflow-hidden rounded-xl border border-dashed border-(--c-border) bg-(--c-surface) hover:bg-(--c-panel)">
+                  <label className="flex h-32 cursor-pointer items-center justify-center overflow-hidden rounded-xl border border-dashed border-[var(--c-border)] bg-[var(--c-surface)] hover:bg-[var(--c-panel)]">
                     {logos[2].url ? (
                       <img src={logos[2].url} alt="L2" className="h-full w-full object-contain p-2" />
                     ) : (
-                      <Plus className="h-6 w-6 text-(--c-muted)" />
+                      <Plus className="h-6 w-6 text-[var(--c-muted)]" />
                     )}
                     <input type="file" hidden accept="image/*" onChange={(e) => openEditor(2, e)} />
                   </label>
@@ -426,7 +425,7 @@ const BrandingSovereign = () => {
                 </div>
               )}
             </div>
-            <p className="mt-2 text-[10px] font-semibold text-(--c-muted)">
+            <p className="mt-2 text-[10px] font-semibold text-[var(--c-muted)]">
               Upload high-quality squares. Ticking a logo makes it the mutually exclusive active logo for all outputs.
             </p>
           </section>
@@ -494,7 +493,7 @@ const BrandingSovereign = () => {
                   <select
                     value={s.platform}
                     onChange={(e) => handleSocialChange(i, 'platform', e.target.value)}
-                    className="h-14 rounded-2xl border border-(--c-border) bg-(--c-panel) px-4 text-sm font-semibold text-(--c-text) outline-none"
+                    className="h-14 min-w-[140px] rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)] px-4 text-sm font-semibold text-[var(--c-text)] outline-none focus:border-[var(--c-accent)] transition-all"
                   >
                     {SOCIAL_OPTIONS.map((opt) => (
                       <option key={opt} value={opt}>
@@ -537,59 +536,39 @@ const BrandingSovereign = () => {
             <button
               onClick={onSave}
               disabled={isSaving}
-              className="rounded-2xl bg-(--c-accent) px-8 py-3.5 text-sm font-black text-white shadow-xl hover:opacity-90 disabled:opacity-50"
+              className="rounded-2xl bg-[var(--c-accent)] px-8 py-3.5 text-sm font-black text-white shadow-xl hover:opacity-90 disabled:opacity-50 transition-all active:scale-95"
             >
               {isSaving ? 'ENCRYPTING...' : 'COMMIT BRAND PROTOCOL'}
             </button>
-            <span className="text-xs font-bold text-(--c-muted)">{saveMessage}</span>
+            <span className="text-xs font-bold text-[var(--c-muted)]">{saveMessage}</span>
           </div>
         </div>
       </SettingCard>
 
       {/* Editor Modal for Image Crop */}
       {editorState.isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="flex w-full max-w-sm flex-col overflow-hidden rounded-3xl border border-white/10 bg-[#0c0e12] shadow-2xl">
-            <div className="flex items-center justify-between border-b border-white/5 bg-white/5 p-4">
-              <span className="text-xs font-bold uppercase tracking-widest text-white">SQUARE CROP 1:1</span>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+          <div className="w-full max-w-lg">
+            <ImageStudio
+              title={`LOGO SLOT ${editorState.slotId} STUDIO`}
+              sourceUrl={editorState.sourceUrl}
+              zoom={editorState.zoom}
+              setZoom={(z) => setEditorState(p => ({ ...p, zoom: z }))}
+              onReset={() => setEditorState({ isOpen: false, slotId: null, sourceUrl: '', zoom: 1, cropPosition: { x: 0, y: 0 }, croppedAreaPixels: null })}
+              onCropComplete={(_, croppedAreaPixels) => setEditorState(p => ({ ...p, croppedAreaPixels }))}
+            />
+            <div className="mt-4 flex flex-col gap-3">
               <button
-                onClick={() => setEditorState((p) => ({ ...p, isOpen: false, sourceUrl: '' }))}
-                className="text-white/40 hover:text-white"
+                onClick={() => applyCrop(null, editorState.croppedAreaPixels)}
+                className="w-full rounded-2xl bg-[var(--c-accent)] py-4 text-sm font-black uppercase text-white shadow-2xl transition hover:opacity-90 active:scale-95"
               >
-                <X className="h-5 w-5" />
+                PRESERVE BRAND ASSET
               </button>
-            </div>
-            <div className="relative h-64 w-full bg-black">
-              <Cropper
-                image={editorState.sourceUrl}
-                crop={editorState.cropPosition}
-                zoom={editorState.zoom}
-                aspect={1}
-                onCropChange={(pos) => setEditorState((p) => ({ ...p, cropPosition: pos }))}
-                onZoomChange={(zoom) => setEditorState((p) => ({ ...p, zoom }))}
-                onCropComplete={(_, croppedAreaPixels) =>
-                  setEditorState((p) => ({ ...p, croppedAreaPixels }))
-                }
-              />
-            </div>
-            <div className="flex items-center gap-3 border-t border-white/5 bg-white/5 p-4">
-              <span className="text-[10px] font-bold uppercase text-white/50">ZOOM</span>
-              <input
-                type="range"
-                min={1}
-                max={3}
-                step={0.1}
-                value={editorState.zoom}
-                onChange={(e) => setEditorState((p) => ({ ...p, zoom: Number(e.target.value) }))}
-                className="flex-1 accent-(--c-accent)"
-              />
-            </div>
-            <div className="p-4 pt-0">
               <button
-                onClick={applyCrop}
-                className="w-full rounded-2xl bg-(--c-accent) py-3 text-xs font-black uppercase text-white shadow-xl transition-transform active:scale-95"
+                onClick={() => setEditorState(p => ({ ...p, isOpen: false }))}
+                className="w-full rounded-2xl border border-white/10 bg-white/5 py-3 text-xs font-bold uppercase text-white/60 hover:text-white"
               >
-                CONFIRM MANDATE
+                CANCEL STUDIO
               </button>
             </div>
           </div>

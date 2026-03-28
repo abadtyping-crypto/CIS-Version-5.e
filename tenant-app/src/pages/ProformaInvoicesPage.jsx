@@ -42,6 +42,8 @@ import {
   createTenantTask,
   fetchTenantUsersMap,
 } from '../lib/backendStore';
+import { fetchMergedServiceTemplates } from '../lib/serviceTemplateStore';
+import { fetchGlobalPortalLogoMap } from '../lib/portalLogoLibraryStore';
 import { TasksIcon } from '../components/icons/AppIcons';
 import { toSafeDocId } from '../lib/idUtils';
 import { generateTenantPdf } from '../lib/pdfGenerator';
@@ -213,6 +215,22 @@ const ProformaInvoicesPage = () => {
 
   const [dependents, setDependents] = useState([]);
   const [selectedDependents, setSelectedDependents] = useState([]);
+  const [serviceTemplates, setServiceTemplates] = useState([]);
+  const [appIconUrlById, setAppIconUrlById] = useState({});
+
+  const serviceTemplateMap = useMemo(() => {
+    const next = {};
+    (serviceTemplates || []).forEach((row) => {
+      const key = String(row?.id || '').trim();
+      if (key) next[key] = row;
+    });
+    return next;
+  }, [serviceTemplates]);
+
+  const resolveServiceMeta = useCallback((applicationId) => {
+    if (!applicationId) return null;
+    return serviceTemplateMap[String(applicationId)] || null;
+  }, [serviceTemplateMap]);
 
   const pushStatus = (msg, type = 'info') => {
     setStatus(msg); setStatusType(type);
@@ -224,11 +242,13 @@ const ProformaInvoicesPage = () => {
   const loadData = useCallback(async (preferredId = '') => {
     if (!tenantId) return;
     setIsLoading(true);
-    const [proRes, quoteRes, portalRes, userRes] = await Promise.all([
+    const [proRes, quoteRes, portalRes, userRes, serviceRes, iconRes] = await Promise.all([
       fetchTenantProformaInvoices(tenantId),
       fetchTenantQuotations(tenantId),
       fetchTenantPortals(tenantId),
       fetchTenantUsersMap(tenantId),
+      fetchMergedServiceTemplates(tenantId),
+      fetchGlobalPortalLogoMap(),
     ]);
     if (proRes.ok) {
       setRows(proRes.rows || []);
@@ -237,6 +257,14 @@ const ProformaInvoicesPage = () => {
     if (quoteRes.ok) setQuotations(quoteRes.rows || []);
     if (portalRes.ok) setPortals(portalRes.rows || []);
     if (userRes.ok) setTenantUsers((userRes.rows || []).filter(u => !u.deletedAt));
+    if (serviceRes.ok) setServiceTemplates(serviceRes.rows || []);
+    if (iconRes.ok) {
+      const next = {};
+      Object.keys(iconRes.map || {}).forEach((key) => {
+        next[key] = iconRes.map[key].logoUrl || '';
+      });
+      setAppIconUrlById(next);
+    }
     setIsLoading(false);
   }, [tenantId]);
 
@@ -516,8 +544,22 @@ const ProformaInvoicesPage = () => {
   const resolveItemIconUrl = useCallback((item) => {
     const preferredUrl = String(item?.iconUrl || '').trim();
     if (preferredUrl) return preferredUrl;
+    const iconId = String(item?.iconId || '').trim();
+    if (iconId && appIconUrlById[iconId]) return appIconUrlById[iconId];
+    const serviceMeta = resolveServiceMeta(item?.applicationId);
+    const metaIconUrl = String(serviceMeta?.iconUrl || '').trim();
+    if (metaIconUrl) return metaIconUrl;
+    const metaIconId = String(serviceMeta?.iconId || serviceMeta?.globalIconId || '').trim();
+    if (metaIconId && appIconUrlById[metaIconId]) return appIconUrlById[metaIconId];
     return '/defaultIcons/documents.png';
-  }, []);
+  }, [appIconUrlById, resolveServiceMeta]);
+
+  const resolveItemName = useCallback((item) => {
+    const preferredName = String(item?.name || '').trim();
+    if (preferredName) return preferredName;
+    const serviceMeta = resolveServiceMeta(item?.applicationId);
+    return serviceMeta?.name || serviceMeta?.label || serviceMeta?.iconName || item?.applicationId || 'Application';
+  }, [resolveServiceMeta]);
 
   const totalAmount = useMemo(() => items.reduce((s, i) => s + (Number(i.qty) || 0) * (Number(i.amount) || 0), 0), [items]);
   const advanceNum = Math.min(Math.max(0, Number(advanceAmount) || 0), totalAmount);
@@ -1469,7 +1511,7 @@ const ProformaInvoicesPage = () => {
                                       }}
                                     />
                                   </div>
-                                  <p className="truncate text-sm font-black text-[var(--c-text)]">{item.name}</p>
+                                  <p className="truncate text-sm font-black text-[var(--c-text)]">{resolveItemName(item)}</p>
                                 </div>
                                 <div className="mt-2 flex items-center gap-2">
                                   <button

@@ -1703,7 +1703,7 @@ export const generateDisplayPortalId = async (tenantId) => {
   const settingsRes = await getTenantSettingDoc(tenantId, 'transactionIdRules');
   const normalizedRule = normalizeIdRule(
     settingsRes.ok && settingsRes.data ? settingsRes.data[ruleKey] || {} : {},
-    'PID',
+    'POR',
   );
   const actualSeqKey = buildSequenceKey(sequenceKey, normalizedRule);
   await ensureTransactionSequenceStart(tenantId, actualSeqKey, normalizedRule.sequenceStart);
@@ -1722,7 +1722,7 @@ export const generateDisplayDocumentRef = async (tenantId, docKey = 'quotation')
     const settingsRes = await getTenantSettingDoc(tenantId, 'transactionIdRules');
     const allRules = settingsRes.ok && settingsRes.data ? settingsRes.data : {};
     const storedRule = allRules.docRefCodes?.[docKey] || {};
-    const fallbackPrefix = docKey === 'proformaInvoice' ? 'PRO' : 'QUOT';
+    const fallbackPrefix = docKey === 'proformaInvoice' ? 'PRO' : (docKey === 'quotation' ? 'QOT' : 'QUOT');
     const normalizedRule = normalizeIdRule(storedRule, fallbackPrefix);
     const sequenceKey = buildSequenceKey(`docRef_${docKey}`, normalizedRule);
     await ensureTransactionSequenceStart(tenantId, sequenceKey, normalizedRule.sequenceStart);

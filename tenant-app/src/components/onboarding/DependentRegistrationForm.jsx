@@ -55,21 +55,22 @@ const removeEmptyEntries = (value) => {
     return value;
 };
 
-const DependentRegistrationForm = ({ activeType, tenantId, user, onCancel, onSuccess }) => {
+const DependentRegistrationForm = ({ activeType, tenantId, user, onCancel, onSuccess, initialData }) => {
+    const isEdit = !!initialData;
     // --- SEARCH / PARENT SELECTION ---
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState([]);
-    const [parent, setParent] = useState(null);
+    const [parent, setParent] = useState(initialData?.parentId ? { id: initialData.parentId, fullName: initialData.parentName, type: initialData.parentClientType, displayClientId: initialData.parentDisplayClientId } : null);
 
     // --- FORM STATE ---
     const [nextId, setNextId] = useState('...');
     const [form, setForm] = useState({
-        fullName: '',
-        relationship: 'wife',
-        idType: 'emirates_id',
-        idNumber: '',
-        mobileContacts: [createMobileContact()],
-        emailContacts: [{ id: 'init-1', value: '' }],
+        fullName: initialData?.fullName || '',
+        relationship: initialData?.relationship || 'wife',
+        idType: initialData?.idType || 'emirates_id',
+        idNumber: initialData?.idNumber || '',
+        mobileContacts: initialData?.mobileContacts ? JSON.parse(JSON.stringify(initialData.mobileContacts)) : [createMobileContact()],
+        emailContacts: initialData?.emailContacts ? JSON.parse(JSON.stringify(initialData.emailContacts)) : [{ id: 'init-1', value: '' }],
     });
 
     const [isSaving, setIsSaving] = useState(false);
@@ -85,12 +86,16 @@ const DependentRegistrationForm = ({ activeType, tenantId, user, onCancel, onSuc
     // Fetch next available ID once parent is selected
     useEffect(() => {
         if (!parent) return;
+        if (isEdit) {
+            setNextId(initialData.displayClientId || initialData.id);
+            return;
+        }
         const loadNextId = async () => {
             const previewId = await previewDisplayClientId(tenantId, 'dependent');
             setNextId(previewId);
         };
         loadNextId();
-    }, [tenantId, parent]);
+    }, [tenantId, parent, isEdit, initialData]);
 
     const handleSearch = useCallback(async () => {
         const queryText = String(searchQuery || '').trim();
@@ -132,14 +137,14 @@ const DependentRegistrationForm = ({ activeType, tenantId, user, onCancel, onSuc
 
     // Update relationship and reset ID if parent type changes
     useEffect(() => {
-        if (!parent?.id) return;
+        if (!parent?.id || isEdit) return;
         setForm((prev) => ({
             ...prev,
             relationship: isCompanyParent ? 'employee' : 'wife',
             idType: 'emirates_id',
             idNumber: '',
         }));
-    }, [parent?.id, isCompanyParent]);
+    }, [parent?.id, isCompanyParent, isEdit]);
 
     // --- SUBMISSION ---
     const handleSubmit = async (e) => {
@@ -148,11 +153,15 @@ const DependentRegistrationForm = ({ activeType, tenantId, user, onCancel, onSuc
         submitLockRef.current = true;
         setIsSaving(true);
         let shouldUnlock = true;
-        setStatus({ type: 'info', message: 'Validating dependent data...' });
+        setStatus({ type: 'info', message: isEdit ? 'Updating core data...' : 'Validating dependent data...' });
 
         try {
-            if (!canUserPerformAction(tenantId, user, 'createClient')) {
+            if (!isEdit && !canUserPerformAction(tenantId, user, 'createClient')) {
                 setStatus({ type: 'error', message: "You don't have permission to create clients." });
+                return;
+            }
+            if (isEdit && !canUserPerformAction(tenantId, user, 'updateClient')) {
+                setStatus({ type: 'error', message: "You don't have permission to update clients." });
                 return;
             }
 
@@ -232,26 +241,28 @@ const DependentRegistrationForm = ({ activeType, tenantId, user, onCancel, onSuc
             }
 
             // Check Duplicates
-            setStatus({ type: 'info', message: 'Checking for duplicates...' });
-            const exists = await checkIndividualDuplicate(tenantId, {
-                method: normalized.idType,
-                emiratesId: normalized.idType === 'emirates_id' ? normalized.idNumber : '',
-                passportNumber: normalized.idType === 'passport' ? normalized.idNumber : '',
-                fullName: normalized.fullName,
-            });
+            if (!isEdit) {
+                setStatus({ type: 'info', message: 'Checking for duplicates...' });
+                const exists = await checkIndividualDuplicate(tenantId, {
+                    method: normalized.idType,
+                    emiratesId: normalized.idType === 'emirates_id' ? normalized.idNumber : '',
+                    passportNumber: normalized.idType === 'passport' ? normalized.idNumber : '',
+                    fullName: normalized.fullName,
+                });
 
-            if (exists) {
-                setStatus({ type: 'error', message: 'A client with similar identification already exists.' });
-                return;
+                if (exists) {
+                    setStatus({ type: 'error', message: 'A client with similar identification already exists.' });
+                    return;
+                }
             }
 
-            setStatus({ type: 'info', message: 'Generating Dependent ID...' });
-            const displayId = await generateDisplayClientId(tenantId, 'dependent');
+            setStatus({ type: 'info', message: isEdit ? 'Updating database...' : 'Generating Dependent ID...' });
+            const displayId = isEdit ? (initialData.displayClientId || initialData.id) : await generateDisplayClientId(tenantId, 'dependent');
             const finalPayloadRaw = { ...normalized, displayClientId: displayId };
             const finalPayload = removeEmptyEntries(finalPayloadRaw) || {};
 
-            setStatus({ type: 'info', message: 'Saving to database...' });
-            const res = await upsertDependentUnderParent(tenantId, parent.id, displayId, finalPayload);
+            setStatus({ type: 'info', message: isEdit ? 'Updating database...' : 'Saving to database...' });
+            const res = await upsertDependentUnderParent(tenantId, parent.id, displayId, finalPayload, isEdit ? initialData.id : null);
 
             if (res.ok) {
                 shouldUnlock = false;
@@ -300,7 +311,7 @@ const DependentRegistrationForm = ({ activeType, tenantId, user, onCancel, onSuc
             {/* Header / Meta */}
             <header className="flex items-center justify-between border-b border-[var(--c-border)] pb-5">
                 <div>
-                    <h2 className="text-lg font-bold text-[var(--c-text)] uppercase">{activeType} Registration</h2>
+                    <h2 className="text-lg font-bold text-[var(--c-text)] uppercase">{isEdit ? 'Update Profile' : `${activeType} Registration`}</h2>
                     <div className="mt-1-5 flex items-center gap-2">
                         <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--c-muted)]">Sponsored By:</span>
                         <span className="rounded-full bg-[var(--c-accent)]/10 px-3 py-0.5 text-[10px] font-bold text-[var(--c-accent)] border border-[var(--c-accent)]/20 shadow-sm">
@@ -318,10 +329,12 @@ const DependentRegistrationForm = ({ activeType, tenantId, user, onCancel, onSuc
                         <Upload strokeWidth={1.5} size={14} />
                         Bulk Import List
                     </button>
-                    <div className="text-right border-l border-[var(--c-border)] pl-4">
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--c-muted)]">Assigned ID</p>
-                        <p className="text-lg font-bold text-[var(--c-accent)]">{nextId}</p>
-                    </div>
+                    {!isEdit && (
+                        <div className="text-right border-l border-[var(--c-border)] pl-4">
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--c-muted)]">Assigned ID</p>
+                            <p className="text-lg font-bold text-[var(--c-accent)]">{nextId}</p>
+                        </div>
+                    )}
                 </div>
             </header>
             
@@ -407,9 +420,9 @@ const DependentRegistrationForm = ({ activeType, tenantId, user, onCancel, onSuc
                     {isSaving ? (
                         <span className="flex items-center justify-center gap-2">
                             <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-white" />
-                            Processing Registration...
+                            {isEdit ? 'Saving Changes...' : 'Processing Registration...'}
                         </span>
-                    ) : 'Complete Dependent Registration'}
+                    ) : (isEdit ? 'Save Changes' : 'Complete Dependent Registration')}
                 </button>
                 <button
                     type="button"
@@ -433,9 +446,9 @@ const DependentRegistrationForm = ({ activeType, tenantId, user, onCancel, onSuc
             <ActionProgressOverlay
                 open={isSaving}
                 kind="process"
-                title="Dependent Registration In Progress"
-                subtitle="Validating sponsor relationship and creating dependent record safely."
-                status="Processing Registration..."
+                title={isEdit ? 'Update In Progress' : 'Dependent Registration In Progress'}
+                subtitle={isEdit ? 'Synchronizing profile updates safely across the system.' : 'Validating sponsor relationship and creating dependent record safely.'}
+                status={isEdit ? 'Processing Update...' : 'Processing Registration...'}
             />
         </form>
     );

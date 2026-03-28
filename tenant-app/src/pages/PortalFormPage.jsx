@@ -14,6 +14,7 @@ import {
     Zap,
 } from 'lucide-react';
 import PageShell from '../components/layout/PageShell';
+import SignatureCard from '../components/common/SignatureCard';
 import ImageStudio from '../components/common/ImageStudio';
 import DirhamIcon from '../components/common/DirhamIcon';
 import CurrencyValue from '../components/common/CurrencyValue';
@@ -107,41 +108,15 @@ const resolveCategoryIcon = (category, systemAssets) => {
 const CategoryTile = ({ category, isActive, onClick, systemAssets }) => {
     const icon = resolveCategoryIcon(category, systemAssets);
     return (
-        <button
-            type="button"
+        <SignatureCard
+            as="button"
             onClick={onClick}
-            className={`group relative flex min-h-[56px] w-[100%] flex-row items-stretch overflow-hidden rounded-2xl border transition-all duration-150 focus:outline-none focus:ring-4 focus:ring-[var(--c-accent)]/10 ${
-                isActive
-                    ? 'border-[var(--c-accent)] bg-[color:color-mix(in_srgb,var(--c-accent)_12%,var(--c-panel))]'
-                    : 'border-[var(--c-border)] bg-[var(--c-panel)] hover:border-[var(--c-accent)]/40 hover:bg-[var(--c-surface)]'
-            }`}
-        >
-            <div className={`flex w-16 shrink-0 items-center justify-center overflow-hidden border-r shadow-sm transition-colors ${
-                isActive ? 'border-[var(--c-accent)]/30' : 'border-[var(--c-border)]'
-            }`}>
-                <img
-                    src={icon}
-                    alt={category.label}
-                    className="h-full w-full object-cover"
-                    onError={(e) => {
-                        e.currentTarget.onerror = null;
-                        e.currentTarget.src = systemCache.get('default_portal_asset') || DEFAULT_PORTAL_ICON;
-                    }}
-                />
-            </div>
-            <div className="flex min-w-0 flex-1 items-center px-4 py-3 text-left">
-                <span className={`block text-[11px] font-black uppercase leading-[1.3] tracking-[0.18em] ${isActive ? 'text-[var(--c-text)]' : 'text-[var(--c-muted)]'}`}>
-                    {category.label}
-                </span>
-            </div>
-            {isActive && (
-                <div className="flex shrink-0 items-center pr-3">
-                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--c-accent)] text-white shadow-sm ring-4 ring-[var(--c-accent)]/10 animate-in zoom-in duration-200">
-                        <Check className="h-3.5 w-3.5" strokeWidth={3} />
-                    </div>
-                </div>
-            )}
-        </button>
+            isActive={isActive}
+            title={category.label}
+            image={icon}
+            className="w-full"
+            subtitle={isActive ? 'Active Selection' : 'Click to select'}
+        />
     );
 };
 

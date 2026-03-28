@@ -19,6 +19,7 @@ const ClientsOnboardingPage = () => {
     const isDesktop = useIsDesktopLayout();
     const canCreateClient = canUserPerformAction(tenantId, user, 'createClient');
     const [activeType, setActiveType] = useState(null); // 'company', 'individual', 'dependent'
+    const [initialData, setInitialData] = useState(null);
     const [mobileView, setMobileView] = useState('actions'); // actions | list | company | individual | dependent
     const [flash, setFlash] = useState(null);
     const [refreshKey, setRefreshKey] = useState(0);
@@ -38,6 +39,7 @@ const ClientsOnboardingPage = () => {
 
     const handleSuccess = (created) => {
         setActiveType(null);
+        setInitialData(null);
         setMobileView('actions');
         setRefreshKey((prev) => prev + 1);
         setFlash({
@@ -55,37 +57,27 @@ const ClientsOnboardingPage = () => {
         icon: systemAssets[item.iconId]?.iconUrl || item.fallbackIcon,
     }))), [systemAssets]);
 
-    const renderFormByType = (typeId, onCancel) => (
-        <div className="rounded-2xl border border-[var(--c-border)] bg-[var(--c-surface)] p-4 shadow-sm sm:p-6">
-            {typeId === 'company' ? (
-                <CompanyRegistrationForm
-                    activeType={typeId}
-                    tenantId={tenantId}
-                    user={user}
-                    onCancel={onCancel}
-                    onSuccess={handleSuccess}
-                />
-            ) : null}
-            {typeId === 'individual' ? (
-                <IndividualRegistrationForm
-                    activeType={typeId}
-                    tenantId={tenantId}
-                    user={user}
-                    onCancel={onCancel}
-                    onSuccess={handleSuccess}
-                />
-            ) : null}
-            {typeId === 'dependent' ? (
-                <DependentRegistrationForm
-                    activeType={typeId}
-                    tenantId={tenantId}
-                    user={user}
-                    onCancel={onCancel}
-                    onSuccess={handleSuccess}
-                />
-            ) : null}
-        </div>
-    );
+    const renderFormByType = (typeId, onCancel, data = null) => {
+        const props = {
+            activeType: onboardingTypeConfig.find(t => t.id === typeId)?.label || typeId,
+            tenantId,
+            user,
+            onCancel: () => {
+                onCancel();
+                setInitialData(null);
+            },
+            onSuccess: handleSuccess,
+            initialData: data
+        };
+
+        return (
+            <div className="rounded-2xl border border-[var(--c-border)] bg-[var(--c-surface)] p-4 shadow-sm sm:p-6">
+                {typeId === 'company' ? <CompanyRegistrationForm {...props} /> : null}
+                {typeId === 'individual' ? <IndividualRegistrationForm {...props} /> : null}
+                {typeId === 'dependent' ? <DependentRegistrationForm {...props} /> : null}
+            </div>
+        );
+    };
 
     if (!isDesktop) {
         const currentFormType = mobileView === 'company' || mobileView === 'individual' || mobileView === 'dependent' ? mobileView : '';
@@ -152,6 +144,7 @@ const ClientsOnboardingPage = () => {
                                 onEdit={(item) => {
                                     setInitialData(item);
                                     setActiveType(item.type);
+                                    setMobileView(item.type);
                                 }}
                             />
                         </div>
@@ -235,6 +228,10 @@ const ClientsOnboardingPage = () => {
                             tenantId={tenantId}
                             user={user}
                             refreshKey={refreshKey}
+                            onEdit={(item) => {
+                                setInitialData(item);
+                                setActiveType(item.type);
+                            }}
                         />
                     </>
                 ) : (

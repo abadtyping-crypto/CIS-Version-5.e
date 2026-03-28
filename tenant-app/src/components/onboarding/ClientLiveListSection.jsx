@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Edit3, ExternalLink, RefreshCcw, Save, Search, Trash2, X } from 'lucide-react';
+import { Edit3, RefreshCcw, Save, Search, Trash2, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import SignatureCard from '../common/SignatureCard';
 import {
   deleteTenantClientCascade,
   fetchTenantClients,
@@ -56,7 +57,7 @@ const getStatusBadgeClass = (statusValue) => {
   return 'border-[var(--c-border)] bg-[var(--c-panel)] text-[var(--c-muted)]';
 };
 
-const ClientLiveListSection = ({ tenantId, user, refreshKey = 0 }) => {
+const ClientLiveListSection = ({ tenantId, user, refreshKey = 0, onEdit }) => {
   const [rows, setRows] = useState([]);
   const [usersByUid, setUsersByUid] = useState({});
   const [isLoading, setIsLoading] = useState(true);
@@ -222,6 +223,11 @@ const ClientLiveListSection = ({ tenantId, user, refreshKey = 0 }) => {
   };
 
   const openEdit = (item) => {
+    if (typeof onEdit === 'function') {
+      onEdit(item);
+      return;
+    }
+
     const rawType = String(item?.type || '').toLowerCase();
     const idType = String(item?.identificationMethod || item?.idType || '').trim()
       || (item?.emiratesId ? 'emirates_id' : (item?.passportNumber ? 'passport' : 'emirates_id'));
@@ -476,14 +482,12 @@ const ClientLiveListSection = ({ tenantId, user, refreshKey = 0 }) => {
                 </div>
               </div>
               <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-                <Link
-                  to={`/t/${tenantId}/profile`}
-                  className="inline-flex min-w-0 max-w-full items-center gap-2 rounded-full border border-[var(--c-border)] bg-[var(--c-panel)] px-2 py-1 pr-3 text-xs text-[var(--c-text)] hover:border-[var(--c-accent)]"
-                >
-                  <img src={creator.avatar} alt={creator.name} className="h-6 w-6 shrink-0 rounded-full object-cover" />
-                  <span className="truncate">{creator.name}</span>
-                  <ExternalLink strokeWidth={1.5} size={12} />
-                </Link>
+                <SignatureCard
+                  uid={creator.uid}
+                  displayName={creator.name}
+                  avatarUrl={creator.avatar}
+                  className="w-full max-w-[200px] h-12"
+                />
                 <span className={`inline-flex items-center rounded-lg border px-2 py-0.5 text-[11px] font-semibold leading-5 ${getStatusBadgeClass(item.status)}`}>
                   {toTitleCase(item.status || 'active')}
                 </span>
@@ -575,14 +579,12 @@ const ClientLiveListSection = ({ tenantId, user, refreshKey = 0 }) => {
                       </span>
                     </td>
                     <td className="px-3 py-3">
-                      <Link
-                        to={creator.uid ? `/t/${tenantId}/profile/edit?uid=${encodeURIComponent(creator.uid)}` : `/t/${tenantId}/profile`}
-                        className="inline-flex max-w-[210px] items-center gap-2 rounded-full border border-[var(--c-border)] bg-[var(--c-panel)] px-2 py-1 pr-3 text-xs text-[var(--c-text)] hover:border-[var(--c-accent)]"
-                      >
-                        <img src={creator.avatar} alt={creator.name} className="h-6 w-6 shrink-0 rounded-full object-cover" />
-                        <span className="truncate">{creator.name}</span>
-                        <ExternalLink strokeWidth={1.5} size={12} />
-                      </Link>
+                      <SignatureCard
+                        uid={creator.uid}
+                        displayName={creator.name}
+                        avatarUrl={creator.avatar}
+                        className="h-12 max-w-[200px]"
+                      />
                     </td>
                     <td className="px-3 py-3 whitespace-nowrap">
                       <span className={`inline-flex items-center rounded-lg border px-2 py-0.5 text-[11px] font-semibold leading-5 ${getStatusBadgeClass(item.status)}`}>

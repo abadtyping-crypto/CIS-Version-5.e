@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FileText, Copy, Mail, Ban, CheckCircle2, RefreshCcw, Plus, Tags, X, GripVertical, Users, UserPlus, ChevronUp, ChevronDown, Trash2 } from 'lucide-react';
+import { FileText, Copy, Mail, Ban, CheckCircle2, RefreshCcw, Plus, Tags, X, GripVertical, Users, UserPlus, ChevronUp, ChevronDown, Trash2, Check, Minus, Search } from 'lucide-react';
 import PageShell from '../components/layout/PageShell';
 import useElectronLayoutMode from '../hooks/useElectronLayoutMode';
 import { useTenant } from '../context/useTenant';
@@ -35,8 +35,10 @@ import {
   previewDisplayDocumentRef,
   sendTenantDocumentEmail,
   upsertTenantQuotation,
+  fetchTenantUsersMap,
 } from '../lib/backendStore';
-import { convertQuotationToProforma } from '../lib/workflowStore';
+// Moved conversion logic to manual proforma generation flow
+
 import { generateTenantPdf } from '../lib/pdfGenerator';
 import { createSyncEvent } from '../lib/syncEvents';
 import { sendUniversalNotification } from '../lib/notificationDrafting';
@@ -44,11 +46,15 @@ import { toSafeDocId } from '../lib/idUtils';
 import {
   normalizeLibraryDescription,
 } from '../lib/serviceTemplateRules';
+import { fetchMergedServiceTemplates } from '../lib/serviceTemplateStore';
 import {
   DEFAULT_QUOTATION_TERMS,
   resolvePdfTemplateForRenderer,
 } from '../lib/pdfTemplateRenderer';
+import { resolvePageIconUrl } from '../lib/pageIconAssets';
 import { getCachedSystemAssetsSnapshot, getSystemAssets } from '../lib/systemAssetsCache';
+import SignatureCard from '../components/common/SignatureCard';
+import QuotationClientQuickCreate from '../components/quotation/QuotationClientQuickCreate';
 
 const inputClass = 'compact-field mt-1 w-full rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] px-3 py-2.5 text-sm font-bold text-[var(--c-text)] outline-none transition focus:border-[var(--c-accent)] focus:ring-4 focus:ring-[var(--c-accent)]/5';
 const selectClass = 'compact-field mt-1 w-full rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] px-3 py-2.5 text-sm font-bold text-[var(--c-text)] outline-none transition focus:border-[var(--c-accent)] focus:ring-4 focus:ring-[var(--c-accent)]/5';
@@ -112,7 +118,6 @@ const makeItem = (service) => ({
   description: service?.description || '',
   qty: 1,
   amount: Number(service?.clientCharge || 0),
-  govCharge: Number(service?.govCharge || 0),
 });
 
 const createEmptyItemBuilder = () => ({
@@ -219,7 +224,13 @@ const QuotationPage = () => {
   const [manualClient, setManualClient] = useState(createEmptyManualClient);
   const [itemBuilder, setItemBuilder] = useState(createEmptyItemBuilder());
   const [items, setItems] = useState([]);
+  const [discountEnabled, setDiscountEnabled] = useState(false);
+  const [discountMode, setDiscountMode] = useState('amount');
+  const [discountValue, setDiscountValue] = useState('');
+  const [quickClientModal, setQuickClientModal] = useState({ open: false, quotation: null });
   const [rows, setRows] = useState([]);
+  const [tenantUsers, setTenantUsers] = useState([]);
+  const [quotationSearch, setQuotationSearch] = useState('');
   const [selectedQuotationId, setSelectedQuotationId] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -249,21 +260,96 @@ const QuotationPage = () => {
   const [quotationTerms, setQuotationTerms] = useState(() => cloneQuotationTerms(parseQuotationTerms(DEFAULT_QUOTATION_TERMS)));
   const [draggedItemRowId, setDraggedItemRowId] = useState('');
   const [dragOverItemRowId, setDragOverItemRowId] = useState('');
+  const [serviceTemplates, setServiceTemplates] = useState([]);
   const statusRef = useRef(null);
+  const handleQuickClientClose = () => setQuickClientModal({ open: false, quotation: null });
+  const goToProforma = (proformaId) => {
+    if (!proformaId) return;
+    navigate(`/t/${tenantId}/proforma-invoices?id=${encodeURIComponent(proformaId)}`);
+  };
+
+  const handleQuickClientCreated = async ({ clientId, snapshot }) => {
+    const quotation = quickClientModal.quotation;
+    if (!quotation || !clientId) {
+      handleQuickClientClose();
+      return;
+    }
+    const patchedQuotation = { ...quotation, clientId, clientSnapshot: snapshot };
+    // Persist the client link on the quotation document before conversion
+    const safeSnapshot = Object.fromEntries(
+      Object.entries(snapshot || {}).filter(([, v]) => v !== undefined && v !== null)
+    );
+    await upsertTenantQuotation(tenantId, quotation.id, {
+      clientId,
+      clientSnapshot: safeSnapshot,
+      updatedAt: new Date().toISOString(),
+    });
+    // Optimistic UI update
+    setRows((prev) =>
+      prev.map((item) =>
+        item.id === quotation.id ? { ...item, clientId, clientSnapshot: snapshot } : item
+      )
+    );
+    handleQuickClientClose();
+    await executeAcceptQuotation(patchedQuotation);
+  };
+
+  useEffect(() => {
+    if (quickClientModal.open) {
+      document.body.classList.add('hide-desktop-footer');
+    } else {
+      document.body.classList.remove('hide-desktop-footer');
+    }
+    return () => document.body.classList.remove('hide-desktop-footer');
+  }, [quickClientModal.open]);
   const quotationDateFieldRef = useRef(null);
   const validityFieldRef = useRef(null);
   const actionLockRef = useRef(false);
 
+  const tenantUserMap = useMemo(() => {
+    const next = {};
+    (tenantUsers || []).forEach((member) => {
+      const key = member?.uid || member?.id;
+      if (key) next[String(key)] = member;
+    });
+    return next;
+  }, [tenantUsers]);
+
+  const filteredRows = useMemo(() => {
+    const query = String(quotationSearch || '').trim().toLowerCase();
+    if (!query) return rows;
+    return rows.filter((quotation) => {
+      const creator = tenantUserMap[String(quotation?.createdBy || '')];
+      const creatorName = String(creator?.displayName || creator?.name || creator?.email || '').toLowerCase();
+      const clientName = String(
+        quotation?.clientSnapshot?.name
+        || quotation?.clientSnapshot?.tradeName
+        || quotation?.clientSnapshot?.fullName
+        || ''
+      ).toLowerCase();
+      return [
+        quotation?.displayRef,
+        quotation?.status,
+        quotation?.quoteDate,
+        quotation?.expiryDate,
+        clientName,
+        creatorName,
+      ].some((field) => String(field || '').toLowerCase().includes(query));
+    });
+  }, [rows, quotationSearch, tenantUserMap]);
+
   const loadData = useCallback(async () => {
     if (!tenantId) return;
     setIsLoading(true);
-    const [quoteRef, quotationsRes] = await Promise.all([
+    const [quoteRef, quotationsRes, userRes] = await Promise.all([
       previewDisplayDocumentRef(tenantId, 'quotation'),
       fetchTenantQuotations(tenantId),
+      fetchTenantUsersMap(tenantId),
     ]);
 
     setReference(quoteRef);
     if (quotationsRes.ok) setRows(quotationsRes.rows || []);
+    if (userRes.ok) setTenantUsers((userRes.rows || []).filter((u) => !u.deletedAt));
     setIsLoading(false);
   }, [tenantId]);
 
@@ -291,6 +377,18 @@ const QuotationPage = () => {
         next[iconId] = iconUrl;
       });
       setAppIconUrlById(next);
+    });
+    return () => {
+      active = false;
+    };
+  }, [tenantId]);
+
+  useEffect(() => {
+    let active = true;
+    if (!tenantId) return undefined;
+    fetchMergedServiceTemplates(tenantId).then((res) => {
+      if (!active || !res.ok) return;
+      setServiceTemplates(res.rows || []);
     });
     return () => {
       active = false;
@@ -334,18 +432,52 @@ const QuotationPage = () => {
     () => rows.find((item) => item.id === selectedQuotationId) || rows[0] || null,
     [rows, selectedQuotationId],
   );
-  const totalAmount = useMemo(
+  const subtotalAmount = useMemo(
     () => items.reduce((sum, item) => sum + ((Number(item.qty) || 0) * (Number(item.amount) || 0)), 0),
     [items],
   );
+  const discountAmount = useMemo(() => {
+    if (!discountEnabled) return 0;
+    const rawValue = Math.max(0, Number(discountValue || 0));
+    if (!Number.isFinite(rawValue) || rawValue <= 0) return 0;
+    if (discountMode === 'percent') {
+      const pct = Math.min(100, rawValue);
+      return Math.min(subtotalAmount, (subtotalAmount * pct) / 100);
+    }
+    return Math.min(subtotalAmount, rawValue);
+  }, [discountEnabled, discountMode, discountValue, subtotalAmount]);
+  const totalAmount = Math.max(0, subtotalAmount - discountAmount);
   const isActionBusy = isSaving || isLoading || actionOverlay.open;
+  const serviceTemplateMap = useMemo(() => {
+    const next = {};
+    (serviceTemplates || []).forEach((row) => {
+      const key = String(row?.id || '').trim();
+      if (key) next[key] = row;
+    });
+    return next;
+  }, [serviceTemplates]);
+  const resolveServiceMeta = useCallback((applicationId) => {
+    if (!applicationId) return null;
+    return serviceTemplateMap[String(applicationId)] || null;
+  }, [serviceTemplateMap]);
   const resolveItemIconUrl = useCallback((item) => {
     const preferredUrl = String(item?.iconUrl || '').trim();
     if (preferredUrl) return preferredUrl;
     const iconId = String(item?.iconId || '').trim();
     if (iconId && appIconUrlById[iconId]) return appIconUrlById[iconId];
+    const serviceMeta = resolveServiceMeta(item?.applicationId);
+    const metaIconUrl = String(serviceMeta?.iconUrl || '').trim();
+    if (metaIconUrl) return metaIconUrl;
+    const metaIconId = String(serviceMeta?.iconId || serviceMeta?.globalIconId || '').trim();
+    if (metaIconId && appIconUrlById[metaIconId]) return appIconUrlById[metaIconId];
     return '/defaultIcons/documents.png';
-  }, [appIconUrlById]);
+  }, [appIconUrlById, resolveServiceMeta]);
+  const resolveItemName = useCallback((item) => {
+    const preferredName = String(item?.name || '').trim();
+    if (preferredName) return preferredName;
+    const serviceMeta = resolveServiceMeta(item?.applicationId);
+    return serviceMeta?.name || serviceMeta?.label || serviceMeta?.iconName || item?.applicationId || 'Application';
+  }, [resolveServiceMeta]);
 
   const pushStatus = (message, type = 'info') => {
     setStatus(message);
@@ -463,10 +595,11 @@ const QuotationPage = () => {
       return;
     }
     setItemBuilderError('');
+    const resolvedCharge = Number(service?.clientCharge || 0);
     setItemBuilder({
       service,
       qty: 1,
-      amount: formatAmountInputValue(service?.clientCharge || 0),
+      amount: resolvedCharge > 0 ? formatAmountInputValue(resolvedCharge) : '',
       description: normalizeLibraryDescription(service?.description || ''),
     });
   };
@@ -546,12 +679,15 @@ const QuotationPage = () => {
     setSelectedDependents((prev) => prev.filter((item) => item.id !== id));
   };
 
+  const stripUndefined = (obj) =>
+    Object.fromEntries(Object.entries(obj || {}).filter(([, v]) => v !== undefined && v !== null));
+
   const buildQuotationPayload = (overrides = {}) => {
     const filledMobileContacts = manualClient.mobileContacts.filter((contact) => String(contact.value || '').trim());
     const filledEmailContacts = manualClient.emailContacts.filter((contact) => String(contact.value || '').trim());
     const primaryMobileContact = filledMobileContacts[0] || manualClient.mobileContacts[0] || createManualMobileContact();
     const primaryEmailContact = filledEmailContacts[0] || manualClient.emailContacts[0] || createManualEmailContact();
-    const clientSnapshot = clientMode === 'existing'
+    const clientSnapshotRaw = clientMode === 'existing'
       ? {
           id: existingClient?.id || '',
           name: existingClient?.fullName || existingClient?.tradeName || '',
@@ -582,6 +718,7 @@ const QuotationPage = () => {
           address: manualClient.address,
           type: manualClient.clientType,
         };
+    const clientSnapshot = stripUndefined(clientSnapshotRaw);
 
     return {
       displayRef: reference,
@@ -594,19 +731,20 @@ const QuotationPage = () => {
       clientMode,
       clientId: clientMode === 'existing' ? (existingClient?.id || null) : null,
       dependentIds: selectedDependents.map((item) => item.id),
-      dependentNames: selectedDependents.map((item) => item.fullName || item.tradeName || item.displayClientId),
+      dependentNames: selectedDependents.map((item) => item.fullName || item.tradeName || item.displayClientId || ''),
       clientSnapshot,
       items: items.map((item) => ({
-        applicationId: item.applicationId,
-        name: item.name,
-        iconId: item.iconId || '',
-        iconUrl: item.iconUrl || '',
-        description: item.description,
+        applicationId: item.applicationId || '',
+        description: item.description || '',
         qty: Number(item.qty) || 1,
         amount: Number(item.amount) || 0,
-        govCharge: Number(item.govCharge) || 0,
         lineTotal: (Number(item.qty) || 0) * (Number(item.amount) || 0),
       })),
+      subtotalAmount,
+      discountEnabled,
+      discountMode,
+      discountValue: discountEnabled ? Number(discountValue || 0) : 0,
+      discountAmount,
       totalAmount,
       status: 'generated',
       sourceQuotationId: null,
@@ -657,9 +795,11 @@ const QuotationPage = () => {
     termsAndConditions: quotation.termsAndConditions || resolveStoredQuotationTerms(quotation.termsTemplateLines, quotation.expiryDate),
     recipientName: quotation.clientSnapshot?.name || quotation.clientSnapshot?.tradeName || 'Client',
     amount: quotation.totalAmount,
+    subtotalAmount: quotation.subtotalAmount ?? quotation.totalAmount,
+    discountAmount: quotation.discountAmount ?? 0,
     description: quotation.description || 'Quotation',
     items: (quotation.items || []).map((item) => ({
-      name: item.name,
+      name: resolveItemName(item),
       qty: item.qty,
       price: item.amount,
       total: item.lineTotal,
@@ -699,6 +839,7 @@ const QuotationPage = () => {
           entityType: 'quotation',
           entityId: quotationId,
           entityLabel: finalReference,
+          pageKey: 'quotations',
         });
         pushStatus(`Quotation ${finalReference} generated.`, 'success');
         await loadData();
@@ -830,14 +971,16 @@ const QuotationPage = () => {
       setItems((quotation.items || []).map((item, index) => ({
         rowId: `${item?.applicationId || item?.name || 'row'}-${Date.now()}-${index}`,
         applicationId: item?.applicationId || '',
-        name: item?.name || '',
-        iconId: item?.iconId || '',
-        iconUrl: item?.iconUrl || '',
+        name: item?.name || resolveServiceMeta(item?.applicationId)?.name || '',
+        iconId: item?.iconId || resolveServiceMeta(item?.applicationId)?.iconId || resolveServiceMeta(item?.applicationId)?.globalIconId || '',
+        iconUrl: item?.iconUrl || resolveServiceMeta(item?.applicationId)?.iconUrl || '',
         description: item?.description || '',
         qty: Math.max(1, Number(item?.qty) || 1),
         amount: Math.max(0, Number(item?.amount) || 0),
-        govCharge: Math.max(0, Number(item?.govCharge) || 0),
       })));
+      setDiscountEnabled(Boolean(quotation.discountEnabled));
+      setDiscountMode(quotation.discountMode === 'percent' ? 'percent' : 'amount');
+      setDiscountValue(quotation.discountEnabled ? String(quotation.discountValue ?? '') : '');
       setItemBuilder(createEmptyItemBuilder());
       setItemBuilderError('');
       setOpenDescriptionRows({});
@@ -943,42 +1086,35 @@ const QuotationPage = () => {
   const executeAcceptQuotation = async (quotation) => {
     if (!quotation || isSaving) return;
     const normalizedStatus = String(quotation.status || '').trim().toLowerCase();
-    if (normalizedStatus === 'canceled') {
-      pushStatus('Canceled quotations cannot be converted.', 'error');
+    if (normalizedStatus === 'canceled' || normalizedStatus === 'converted') {
+      pushStatus('Quotation cannot be converted in its current status.', 'error');
       return;
     }
 
-    setIsSaving(true);
-    setActionOverlay({
-      open: true,
-      kind: 'conversion',
-      title: 'Converting to Proforma',
-      subtitle: 'Closing quotation and generating financial proforma...',
-      status: 'Executing atomic transaction...',
-    });
-
-    try {
-      const proformaRef = await generateDisplayDocumentRef(tenantId, 'proforma');
-      const proformaId = toSafeDocId(proformaRef, 'proforma');
-      
-      const res = await convertQuotationToProforma(tenantId, quotation.id, proformaId, user?.uid);
-      
-      if (res.ok) {
-        pushStatus(`Quotation ${quotation.displayRef} accepted and converted to Proforma ${proformaRef}.`, 'success');
-        await loadData();
-        setActiveView('existing');
-        navigate(`/t/${tenantId}/proforma-invoices`);
-      } else {
-        pushStatus(res.error || 'Conversion failed.', 'error');
+    navigate(`/t/${tenantId}/proforma-invoices`, {
+      state: {
+        fromQuotation: true,
+        sourceQuotationId: quotation.id,
+        items: (quotation.items || []).map((item) => ({
+          ...item,
+          govCharge: 0,
+        })),
+        description: quotation.description || '',
+        clientSnapshot: quotation.clientSnapshot || {},
+        clientMode: quotation.clientId ? 'existing' : 'manual',
+        existingClientId: quotation.clientId || '',
+        selectedDependents: quotation.dependentIds || [],
+        proformaDate: new Date().toISOString().split('T')[0],
       }
-    } finally {
-      setIsSaving(false);
-      closeActionOverlay();
-    }
+    });
   };
 
   const handleAccept = (quotation) => {
     if (!quotation) return;
+    if (!quotation.clientId) {
+      setQuickClientModal({ open: true, quotation });
+      return;
+    }
     openConfirm({
       title: 'Move to Proforma Create Form?',
       message: `Open ${quotation.displayRef} in Proforma create form with prefilled details?\n\nNo proforma will be created until you click Generate in Proforma page.`,
@@ -1123,7 +1259,7 @@ const QuotationPage = () => {
           <div className="space-y-6">
             <div className="rounded-2xl border border-[var(--c-border)] bg-[var(--c-surface)] p-4 shadow-sm">
               <div className="grid gap-4 md:grid-cols-[200px_minmax(0,1fr)_220px]">
-                <label className="text-xs font-bold uppercase tracking-wider text-[var(--c-muted)]">Quotation Date<input ref={quotationDateFieldRef} type="date" className={inputClass} style={{ colorScheme: resolvedTheme }} value={quotationDate} onChange={(e) => setQuotationDate(e.target.value)} /></label>
+                <label className="text-xs font-bold uppercase tracking-wider text-[var(--c-muted)]">Quotation Date<input ref={quotationDateFieldRef} type="date" className={inputClass} style={{ colorScheme: 'light' }} value={quotationDate} onChange={(e) => setQuotationDate(e.target.value)} /></label>
                 <label className="text-xs font-bold uppercase tracking-wider text-[var(--c-muted)]">Validity Duration<select ref={validityFieldRef} className={selectClass} value={validityWeeks} onChange={(e) => setValidityWeeks(Number(e.target.value))}>{[1,2,3,4,5,6,7,8].map((week) => <option key={week} value={week}>{week} Week{week > 1 ? 's' : ''}</option>)}</select><p className="mt-2 text-[10px] font-bold uppercase tracking-widest text-[var(--c-muted)]">Expires on {expiryDate}</p></label>
               </div>
             </div>
@@ -1183,7 +1319,6 @@ const QuotationPage = () => {
                         }}
                         selectedId={existingClient?.id}
                         filterType="parent"
-                        placeholder="Search company or individual clients..."
                       />
                     </div>
                   </div>
@@ -1199,7 +1334,6 @@ const QuotationPage = () => {
                             selectedId={null}
                             filterType="dependent"
                             parentId={existingClient.id}
-                            placeholder="Search dependents for this client..."
                           />
                         </div>
                       </div>
@@ -1256,7 +1390,6 @@ const QuotationPage = () => {
                       value={manualClient.legalName}
                       onValueChange={(value) => updateManualClient((prev) => ({ ...prev, legalName: value }))}
                       forceUppercase
-                      placeholder={manualClient.clientType === 'individual' ? 'Full name' : 'Company legal name'}
                       className="mt-1 w-full"
                       inputClassName="text-sm font-bold"
                     />
@@ -1269,7 +1402,6 @@ const QuotationPage = () => {
                         value={manualClient.brandName}
                         onValueChange={(value) => updateManualClient((prev) => ({ ...prev, brandName: value }))}
                         forceUppercase
-                        placeholder="Optional brand name"
                         className="mt-1 w-full"
                         inputClassName="text-sm font-bold"
                       />
@@ -1283,7 +1415,6 @@ const QuotationPage = () => {
                         value={manualClient.contactPersonName}
                         onValueChange={(value) => updateManualClient((prev) => ({ ...prev, contactPersonName: value }))}
                         forceUppercase
-                        placeholder="Contact person name"
                         className="mt-1 w-full"
                         inputClassName="text-sm font-bold"
                       />
@@ -1316,7 +1447,6 @@ const QuotationPage = () => {
                       <EmirateSelect
                         value={manualClient.emirate}
                         onChange={(value) => updateManualClient((prev) => ({ ...prev, emirate: value }))}
-                        placeholder="Select emirate"
                       />
                     </div>
                   </label>
@@ -1348,7 +1478,6 @@ const QuotationPage = () => {
                   value={quotationDescription}
                   onChange={(e) => setQuotationDescription(e.target.value)}
                   onBlur={() => setQuotationDescription((prev) => normalizeLibraryDescription(prev))}
-                  placeholder="Purpose of this quotation"
                 />
               </label>
             </div>
@@ -1381,7 +1510,6 @@ const QuotationPage = () => {
                     <ServiceSearchField
                       onSelect={handleSelectApplication}
                       selectedId={itemBuilder.service?.id || null}
-                      placeholder="Select service..."
                       onCreateNew={null}
                       refreshKey={serviceRefreshKey}
                       variant="compact"
@@ -1424,7 +1552,10 @@ const QuotationPage = () => {
                       className="no-spinner min-w-0 flex-1 bg-transparent text-sm font-bold text-[var(--c-text)] outline-none placeholder:text-[var(--c-muted)]"
                       value={itemBuilder.amount}
                       onChange={(event) => setItemBuilder((prev) => ({ ...prev, amount: event.target.value }))}
-                      onBlur={(event) => setItemBuilder((prev) => ({ ...prev, amount: formatAmountInputValue(event.target.value) }))}
+                      onBlur={(event) => setItemBuilder((prev) => ({
+                        ...prev,
+                        amount: event.target.value === '' ? '' : formatAmountInputValue(event.target.value),
+                      }))}
                       placeholder="0.00"
                     />
                   </div>
@@ -1456,7 +1587,9 @@ const QuotationPage = () => {
                     setItemBuilder({
                       service: createdTemplate,
                       qty: 1,
-                      amount: formatAmountInputValue(createdTemplate.clientCharge || 0),
+                      amount: Number(createdTemplate.clientCharge || 0) > 0
+                        ? formatAmountInputValue(createdTemplate.clientCharge || 0)
+                        : '',
                       description: normalizeLibraryDescription(createdTemplate.description || ''),
                     });
                     pushStatus(`Application "${createdTemplate.name}" created.`, 'success');
@@ -1523,7 +1656,7 @@ const QuotationPage = () => {
                                 }}
                               />
                             </div>
-                            <p className="truncate text-sm font-black text-[var(--c-text)]">{item.name}</p>
+                            <p className="truncate text-sm font-black text-[var(--c-text)]">{resolveItemName(item)}</p>
                           </div>
                           <div className="mt-2 flex items-center gap-2">
                             <button
@@ -1551,7 +1684,6 @@ const QuotationPage = () => {
                                 rows={2}
                                 value={item.description || ''}
                                 onChange={(event) => handleItemChange(item.rowId, 'description', event.target.value)}
-                                placeholder="Description for this line item (optional)"
                                 className="compact-field w-full rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] px-3 py-2 text-sm font-semibold text-[var(--c-text)] outline-none transition focus:border-[var(--c-accent)]"
                               />
                             </div>
@@ -1631,6 +1763,47 @@ const QuotationPage = () => {
                       <CurrencyValue value={totalAmount} iconSize="h-4 w-4" />
                     </span>
                   </div>
+                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--c-border)] bg-[var(--c-surface)] px-4 py-3">
+                    <button
+                      type="button"
+                      onClick={() => setDiscountEnabled((prev) => !prev)}
+                      className={`flex h-8 w-8 items-center justify-center rounded-xl border transition ${
+                        discountEnabled
+                          ? 'border-[var(--c-accent)] bg-[color:color-mix(in_srgb,var(--c-accent)_12%,var(--c-panel))] text-[var(--c-text)]'
+                          : 'border-[var(--c-border)] bg-[var(--c-panel)] text-[var(--c-muted)] hover:border-[var(--c-accent)]/40'
+                      }`}
+                      aria-pressed={discountEnabled}
+                      aria-label={discountEnabled ? 'Disable discount' : 'Enable discount'}
+                    >
+                      {discountEnabled ? <Check strokeWidth={2.2} className="h-3.5 w-3.5" /> : <Minus strokeWidth={2} className="h-4 w-4" />}
+                    </button>
+                    <div className="flex min-w-[180px] flex-1 items-center gap-2">
+                      <span className="text-xs font-bold uppercase tracking-wider text-[var(--c-muted)]">Discount</span>
+                      <select
+                        value={discountMode}
+                        onChange={(e) => setDiscountMode(e.target.value === 'percent' ? 'percent' : 'amount')}
+                        disabled={!discountEnabled}
+                        className="h-9 rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] px-2 text-xs font-semibold text-[var(--c-text)] disabled:opacity-50"
+                      >
+                        <option value="amount">Amount</option>
+                        <option value="percent">%</option>
+                      </select>
+                      <input
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        value={discountValue}
+                        onChange={(e) => setDiscountValue(e.target.value)}
+                        disabled={!discountEnabled}
+                        className="h-9 w-24 rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] px-2 text-sm font-semibold text-[var(--c-text)] outline-none disabled:opacity-50"
+                      />
+                      {discountEnabled ? (
+                        <span className="ml-auto text-xs font-semibold text-[var(--c-muted)]">
+                          - <CurrencyValue value={discountAmount} iconSize="h-3 w-3" />
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
                 </div>
               ) : <div className="rounded-2xl border border-dashed border-[var(--c-border)] bg-[var(--c-panel)] p-6 text-center text-xs font-bold uppercase tracking-widest text-[var(--c-muted)]">No applications added yet.</div>}
               </div>
@@ -1691,7 +1864,6 @@ const QuotationPage = () => {
                           className={`${inputClass} mt-3 min-h-[72px] resize-y normal-case tracking-normal`}
                           value={term.text}
                           onChange={(e) => handleQuotationTermChange(term.id, e.target.value)}
-                          placeholder="Enter a quotation condition for this client"
                         />
                       ) : (
                         <p className="mt-3 text-xs font-bold text-[var(--c-muted)]">
@@ -1713,13 +1885,105 @@ const QuotationPage = () => {
           </div>
         ) : (
           <div className="grid gap-6 lg:grid-cols-[minmax(320px,420px)_1fr]">
-            <div className="rounded-2xl border border-[var(--c-border)] bg-[var(--c-surface)] p-3 shadow-sm"><p className="mb-3 text-sm font-bold text-[var(--c-text)]">Quotation List</p><div className="space-y-2">{rows.map((quotation) => <button key={quotation.id} type="button" onClick={() => setSelectedQuotationId(quotation.id)} className={`w-full rounded-2xl border px-4 py-3 text-left transition ${selectedQuotationId === quotation.id ? activeChoiceCardClass : 'border-[var(--c-border)] bg-[var(--c-panel)]'}`}><p className="text-sm font-black text-[var(--c-text)]">{quotation.displayRef}</p><p className="text-[10px] font-bold uppercase text-[var(--c-muted)]">{quotation.status || 'generated'} • {quotation.quoteDate}</p><div className="mt-2 text-xs font-bold text-[var(--c-text)]"><CurrencyValue value={quotation.totalAmount || 0} iconSize="h-3 w-3" /></div></button>)}{rows.length === 0 ? <div className="rounded-2xl border border-dashed border-[var(--c-border)] bg-[var(--c-panel)] p-6 text-center text-xs font-bold uppercase tracking-widest text-[var(--c-muted)]">No quotations generated yet.</div> : null}</div></div>
+            <div className="rounded-2xl border border-[var(--c-border)] bg-[var(--c-surface)] p-3 shadow-sm">
+              <p className="mb-3 text-sm font-bold text-[var(--c-text)]">Quotation List</p>
+              <div className="mb-3">
+                <InputActionField
+                  value={quotationSearch}
+                  onValueChange={setQuotationSearch}
+                  placeholder="Search quotations"
+                  className="w-full"
+                  showPasteButton={false}
+                  leadIcon={Search}
+                />
+              </div>
+                <div className="space-y-1.5">
+                {filteredRows.map((quotation) => {
+                  const creator = tenantUserMap[String(quotation?.createdBy || '')];
+                  const creatorRawName = creator?.displayName || creator?.name || creator?.email || 'System';
+                  const creatorName = String(creatorRawName || '').includes('@')
+                    ? creatorRawName
+                    : toProperText(creatorRawName);
+                  const quotationIconUrl = resolvePageIconUrl(systemAssets, 'quotations') || '/documents.png';
+                  return (
+                    <div
+                      key={quotation.id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setSelectedQuotationId(quotation.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          setSelectedQuotationId(quotation.id);
+                        }
+                      }}
+                      className={`group w-full cursor-pointer rounded-xl border text-left transition ${selectedQuotationId === quotation.id ? activeChoiceCardClass : 'border-[var(--c-border)] bg-[var(--c-panel)]'}`}
+                    >
+                      <div className="flex items-center gap-2 px-3 py-2">
+                        <div className="min-w-0 flex-1 space-y-1">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <p className="truncate text-xs font-black text-[var(--c-text)]">{quotation.displayRef}</p>
+                            {(quotation.proformaDisplayRef || quotation.proformaId || quotation.convertedToProformaId) ? (
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); goToProforma(quotation.proformaDisplayRef || quotation.proformaId || quotation.convertedToProformaId); }}
+                                className="inline-flex items-center gap-1 rounded border border-emerald-300 bg-emerald-50 px-1.5 py-0.5 text-[10px] font-black text-emerald-700 hover:border-emerald-400"
+                              >
+                                {quotation.proformaDisplayRef || quotation.proformaId || quotation.convertedToProformaId}
+                              </button>
+                            ) : null}
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2 text-[10px] font-semibold text-[var(--c-muted)]">
+                            <span className="uppercase">{String(quotation.status || 'generated').toUpperCase()}</span>
+                            <span className="h-1 w-1 rounded-full bg-[var(--c-border)]" />
+                            <span>Date: {quotation.quoteDate || '-'}</span>
+                            <span className="h-1 w-1 rounded-full bg-[var(--c-border)]" />
+                            <span className="text-[var(--c-text)]">
+                              <CurrencyValue value={quotation.totalAmount || 0} iconSize="h-3 w-3" />
+                            </span>
+                          </div>
+                        </div>
+                        <div className="min-w-0">
+                          <SignatureCard
+                            uid={quotation.createdBy || ''}
+                            displayName={creatorName}
+                            avatarUrl={creator?.photoURL || '/avatar.png'}
+                            className="h-9 max-w-[150px]"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+                {filteredRows.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-[var(--c-border)] bg-[var(--c-panel)] p-6 text-center text-xs font-bold uppercase tracking-widest text-[var(--c-muted)]">No quotations generated yet.</div>
+                ) : null}
+              </div>
+            </div>
             <div className="rounded-2xl border border-[var(--c-border)] bg-[var(--c-surface)] p-4 shadow-sm">
               {selectedQuotation ? (
                 <div className="space-y-4">
-                  <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-lg font-bold text-[var(--c-text)]">{selectedQuotation.displayRef}</p><p className="text-sm font-bold text-[var(--c-muted)]">{selectedQuotation.clientSnapshot?.name || selectedQuotation.clientSnapshot?.tradeName || 'Client'}</p></div><div className="text-right"><p className="text-[10px] font-bold uppercase tracking-widest text-[var(--c-muted)]">Status</p><p className="text-sm font-black text-[var(--c-text)]">{selectedQuotation.status || 'generated'}</p></div></div>
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="space-y-1">
+                      <p className="text-lg font-bold text-[var(--c-text)]">{selectedQuotation.displayRef}</p>
+                      <p className="text-sm font-bold text-[var(--c-muted)]">{selectedQuotation.clientSnapshot?.name || selectedQuotation.clientSnapshot?.tradeName || 'Client'}</p>
+                      {(selectedQuotation.proformaDisplayRef || selectedQuotation.proformaId || selectedQuotation.convertedToProformaId) ? (
+                        <button
+                          type="button"
+                          onClick={() => goToProforma(selectedQuotation.proformaDisplayRef || selectedQuotation.proformaId || selectedQuotation.convertedToProformaId)}
+                          className="inline-flex items-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700 hover:border-emerald-400"
+                        >
+                          Open Proforma {selectedQuotation.proformaDisplayRef || selectedQuotation.proformaId || selectedQuotation.convertedToProformaId}
+                        </button>
+                      ) : null}
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--c-muted)]">Status</p>
+                      <p className="text-sm font-black text-[var(--c-text)]">{String(selectedQuotation.status || 'generated').toUpperCase()}</p>
+                    </div>
+                  </div>
                   <div className="grid gap-4 md:grid-cols-3"><div className="rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)] p-4"><p className="text-[10px] font-bold uppercase tracking-widest text-[var(--c-muted)]">Quote Date</p><p className="mt-2 text-sm font-black text-[var(--c-text)]">{selectedQuotation.quoteDate || '-'}</p></div><div className="rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)] p-4"><p className="text-[10px] font-bold uppercase tracking-widest text-[var(--c-muted)]">Expiry Date</p><p className="mt-2 text-sm font-black text-[var(--c-text)]">{selectedQuotation.expiryDate || '-'}</p></div><div className="rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)] p-4"><p className="text-[10px] font-bold uppercase tracking-widest text-[var(--c-muted)]">Total</p><div className="mt-2 text-sm font-black text-[var(--c-text)]"><CurrencyValue value={selectedQuotation.totalAmount || 0} iconSize="h-3 w-3" /></div></div></div>
-                  <div className="rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)] p-4"><p className="mb-3 text-sm font-black text-[var(--c-text)]">Applications</p><div className="space-y-2">{(selectedQuotation.items || []).map((item, index) => <div key={`${selectedQuotation.id}-${index}`} className="flex items-center justify-between rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] px-4 py-3"><div><p className="text-sm font-black text-[var(--c-text)]">{item.name}</p><p className="text-[10px] font-bold uppercase text-[var(--c-muted)]">Qty {item.qty}</p></div><div className="text-sm font-black text-[var(--c-text)]"><CurrencyValue value={item.lineTotal || 0} iconSize="h-3 w-3" /></div></div>)}</div></div>
+                  <div className="rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)] p-4"><p className="mb-3 text-sm font-black text-[var(--c-text)]">Applications</p><div className="space-y-2">{(selectedQuotation.items || []).map((item, index) => <div key={`${selectedQuotation.id}-${index}`} className="flex items-center justify-between rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] px-4 py-3"><div><p className="text-sm font-black text-[var(--c-text)]">{resolveItemName(item)}</p><p className="text-[10px] font-bold uppercase text-[var(--c-muted)]">Qty {item.qty}</p></div><div className="text-sm font-black text-[var(--c-text)]"><CurrencyValue value={item.lineTotal || 0} iconSize="h-3 w-3" /></div></div>)}</div></div>
                   {String(selectedQuotation.termsAndConditions || '').trim() ? <div className="rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)] p-4"><p className="mb-3 text-sm font-black text-[var(--c-text)]">Terms and Conditions</p><div className="space-y-2">{String(selectedQuotation.termsAndConditions || '').split(/\r?\n/).filter(Boolean).map((term, index) => <p key={`${selectedQuotation.id}-term-${index}`} className="text-sm font-bold text-[var(--c-text)]">{term}</p>)}</div></div> : null}
                   {selectedQuotation.cancellationReason ? <div className="rounded-2xl border border-rose-300 bg-rose-50 p-4 text-sm font-bold text-rose-700">Cancellation reason: {selectedQuotation.cancellationReason}</div> : null}
                   <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
@@ -1760,7 +2024,7 @@ const QuotationPage = () => {
                     </button>
                     <button
                       type="button"
-                      disabled={isActionBusy}
+                      disabled={isActionBusy || String(selectedQuotation.status || '').toLowerCase() === 'converted'}
                       onClick={() => void handleAccept(selectedQuotation)}
                       className="inline-flex items-center justify-center gap-2 rounded-2xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-xs font-black text-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
                     >
@@ -1844,6 +2108,14 @@ const QuotationPage = () => {
         title={actionOverlay.title}
         subtitle={actionOverlay.subtitle}
         status={actionOverlay.status}
+      />
+      <QuotationClientQuickCreate
+        open={quickClientModal.open}
+        quotation={quickClientModal.quotation}
+        tenantId={tenantId}
+        user={user}
+        onClose={handleQuickClientClose}
+        onCreated={handleQuickClientCreated}
       />
       <ProgressVideoOverlay
         open={isSaving}

@@ -30,7 +30,7 @@ import EmailContactsField from '../common/EmailContactsField';
 import ConfirmDialog from '../common/ConfirmDialog';
 import IdentityDocumentField from '../common/IdentityDocumentField';
 import ActionProgressOverlay from '../common/ActionProgressOverlay';
-import { useTenant } from '../../context/useTenant';
+import SignatureCard from '../common/SignatureCard';
 
 const BALANCE_TYPE_OPTIONS = [
     { value: 'credit', label: 'Credit (Money with us)' },
@@ -93,9 +93,8 @@ const removeEmptyEntries = (value) => {
     return value;
 };
 
-const IndividualRegistrationForm = ({ activeType, tenantId, user, onCancel, onSuccess, initialData }) => {
+const IndividualRegistrationForm = ({ tenantId, user, onCancel, onSuccess, initialData }) => {
     const isEdit = !!initialData;
-    const { tenant } = useTenant();
     const [portals, setPortals] = useState([]);
     const [nextId, setNextId] = useState('...');
     const [showBalance, setShowBalance] = useState(false);
@@ -192,9 +191,11 @@ const IndividualRegistrationForm = ({ activeType, tenantId, user, onCancel, onSu
         }
 
         openConfirm({
-            title: 'Confirm Registration',
-            message: `Are you sure you want to register "${form.fullName.toUpperCase().trim()}"?`,
-            confirmText: 'Register Individual',
+            title: isEdit ? 'Confirm Changes' : 'Confirm Registration',
+            message: isEdit
+                ? `Save updates for "${form.fullName.toUpperCase().trim()}"?`
+                : `Are you sure you want to register "${form.fullName.toUpperCase().trim()}"?`,
+            confirmText: isEdit ? 'Save Changes' : 'Register Individual',
             onConfirm: confirmSubmit
         });
     };
@@ -270,27 +271,31 @@ const IndividualRegistrationForm = ({ activeType, tenantId, user, onCancel, onSu
                 return;
             }
 
-            setStatus({ type: 'info', message: 'Checking for duplicates...' });
-            const exists = await checkIndividualDuplicate(tenantId, {
-                method: normalized.identificationMethod,
-                emiratesId: normalized.emiratesId,
-                passportNumber: normalized.passportNumber,
-                fullName: normalized.fullName,
-            });
-            if (exists) {
-                if (normalized.identificationMethod === 'passport') {
-                    setStatus({
-                        type: 'error',
-                        message: `Passport ${normalized.passportNumber} with name ${normalized.fullName} is already registered.`
-                    });
-                } else {
-                    setStatus({ type: 'error', message: `Emirates ID ${normalized.emiratesId} is already registered.` });
+            if (!isEdit) {
+                setStatus({ type: 'info', message: 'Checking for duplicates...' });
+                const exists = await checkIndividualDuplicate(tenantId, {
+                    method: normalized.identificationMethod,
+                    emiratesId: normalized.emiratesId,
+                    passportNumber: normalized.passportNumber,
+                    fullName: normalized.fullName,
+                });
+                if (exists) {
+                    if (normalized.identificationMethod === 'passport') {
+                        setStatus({
+                            type: 'error',
+                            message: `Passport ${normalized.passportNumber} with name ${normalized.fullName} is already registered.`
+                        });
+                    } else {
+                        setStatus({ type: 'error', message: `Emirates ID ${normalized.emiratesId} is already registered.` });
+                    }
+                    return;
                 }
-                return;
             }
 
-            setStatus({ type: 'info', message: 'Generating Client ID...' });
-            const displayId = await generateDisplayClientId(tenantId, 'individual');
+            setStatus({ type: 'info', message: isEdit ? 'Preparing client update...' : 'Generating Client ID...' });
+            const displayId = isEdit
+                ? (initialData.displayClientId || initialData.id || nextId)
+                : await generateDisplayClientId(tenantId, 'individual');
 
             const {
                 createPortalTransaction: _createPortalTransaction,
@@ -303,7 +308,7 @@ const IndividualRegistrationForm = ({ activeType, tenantId, user, onCancel, onSu
             const { openingBalance, ...persistedClientFields } = clientFields;
             const finalPayloadRaw = {
                 ...persistedClientFields,
-                balance: Number(openingBalance) || 0,
+                ...(isEdit ? {} : { balance: Number(openingBalance) || 0 }),
                 displayClientId: displayId,
                 type: 'individual'
             };
@@ -358,18 +363,19 @@ const IndividualRegistrationForm = ({ activeType, tenantId, user, onCancel, onSu
                         return;
                     }
                 }
-                if (canUserPerformAction(tenantId, user, 'notifyCreateClient')) {
+                const notifyPermission = isEdit ? 'notifyUpdateClient' : 'notifyCreateClient';
+                if (canUserPerformAction(tenantId, user, notifyPermission)) {
                     await sendUniversalNotification({
                         tenantId,
                         topic: 'users',
                         subTopic: 'client',
-                        type: 'create',
-                        title: 'Individual Client Added',
-                        message: `${normalized.fullName} was added successfully.`,
+                        type: isEdit ? 'update' : 'create',
+                        title: isEdit ? 'Individual Client Updated' : 'Individual Client Added',
+                        message: isEdit ? `${normalized.fullName} was updated successfully.` : `${normalized.fullName} was added successfully.`,
                         createdBy: user.uid,
                         routePath: `/t/${tenantId}/clients/${res.id}`,
                         actionPresets: ['view'],
-                        eventType: 'create',
+                        eventType: isEdit ? 'update' : 'create',
                         entityType: 'client',
                         entityId: res.id,
                         entityLabel: normalized.fullName,
@@ -379,18 +385,18 @@ const IndividualRegistrationForm = ({ activeType, tenantId, user, onCancel, onSu
                             badge: 'Individual',
                             title: normalized.fullName,
                             subtitle: displayId,
-                            description: 'Individual client created from onboarding.',
+                            description: isEdit ? 'Individual client updated from onboarding.' : 'Individual client created from onboarding.',
                             fields: [
                                 { label: 'Client ID', value: displayId },
                                 { label: 'Identification', value: normalized.identificationMethod === 'passport' ? normalized.passportNumber : normalized.emiratesId },
                                 { label: 'Mobile', value: normalized.primaryMobile },
-                                { label: 'Balance', value: String(normalized.openingBalance || 0) },
+                                { label: 'Balance', value: String(normalized.openingBalance || initialData?.balance || 0) },
                             ],
                         },
                     });
                 }
                 shouldUnlock = false;
-                setStatus({ type: 'success', message: `Successfully registered as ${displayId} !` });
+                setStatus({ type: 'success', message: isEdit ? `Saved changes for ${displayId}.` : `Successfully registered as ${displayId} !` });
                 setTimeout(() => {
                     if (onSuccess) onSuccess({ id: res.id, ...finalPayload });
                 }, 1000);
@@ -414,16 +420,14 @@ const IndividualRegistrationForm = ({ activeType, tenantId, user, onCancel, onSu
 
     return (
         <form onSubmit={handleSaveClick} className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <header className="mb-6 flex items-center justify-between border-b border-[var(--c-border)] pb-4">
-                <div>
-                    <h2 className="text-lg font-semibold text-[var(--c-text)] uppercase">{isEdit ? 'Update Profile' : `${activeType} Registration`}</h2>
-                    <p className="text-xs font-semibold text-[var(--c-muted)]">{isEdit ? `Modifying entry in ${tenant?.name || tenantId}` : `Registering under ${tenant?.name || tenantId}`}</p>
-                </div>
-                <div className="text-right">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--c-muted)]">{isEdit ? 'Record ID' : 'Next Available ID'}</p>
-                    <p className="text-base font-semibold text-[var(--c-accent)]">{nextId}</p>
-                </div>
-            </header>
+            <SignatureCard
+                as="div"
+                title={form.fullName || (isEdit ? 'Update Profile' : 'New Individual Registration')}
+                subtitle={isEdit ? (initialData?.displayClientId || initialData?.id || nextId) : `Awaiting ID: ${nextId}`}
+                badge="Individual"
+                image={initialData?.avatarUrl || '/signature/individual.png'}
+                className="mb-8"
+            />
 
             {/* Identity Details */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -551,93 +555,116 @@ const IndividualRegistrationForm = ({ activeType, tenantId, user, onCancel, onSu
             </div>
 
             {/* Balance & Portal */}
-            <div className="rounded-2xl border-2 border-dashed border-[var(--c-border)] bg-[var(--c-panel)]/30 p-4">
-                <div className="mb-4 flex items-center gap-2">
-                    <div className="h-2 w-2 rounded-full bg-[var(--c-accent)]" />
-                    <h3 className="text-sm font-semibold uppercase tracking-widest text-[var(--c-text)]">Balance & Finance</h3>
-                </div>
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                    <div className="space-y-2">
-                        <label className="text-xs font-bold uppercase tracking-wider text-[var(--c-muted)]">Balance</label>
-                        <div className="relative">
-                            <DirhamIcon insideTab className="h-4 w-4 text-[var(--c-muted)]" />
-                            <InputActionField
-                                type="number"
-                                name="openingBalance"
-                                value={form.openingBalance}
-                                onValueChange={handleOpeningBalanceChange}
-                                placeholder="0.00"
-                                inputMode="decimal"
-                                showPasteButton={false}
-                                className="w-full"
-                                inputClassName="pl-10 text-sm font-bold"
-                            />
+            {isEdit ? (
+                <div className="rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)]/40 p-4">
+                    <div className="mb-3 flex items-center gap-2">
+                        <div className="h-2 w-2 rounded-full bg-[var(--c-accent)]" />
+                        <h3 className="text-sm font-semibold uppercase tracking-widest text-[var(--c-text)]">Finance Snapshot</h3>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                        <div className="rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] px-3 py-2">
+                            <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--c-muted)]">Current Balance</p>
+                            <p className="text-sm font-semibold text-[var(--c-text)]">{initialData?.balance ?? 'Not available'}</p>
+                        </div>
+                        <div className="rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] px-3 py-2">
+                            <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--c-muted)]">Balance Type</p>
+                            <p className="text-sm font-semibold text-[var(--c-text)]">{initialData?.balanceType ? toTitleCase(initialData.balanceType) : 'Not captured'}</p>
+                        </div>
+                        <div className="rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] px-3 py-2">
+                            <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--c-muted)]">Note</p>
+                            <p className="text-xs font-semibold text-[var(--c-muted)]">Balance changes are handled in finance modules (Receive Payments / Daily Transactions).</p>
                         </div>
                     </div>
-                    {(Number(form.openingBalance) || 0) > 0 ? (
-                        <div className="space-y-2">
-                            <label className="text-xs font-bold uppercase tracking-wider text-[var(--c-muted)]">Balance Type *</label>
-                            <IconSelect
-                                value={form.balanceType}
-                                onChange={handleBalanceTypeChange}
-                                options={BALANCE_TYPE_OPTIONS}
-                            />
-                        </div>
-                    ) : null}
-                    {form.balanceType ? (
-                        <div className="space-y-2">
-                            <label className="text-xs font-bold uppercase tracking-wider text-[var(--c-muted)]">Create Portal Transaction *</label>
-                            <IconSelect
-                                value={form.createPortalTransaction ? 'yes' : 'no'}
-                                onChange={handlePortalToggleChange}
-                                options={PORTAL_TOGGLE_OPTIONS}
-                            />
-                        </div>
-                    ) : null}
-                    {form.createPortalTransaction ? (
-                        <div className="space-y-2">
-                            <label className="text-xs font-bold uppercase tracking-wider text-[var(--c-muted)]">Portal Selection & Transaction Method *</label>
-                            <PortalTransactionSelector
-                                portalLabel="Portal Selection"
-                                methodLabel="Transaction Method *"
-                                portalId={form.portalId}
-                                methodId={form.portalMethod}
-                                onPortalChange={(nextPortalId) => setForm((prev) => ({ ...prev, portalId: nextPortalId, portalMethod: '' }))}
-                                onMethodChange={(nextMethod) => setForm((prev) => ({ ...prev, portalMethod: nextMethod }))}
-                                portals={portals}
-                                portal={selectedPortal}
-                                portalPlaceholder="Select Portal"
-                                methodPlaceholder="Select Method"
-                                disabled={!form.createPortalTransaction}
-                                showBalancePanel={form.createPortalTransaction && !!selectedPortal}
-                                showBalance={showBalance}
-                                onToggleBalance={() => setShowBalance((prev) => !prev)}
-                                projectedBalance={projectedBalance}
-                                currentBalanceTitle="Portal Balance"
-                                projectedBalanceTitle="After Posting"
-                            />
-                        </div>
-                    ) : null}
                 </div>
-                <div className="mt-4 rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] px-4 py-3">
-                    <label className="flex items-center justify-between gap-3">
-                        <span className="text-xs font-bold uppercase tracking-wider text-[var(--c-muted)]">Send Welcome Email</span>
-                        <input
-                            type="checkbox"
-                            name="sendWelcomeEmail"
-                            checked={hasWelcomeEmailTarget && !!form.sendWelcomeEmail}
-                            disabled={!hasWelcomeEmailTarget}
-                            onChange={(e) => setForm((prev) => ({ ...prev, sendWelcomeEmail: e.target.checked }))}
-                            className="h-4 w-4 accent-[var(--c-accent)] disabled:cursor-not-allowed disabled:opacity-60"
-                        />
-                    </label>
-                    <p className="mt-1 text-[10px] text-[var(--c-muted)]">
-                        {hasWelcomeEmailTarget
-                            ? 'Applies to this client only. Uses Mail Configuration template.'
-                            : 'Add at least one email address to enable welcome email.'}
-                    </p>
+            ) : (
+                <div className="rounded-2xl border-2 border-dashed border-[var(--c-border)] bg-[var(--c-panel)]/30 p-4">
+                    <div className="mb-4 flex items-center gap-2">
+                        <div className="h-2 w-2 rounded-full bg-[var(--c-accent)]" />
+                        <h3 className="text-sm font-semibold uppercase tracking-widest text-[var(--c-text)]">Balance & Finance</h3>
+                    </div>
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold uppercase tracking-wider text-[var(--c-muted)]">Balance</label>
+                            <div className="relative">
+                                <DirhamIcon insideTab className="h-4 w-4 text-[var(--c-muted)]" />
+                                <InputActionField
+                                    type="number"
+                                    name="openingBalance"
+                                    value={form.openingBalance}
+                                    onValueChange={handleOpeningBalanceChange}
+                                    placeholder="0.00"
+                                    inputMode="decimal"
+                                    showPasteButton={false}
+                                    className="w-full"
+                                    inputClassName="pl-10 text-sm font-bold"
+                                />
+                            </div>
+                        </div>
+                        {(Number(form.openingBalance) || 0) > 0 ? (
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold uppercase tracking-wider text-[var(--c-muted)]">Balance Type *</label>
+                                <IconSelect
+                                    value={form.balanceType}
+                                    onChange={handleBalanceTypeChange}
+                                    options={BALANCE_TYPE_OPTIONS}
+                                />
+                            </div>
+                        ) : null}
+                        {form.balanceType ? (
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold uppercase tracking-wider text-[var(--c-muted)]">Create Portal Transaction *</label>
+                                <IconSelect
+                                    value={form.createPortalTransaction ? 'yes' : 'no'}
+                                    onChange={handlePortalToggleChange}
+                                    options={PORTAL_TOGGLE_OPTIONS}
+                                />
+                            </div>
+                        ) : null}
+                        {form.createPortalTransaction ? (
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold uppercase tracking-wider text-[var(--c-muted)]">Portal Selection & Transaction Method *</label>
+                                <PortalTransactionSelector
+                                    portalLabel="Portal Selection"
+                                    methodLabel="Transaction Method *"
+                                    portalId={form.portalId}
+                                    methodId={form.portalMethod}
+                                    onPortalChange={(nextPortalId) => setForm((prev) => ({ ...prev, portalId: nextPortalId, portalMethod: '' }))}
+                                    onMethodChange={(nextMethod) => setForm((prev) => ({ ...prev, portalMethod: nextMethod }))}
+                                    portals={portals}
+                                    portal={selectedPortal}
+                                    portalPlaceholder="Select Portal"
+                                    methodPlaceholder="Select Method"
+                                    disabled={!form.createPortalTransaction}
+                                    showBalancePanel={form.createPortalTransaction && !!selectedPortal}
+                                    showBalance={showBalance}
+                                    onToggleBalance={() => setShowBalance((prev) => !prev)}
+                                    projectedBalance={projectedBalance}
+                                    currentBalanceTitle="Portal Balance"
+                                    projectedBalanceTitle="After Posting"
+                                />
+                            </div>
+                        ) : null}
+                    </div>
+                    <div className="mt-4 rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] px-4 py-3">
+                        <label className="flex items-center justify-between gap-3">
+                            <span className="text-xs font-bold uppercase tracking-wider text-[var(--c-muted)]">Send Welcome Email</span>
+                            <input
+                                type="checkbox"
+                                name="sendWelcomeEmail"
+                                checked={hasWelcomeEmailTarget && !!form.sendWelcomeEmail}
+                                disabled={!hasWelcomeEmailTarget}
+                                onChange={(e) => setForm((prev) => ({ ...prev, sendWelcomeEmail: e.target.checked }))}
+                                className="h-4 w-4 accent-[var(--c-accent)] disabled:cursor-not-allowed disabled:opacity-60"
+                            />
+                        </label>
+                        <p className="mt-1 text-[10px] text-[var(--c-muted)]">
+                            {hasWelcomeEmailTarget
+                                ? 'Applies to this client only. Uses Mail Configuration template.'
+                                : 'Add at least one email address to enable welcome email.'}
+                        </p>
+                    </div>
                 </div>
-            </div>
+            )}
 
             <div className="flex items-center gap-3 pt-4">
                 <button
@@ -674,9 +701,9 @@ const IndividualRegistrationForm = ({ activeType, tenantId, user, onCancel, onSu
             <ActionProgressOverlay
                 open={isSaving}
                 kind="process"
-                title="Individual Registration In Progress"
-                subtitle="Validating identification and synchronizing client records safely."
-                status="Processing Registration..."
+                title={isEdit ? 'Update In Progress' : 'Individual Registration In Progress'}
+                subtitle={isEdit ? 'Synchronizing profile updates safely across the system.' : 'Validating identification and synchronizing client records safely.'}
+                status={isEdit ? 'Processing Update...' : 'Processing Registration...'}
             />
         </form>
     );

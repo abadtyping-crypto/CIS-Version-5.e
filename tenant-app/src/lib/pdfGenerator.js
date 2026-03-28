@@ -939,20 +939,39 @@ export const generateTenantPdf = async ({
       cursorY = (doc.lastAutoTable?.finalY || cursorY) + 24;
     }
 
-    // Grand Total: draw Dirham icon + amount
+    // Totals block (Quotation shows subtotal + discount + total)
+    const quoteSubtotal = toNumber(data?.subtotalAmount, computedTotal);
+    const quoteDiscount = toNumber(data?.discountAmount, 0);
+    const showQuoteDiscount = documentType === 'quotation' && quoteDiscount > 0.0001;
+
+    const drawTotalLine = (label, amount, y, color) => {
+      const labelText = `${label}: `;
+      const labelWidth = doc.getTextWidth(labelText);
+      const valueText = formatAmount(amount, { trimTrailingZeros: isPortalStatement });
+      const iconWidth = dirhamIconBase64 ? 14 : doc.getTextWidth('Dhs ');
+      const startX = pageWidth - margins.right - (labelWidth + iconWidth + doc.getTextWidth(valueText));
+      if (color) doc.setTextColor(...color);
+      doc.text(labelText, startX, y);
+      drawDirhamAmount(doc, dirhamIconBase64, amount, startX + labelWidth, y, {
+        iconSize: 11,
+        trimTrailingZeros: isPortalStatement,
+      });
+      return y;
+    };
+
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(14);
+    if (showQuoteDiscount) {
+      doc.setTextColor(...applyColor(template.accentColor, '#e67e22'));
+      drawTotalLine('Total Amount', quoteSubtotal, cursorY, applyColor(template.accentColor, '#e67e22'));
+      cursorY += 18;
+      doc.setTextColor(120, 120, 120);
+      drawTotalLine('Discount', -quoteDiscount, cursorY, [120, 120, 120]);
+      cursorY += 18;
+    }
     doc.setTextColor(...applyColor(template.accentColor, '#e67e22'));
-    const grandTotalLabel = 'Grand Total: ';
-    const grandTotalLabelWidth = doc.getTextWidth(grandTotalLabel);
-    const grandTotalValueText = formatAmount(computedTotal, { trimTrailingZeros: isPortalStatement });
-    const grandTotalIconWidth = dirhamIconBase64 ? 14 : doc.getTextWidth('Dhs ');
-    const grandTotalX = pageWidth - margins.right - (grandTotalLabelWidth + grandTotalIconWidth + doc.getTextWidth(grandTotalValueText));
-    doc.text(grandTotalLabel, grandTotalX, cursorY);
-    drawDirhamAmount(doc, dirhamIconBase64, computedTotal, grandTotalX + grandTotalLabelWidth, cursorY, {
-      iconSize: 11,
-      trimTrailingZeros: isPortalStatement,
-    });
+    const totalLabel = showQuoteDiscount ? 'Balance' : 'Grand Total';
+    drawTotalLine(totalLabel, computedTotal, cursorY, applyColor(template.accentColor, '#e67e22'));
 
     if (billingAddressPosition === 'bottom') {
       cursorY += 30;

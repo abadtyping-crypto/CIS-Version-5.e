@@ -31,7 +31,7 @@ import EmirateSelect from '../common/EmirateSelect';
 import AddressField from '../common/AddressField';
 import ConfirmDialog from '../common/ConfirmDialog';
 import ActionProgressOverlay from '../common/ActionProgressOverlay';
-import { useTenant } from '../../context/useTenant';
+import SignatureCard from '../common/SignatureCard';
 
 const BALANCE_TYPE_OPTIONS = [
     { value: 'credit', label: 'Credit (Money with us)' },
@@ -97,25 +97,25 @@ const removeEmptyEntries = (value) => {
 };
 
 
-const CompanyRegistrationForm = ({ activeType, tenantId, user, onCancel, onSuccess }) => {
-    const { tenant } = useTenant();
+const CompanyRegistrationForm = ({ tenantId, user, onCancel, onSuccess, initialData }) => {
+    const isEdit = !!initialData;
     const [portals, setPortals] = useState([]);
     const [nextId, setNextId] = useState('...');
     const [showBalance, setShowBalance] = useState(false);
     const [form, setForm] = useState({
-        tradeLicenseNumber: '',
-        registeredEmirate: '',
-        tradeName: '',
-        primaryMobile: '',
-        secondaryMobile: '',
-        mobileContacts: [createMobileContact()],
-        landline1: '',
-        landline2: '',
-        emailContacts: [{ id: 'init-1', value: '' }],
-        address: '',
-        description: '',
-        poBox: '',
-        poBoxEmirate: '',
+        tradeLicenseNumber: initialData?.tradeLicenseNumber || '',
+        registeredEmirate: initialData?.registeredEmirate || '',
+        tradeName: initialData?.tradeName || '',
+        primaryMobile: initialData?.primaryMobile || '',
+        secondaryMobile: initialData?.secondaryMobile || '',
+        mobileContacts: initialData?.mobileContacts ? JSON.parse(JSON.stringify(initialData.mobileContacts)) : [createMobileContact()],
+        landline1: initialData?.landline1 || '',
+        landline2: initialData?.landline2 || '',
+        emailContacts: initialData?.emailContacts ? JSON.parse(JSON.stringify(initialData.emailContacts)) : [{ id: 'init-1', value: '' }],
+        address: initialData?.address || '',
+        description: initialData?.description || '',
+        poBox: initialData?.poBox || '',
+        poBoxEmirate: initialData?.poBoxEmirate || '',
         openingBalance: '',
         balanceType: '',
         createPortalTransaction: false,
@@ -134,6 +134,10 @@ const CompanyRegistrationForm = ({ activeType, tenantId, user, onCancel, onSucce
     const closeConfirm = () => setConfirmDialog((prev) => ({ ...prev, open: false }));
 
     useEffect(() => {
+        if (isEdit) {
+            setNextId(initialData.displayClientId || initialData.id);
+            return;
+        }
         const loadInitialData = async () => {
             fetchTenantPortals(tenantId).then(res => {
                 if (res.ok) setPortals(res.rows);
@@ -142,7 +146,7 @@ const CompanyRegistrationForm = ({ activeType, tenantId, user, onCancel, onSucce
             setNextId(previewId);
         };
         loadInitialData();
-    }, [tenantId]);
+    }, [tenantId, isEdit, initialData]);
 
     const handleOpeningBalanceChange = (nextValue) => {
         const parsed = Number(nextValue);
@@ -216,9 +220,11 @@ const CompanyRegistrationForm = ({ activeType, tenantId, user, onCancel, onSucce
         }
 
         openConfirm({
-            title: 'Confirm Registration',
-            message: `Are you sure you want to register "${form.tradeName.toUpperCase().trim()}"?`,
-            confirmText: 'Register Company',
+            title: isEdit ? 'Confirm Changes' : 'Confirm Registration',
+            message: isEdit
+                ? `Save updates for "${form.tradeName.toUpperCase().trim()}"?`
+                : `Are you sure you want to register "${form.tradeName.toUpperCase().trim()}"?`,
+            confirmText: isEdit ? 'Save Changes' : 'Register Company',
             onConfirm: confirmSubmit
         });
     };
@@ -231,8 +237,12 @@ const CompanyRegistrationForm = ({ activeType, tenantId, user, onCancel, onSucce
         setStatus({ type: 'info', message: 'Validating data...' });
 
         try {
-            if (!canUserPerformAction(tenantId, user, 'createClient')) {
+            if (!isEdit && !canUserPerformAction(tenantId, user, 'createClient')) {
                 setStatus({ type: 'error', message: "You don't have permission to create clients." });
+                return;
+            }
+            if (isEdit && !canUserPerformAction(tenantId, user, 'updateClient')) {
+                setStatus({ type: 'error', message: "You don't have permission to update clients." });
                 return;
             }
 
@@ -285,16 +295,18 @@ const CompanyRegistrationForm = ({ activeType, tenantId, user, onCancel, onSucce
             }
 
             // Duplicate Check
-            setStatus({ type: 'info', message: 'Checking for duplicates...' });
-            const exists = await checkTradeLicenseDuplicate(tenantId, normalized.tradeLicenseNumber);
-            if (exists) {
-                setStatus({ type: 'error', message: `Trade License ${normalized.tradeLicenseNumber} is already registered.` });
-                return;
+            if (!isEdit) {
+                setStatus({ type: 'info', message: 'Checking for duplicates...' });
+                const exists = await checkTradeLicenseDuplicate(tenantId, normalized.tradeLicenseNumber);
+                if (exists) {
+                    setStatus({ type: 'error', message: `Trade License ${normalized.tradeLicenseNumber} is already registered.` });
+                    return;
+                }
             }
 
             // ID Generation
-            setStatus({ type: 'info', message: 'Generating Client ID...' });
-            const displayId = await generateDisplayClientId(tenantId, 'company');
+            setStatus({ type: 'info', message: isEdit ? 'Updating database...' : 'Generating Client ID...' });
+            const displayId = isEdit ? (initialData.displayClientId || initialData.id) : await generateDisplayClientId(tenantId, 'company');
 
             const {
                 createPortalTransaction: _createPortalTransaction,
@@ -307,26 +319,26 @@ const CompanyRegistrationForm = ({ activeType, tenantId, user, onCancel, onSucce
             const { openingBalance, ...persistedClientFields } = clientFields;
             const finalPayloadRaw = {
                 ...persistedClientFields,
-                balance: Number(openingBalance) || 0,
+                ...(isEdit ? {} : { balance: Number(openingBalance) || 0 }),
                 displayClientId: displayId,
                 type: 'company'
             };
             const finalPayload = removeEmptyEntries(finalPayloadRaw) || {};
 
-            setStatus({ type: 'info', message: 'Saving to database...' });
-            const res = await upsertClient(tenantId, null, finalPayload);
+            setStatus({ type: 'info', message: isEdit ? 'Updating database...' : 'Saving to database...' });
+            const res = await upsertClient(tenantId, isEdit ? initialData.id : null, finalPayload);
 
             if (res.ok) {
                 await createSyncEvent({
                     tenantId,
-                    eventType: 'create',
+                    eventType: isEdit ? 'update' : 'create',
                     entityType: 'client',
-                    entityId: res.id,
+                    entityId: isEdit ? initialData.id : res.id,
                     createdBy: user.uid,
                     changedFields: Object.keys(finalPayload),
                 });
 
-                if (normalized.createPortalTransaction && normalized.portalId && normalized.openingBalance > 0) {
+                if (!isEdit && normalized.createPortalTransaction && normalized.portalId && normalized.openingBalance > 0) {
                     const displayTxId = await generateDisplayTxId(tenantId, 'POR');
                     const portalTxId = toSafeDocId(displayTxId, 'tx');
                     const txAmount =
@@ -350,7 +362,7 @@ const CompanyRegistrationForm = ({ activeType, tenantId, user, onCancel, onSucce
                         return;
                     }
                 }
-                if (normalized.sendWelcomeEmail) {
+                if (!isEdit && normalized.sendWelcomeEmail) {
                     const mailRes = await sendTenantWelcomeEmail(tenantId, {
                         toEmail: normalized.primaryEmail,
                         clientName: normalized.tradeName,
@@ -362,18 +374,19 @@ const CompanyRegistrationForm = ({ activeType, tenantId, user, onCancel, onSucce
                         return;
                     }
                 }
-                if (canUserPerformAction(tenantId, user, 'notifyCreateClient')) {
+                const notifyPermission = isEdit ? 'notifyUpdateClient' : 'notifyCreateClient';
+                if (canUserPerformAction(tenantId, user, notifyPermission)) {
                     await sendUniversalNotification({
                         tenantId,
                         topic: 'users',
                         subTopic: 'client',
-                        type: 'create',
-                        title: 'Company Client Added',
-                        message: `${normalized.tradeName} was added successfully.`,
+                        type: isEdit ? 'update' : 'create',
+                        title: isEdit ? 'Company Client Updated' : 'Company Client Added',
+                        message: isEdit ? `${normalized.tradeName} was updated successfully.` : `${normalized.tradeName} was added successfully.`,
                         createdBy: user.uid,
                         routePath: `/t/${tenantId}/clients/${res.id}`,
                         actionPresets: ['view'],
-                        eventType: 'create',
+                        eventType: isEdit ? 'update' : 'create',
                         entityType: 'client',
                         entityId: res.id,
                         entityLabel: normalized.tradeName,
@@ -383,18 +396,18 @@ const CompanyRegistrationForm = ({ activeType, tenantId, user, onCancel, onSucce
                             badge: 'Company',
                             title: normalized.tradeName,
                             subtitle: displayId,
-                            description: 'Company client created from onboarding.',
+                            description: isEdit ? 'Company client updated from onboarding.' : 'Company client created from onboarding.',
                             fields: [
                                 { label: 'Client ID', value: displayId },
                                 { label: 'Trade License', value: normalized.tradeLicenseNumber },
                                 { label: 'Mobile', value: normalized.primaryMobile },
-                                { label: 'Balance', value: String(normalized.openingBalance || 0) },
+                                { label: 'Balance', value: String(normalized.openingBalance || initialData?.balance || 0) },
                             ],
                         },
                     });
                 }
                 shouldUnlock = false;
-                setStatus({ type: 'success', message: `Successfully registered as ${displayId} !` });
+                setStatus({ type: 'success', message: isEdit ? `Saved changes for ${displayId}.` : `Successfully registered as ${displayId} !` });
                 setTimeout(() => {
                     if (onSuccess) onSuccess({ id: res.id, ...finalPayload });
                 }, 1000);
@@ -418,16 +431,14 @@ const CompanyRegistrationForm = ({ activeType, tenantId, user, onCancel, onSucce
 
     return (
         <form onSubmit={handleSaveClick} className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <header className="mb-6 flex items-center justify-between border-b border-[var(--c-border)] pb-4">
-                <div>
-                    <h2 className="text-lg font-semibold text-[var(--c-text)] uppercase">{activeType} Registration</h2>
-                    <p className="text-xs font-semibold text-[var(--c-muted)]">Registering under {tenant?.name || tenantId}</p>
-                </div>
-                <div className="text-right">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--c-muted)]">Next Available ID</p>
-                    <p className="text-base font-semibold text-[var(--c-accent)]">{nextId}</p>
-                </div>
-            </header>
+            <SignatureCard
+                as="div"
+                title={form.tradeName || (isEdit ? 'Update Company Profile' : 'New Company Registration')}
+                subtitle={isEdit ? (initialData?.displayClientId || initialData?.id || nextId) : `Awaiting ID: ${nextId}`}
+                badge="Company"
+                image={initialData?.logoUrl || '/signature/company.png'}
+                className="mb-8"
+            />
 
             {/* 4.1 Mandatory Identity Fields */}
             <div className="grid gap-4 md:grid-cols-2">
@@ -582,7 +593,29 @@ const CompanyRegistrationForm = ({ activeType, tenantId, user, onCancel, onSucce
             </div>
 
             {/* 4.5 Balance & Portal Transaction */}
-            <div className="rounded-2xl border-2 border-dashed border-[var(--c-border)] bg-[var(--c-panel)]/30 p-4">
+            {isEdit ? (
+                <div className="rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)]/40 p-4">
+                    <div className="mb-3 flex items-center gap-2">
+                        <div className="h-2 w-2 rounded-full bg-[var(--c-accent)]" />
+                        <h3 className="text-sm font-semibold uppercase tracking-widest text-[var(--c-text)]">Finance Snapshot</h3>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                        <div className="rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] px-3 py-2">
+                            <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--c-muted)]">Current Balance</p>
+                            <p className="text-sm font-semibold text-[var(--c-text)]">{initialData?.balance ?? 'Not available'}</p>
+                        </div>
+                        <div className="rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] px-3 py-2">
+                            <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--c-muted)]">Balance Type</p>
+                            <p className="text-sm font-semibold text-[var(--c-text)]">{initialData?.balanceType ? toTitleCase(initialData.balanceType) : 'Not captured'}</p>
+                        </div>
+                        <div className="rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] px-3 py-2">
+                            <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--c-muted)]">Note</p>
+                            <p className="text-xs font-semibold text-[var(--c-muted)]">Balance updates are managed in finance modules to keep the ledger consistent.</p>
+                        </div>
+                    </div>
+                </div>
+            ) : (
+                <div className="rounded-2xl border-2 border-dashed border-[var(--c-border)] bg-[var(--c-panel)]/30 p-4">
                 <div className="mb-4 flex items-center gap-2">
                     <div className="h-2 w-2 rounded-full bg-[var(--c-accent)]" />
                     <h3 className="text-sm font-semibold uppercase tracking-widest text-[var(--c-text)]">Balance & Finance</h3>
@@ -673,6 +706,7 @@ const CompanyRegistrationForm = ({ activeType, tenantId, user, onCancel, onSucce
                     </p>
                 </div>
             </div>
+            )}
 
             <div className="flex items-center gap-3 pt-4">
                 <button
@@ -680,7 +714,7 @@ const CompanyRegistrationForm = ({ activeType, tenantId, user, onCancel, onSucce
                     disabled={isSaving}
                     className="compact-action flex-1 rounded-xl bg-[var(--c-accent)] py-2.5 text-sm font-semibold text-white shadow-lg shadow-[var(--c-accent)]/20 transition hover:opacity-90 disabled:opacity-50"
                 >
-                    {isSaving ? 'Registering...' : 'Register Company'}
+                    {isSaving ? (isEdit ? 'Saving...' : 'Registering...') : (isEdit ? 'Save Changes' : 'Register Company')}
                 </button>
                 <button
                     type="button"
@@ -709,9 +743,9 @@ const CompanyRegistrationForm = ({ activeType, tenantId, user, onCancel, onSucce
             <ActionProgressOverlay
                 open={isSaving}
                 kind="process"
-                title="Company Registration In Progress"
-                subtitle="Validating, creating client profile, and synchronizing records safely."
-                status="Processing Registration..."
+                title={isEdit ? 'Update In Progress' : 'Company Registration In Progress'}
+                subtitle={isEdit ? 'Synchronizing company updates safely across the system.' : 'Validating, creating client profile, and synchronizing records safely.'}
+                status={isEdit ? 'Processing Update...' : 'Processing Registration...'}
             />
         </form>
     );

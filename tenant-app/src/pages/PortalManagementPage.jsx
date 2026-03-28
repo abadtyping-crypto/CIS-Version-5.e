@@ -21,6 +21,7 @@ import { getCachedSystemAssetsSnapshot, getSystemAssets } from '../lib/systemAss
 import { canUserPerformAction } from '../lib/userControlPreferences';
 import { DEFAULT_PORTAL_ICON, resolvePortalTypeIcon } from '../lib/transactionMethodConfig';
 import '../styles/mobile/portal.css';
+import SignatureCard from '../components/common/SignatureCard';
 
 const CATEGORY_ASSET_MAP = {
   Bank: 'icon_portal_bank',
@@ -123,38 +124,20 @@ const PortalBalanceAdjustmentPanel = ({ refreshKey }) => {
       ) : (
         <div className="space-y-2">
           {rows.map((item) => (
-            <div
+            <SignatureCard
               key={item.id}
-              className="group flex min-h-[56px] flex-row items-stretch overflow-hidden rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)] transition-all hover:bg-[var(--c-surface)]"
-            >
-              {/* Signature Icon Slot */}
-              <div className="flex w-20 shrink-0 items-center justify-center overflow-hidden border-r border-[var(--c-border)] bg-white shadow-sm">
-                <img
-                  src={resolvePortalCardIcon(item, systemAssets)}
-                  alt={item.name || item.id}
-                  className="h-full w-full object-cover"
-                  onError={(event) => {
-                    event.currentTarget.onerror = null;
-                    event.currentTarget.src = DEFAULT_PORTAL_ICON;
-                  }}
-                />
-              </div>
-
-              {/* Portal Details */}
-              <div className="flex min-w-0 flex-1 flex-col justify-center px-4 py-3">
-                <div className="flex items-center gap-2">
-                  <p className="truncate text-sm font-black text-[var(--c-text)]">{item.name || item.id}</p>
-                  <p className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-[var(--c-muted)]">
-                    {item.id}
-                  </p>
-                </div>
-                <p className={`mt-0.5 text-xs font-bold ${Number(item.balance || 0) < 0 ? 'text-rose-500' : 'text-emerald-600'}`}>
+              as="div"
+              title={item.name || item.id}
+              subtitle={
+                <span className={`font-bold ${Number(item.balance || 0) < 0 ? 'text-rose-500' : 'text-emerald-600'}`}>
                   <CurrencyValue value={item.balance || 0} iconSize="h-3 w-3" />
-                </p>
-              </div>
-
-              {/* Actions */}
-              <div className="flex items-center px-4">
+                </span>
+              }
+              badge={item.id}
+              image={resolvePortalCardIcon(item, systemAssets)}
+              className="min-h-[56px]"
+            >
+              <div className="flex items-center px-4 self-stretch border-l border-[var(--c-border)]">
                 <button
                   type="button"
                   onClick={() => navigate(`/t/${tenantId}/portal-management/${item.id}`)}
@@ -163,7 +146,7 @@ const PortalBalanceAdjustmentPanel = ({ refreshKey }) => {
                   Open & Adjust
                 </button>
               </div>
-            </div>
+            </SignatureCard>
           ))}
         </div>
       )}

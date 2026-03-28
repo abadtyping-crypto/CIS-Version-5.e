@@ -8,7 +8,7 @@ import ImageStudio from '../common/ImageStudio';
 import ServiceTemplateEditor from '../common/ServiceTemplateEditor';
 import { getCroppedImg } from '../../lib/imageStudioUtils';
 import {
-  fetchApplicationIconLibrary,
+  fetchMergedApplicationIconLibrary,
   getApplicationIconById,
   upsertApplicationIcon,
 } from '../../lib/applicationIconLibraryStore';
@@ -46,7 +46,7 @@ const QuickAddServiceTemplateModal = ({ isOpen, onClose, onCreated }) => {
   useEffect(() => {
     if (!isOpen || !tenantId) return;
     let active = true;
-    fetchApplicationIconLibrary(tenantId).then((res) => {
+    fetchMergedApplicationIconLibrary(tenantId).then((res) => {
       if (!active) return;
       if (res.ok) setIcons(res.rows || []);
     });
@@ -54,6 +54,14 @@ const QuickAddServiceTemplateModal = ({ isOpen, onClose, onCreated }) => {
       active = false;
     };
   }, [isOpen, tenantId]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    document.body.classList.add('hide-desktop-footer');
+    return () => {
+      document.body.classList.remove('hide-desktop-footer');
+    };
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -233,21 +241,21 @@ const QuickAddServiceTemplateModal = ({ isOpen, onClose, onCreated }) => {
 
   return (
         <div className="fixed inset-0 z-[1200] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-sky-500/40 bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 shadow-2xl">
-        <div className="flex items-center justify-between border-b border-slate-700 px-5 py-3.5">
+      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-[var(--c-border)] bg-[var(--c-surface)] shadow-2xl">
+        <div className="flex items-center justify-between border-b border-[var(--c-border)] px-5 py-3.5">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-sky-400/35 bg-sky-500/15 text-sky-300">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] text-[var(--c-accent)]">
               <ImageIcon strokeWidth={1.5} className="h-4.5 w-4.5" />
             </div>
             <div>
-              <p className="text-sm font-semibold tracking-widest text-sky-300 uppercase">Application Studio</p>
-              <p className="text-xs text-slate-400">Create reusable application without leaving this page.</p>
+              <p className="text-sm font-semibold tracking-widest text-[var(--c-accent)] uppercase">Application Studio</p>
+              <p className="text-xs text-[var(--c-muted)]">Create reusable application without leaving this page.</p>
             </div>
           </div>
           <button
             type="button"
             onClick={handleClose}
-            className="rounded-xl border border-slate-600 bg-slate-800 p-2 text-slate-300 transition hover:text-white"
+            className="rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] p-2 text-[var(--c-muted)] transition hover:text-[var(--c-text)]"
             aria-label="Close quick add"
           >
             <X strokeWidth={1.5} className="h-4 w-4" />
@@ -268,12 +276,12 @@ const QuickAddServiceTemplateModal = ({ isOpen, onClose, onCreated }) => {
             tone="modal"
             wrapInForm={false}
           >
-            <label className="text-xs font-bold uppercase tracking-widest text-slate-300">
+            <label className="text-xs font-bold uppercase tracking-widest text-[var(--c-muted)]">
               Upload New Icon (Optional)
               <input
                 type="file"
                 accept="image/png,image/jpeg,image/webp,image/svg+xml"
-                className="compact-field mt-1 w-full rounded-xl border border-slate-500/40 bg-slate-700/60 px-3 text-sm font-semibold text-slate-100 outline-none transition placeholder:text-slate-400 focus:border-sky-400 focus:ring-2 focus:ring-sky-500/20"
+                className="compact-field mt-1 w-full rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] px-3 text-sm font-semibold text-[var(--c-text)] outline-none transition placeholder:text-[var(--c-muted)] focus:border-[var(--c-accent)] focus:ring-2 focus:ring-[var(--c-ring)]"
                 onChange={(event) => {
                   const file = event.target.files?.[0] || null;
                   event.target.value = '';
@@ -330,7 +338,7 @@ const QuickAddServiceTemplateModal = ({ isOpen, onClose, onCreated }) => {
             ) : null}
 
             {newIconFile ? (
-              <label className="mt-4 block text-xs font-bold uppercase tracking-widest text-slate-300">
+              <label className="mt-4 block text-xs font-bold uppercase tracking-widest text-[var(--c-muted)]">
                 New Icon Name (Required for Upload)
                 <InputActionField
                   className="mt-1"
@@ -349,4 +357,3 @@ const QuickAddServiceTemplateModal = ({ isOpen, onClose, onCreated }) => {
 };
 
 export default QuickAddServiceTemplateModal;
-

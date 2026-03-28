@@ -397,7 +397,7 @@ export const recordProformaPayment = async (tenantId, paymentId, payload) => {
 /**
  * Atomic Conversion: Quotation -> Proforma
  */
-export const convertQuotationToProforma = async (tenantId, quotationId, proformaId, uid) => {
+export const convertQuotationToProforma = async (tenantId, quotationId, proformaId, uid, overrides = {}) => {
   try {
     await runTransaction(db, async (txn) => {
       const qRef = doc(db, 'tenants', tenantId, 'quotations', quotationId);
@@ -409,11 +409,15 @@ export const convertQuotationToProforma = async (tenantId, quotationId, proforma
       const qData = qSnap.data();
       if (qData.status === 'converted') throw new Error('Quotation already converted.');
       
+      const clientId = overrides.clientId || qData.clientId;
+      const clientSnapshot = overrides.clientSnapshot || qData.clientSnapshot || {};
+      if (!clientId) throw new Error('Quotation has no client assigned. Create client before converting.');
+
       // 1. Create Proforma (carrying over items and client snapshot)
       const safeCreatedBy = typeof uid === 'object' ? uid?.uid : uid;
       const proformaPayload = {
-        clientId: qData.clientId || null,
-        clientSnapshot: qData.clientSnapshot || {},
+        clientId,
+        clientSnapshot,
         items: (qData.items || []).filter(item => {
            if (item && typeof item === 'object' && Object.keys(item).length === 0) return false;
            return true;
@@ -431,8 +435,9 @@ export const convertQuotationToProforma = async (tenantId, quotationId, proforma
       
       // 2. Mark Quotation as Accepted & Converted
       txn.update(qRef, {
-        status: 'accepted',
+        status: 'converted',
         isConverted: true,
+        convertedBy: String(safeCreatedBy || '').trim(),
         convertedToProformaId: proformaId,
         convertedAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
