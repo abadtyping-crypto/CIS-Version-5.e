@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ProtectedLayout } from '../components/layout/ProtectedLayout';
-import { MonitorSmartphone, Save, Loader2, AppWindow, X, Check, UploadCloud, Crop } from 'lucide-react';
+import { MonitorSmartphone, Save, Loader2, AppWindow, X, Check, UploadCloud, Crop, MessageSquare, Key, Globe } from 'lucide-react';
 import {
     addDoc,
     collection,
@@ -66,6 +66,20 @@ export const PlatformSettingsPage = () => {
         termsAndConditions: '',
         systemIconVariation: 'default',
     });
+    const [whatsappConfig, setWhatsappConfig] = useState({
+        isServiceEnabled: false,
+        appId: '',
+        appSecret: '',
+        accessToken: '',
+        phoneNumberId: '',
+        wabaId: '',
+        apiVersion: 'v22.0',
+        templateName: 'hello_world',
+        templateLang: 'en_US',
+    });
+    const [isSavingWaba, setIsSavingWaba] = useState(false);
+    const [isTestingWaba, setIsTestingWaba] = useState(false);
+    const [testPhone, setTestPhone] = useState('');
     const [broadcastForm, setBroadcastForm] = useState({
         type: 'update',
         title: '',
@@ -98,9 +112,11 @@ export const PlatformSettingsPage = () => {
             try {
                 const controllerRef = doc(db, 'acis_system_assets', 'electron_controller');
                 const profileIconRef = doc(db, 'acis_system_assets', 'icon_page_user');
-                const [docSnap, profileIconSnap] = await Promise.all([
+                const whatsappRef = doc(db, 'system_configs', 'whatsapp_master');
+                const [docSnap, profileIconSnap, whatsappSnap] = await Promise.all([
                     getDoc(controllerRef),
                     getDoc(profileIconRef),
+                    getDoc(whatsappRef),
                 ]);
                 if (docSnap.exists()) {
                     const data = docSnap.data();
@@ -117,6 +133,9 @@ export const PlatformSettingsPage = () => {
                 }
                 if (profileIconSnap.exists()) {
                     setProfilePageIcon(String(profileIconSnap.data()?.iconUrl || '').trim());
+                }
+                if (whatsappSnap.exists()) {
+                    setWhatsappConfig(prev => ({ ...prev, ...whatsappSnap.data() }));
                 }
             } catch (err) {
                 console.error('Failed to load platform settings', err);
@@ -183,10 +202,7 @@ export const PlatformSettingsPage = () => {
         else if (isBroadcastImage) setIsUploadingBroadcastImage(true);
 
         try {
-            // Generate cropped output using target dimensions (footer icon uses wide landscape mode)
             const croppedBlob = await getCroppedImg(cropImageSrc, croppedAreaPixels, outputWidth, outputHeight);
-            
-            // Cleanup old storage asset if replacing
             const oldUrl = isBroadcastImage
                 ? broadcastForm.imageUrl
                 : (isProfile ? profilePageIcon : formData[fieldName]);
@@ -200,7 +216,6 @@ export const PlatformSettingsPage = () => {
                 }
             }
 
-            // Upload the new perfectly-cropped snippet
             const fileId = isBroadcastImage
                 ? `acis_global_broadcast_images/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.png`
                 : isProfile
@@ -263,6 +278,66 @@ export const PlatformSettingsPage = () => {
             setSaveStatus('❌ Failed to save settings.');
         } finally {
             setIsSaving(false);
+        }
+    };
+
+    const handleSaveWhatsapp = async (e) => {
+        e.preventDefault();
+        setIsSavingWaba(true);
+        setSaveStatus('');
+        try {
+            const masterRef = doc(db, 'system_configs', 'whatsapp_master');
+            await setDoc(masterRef, {
+                ...whatsappConfig,
+                updatedAt: serverTimestamp()
+            }, { merge: true });
+            
+            setSaveStatus('✅ WhatsApp Master API credentials updated!');
+            setTimeout(() => setSaveStatus(''), 5000);
+        } catch (err) {
+            console.error('Failed to save WhatsApp config', err);
+            setSaveStatus('❌ Failed to save WhatsApp credentials.');
+        } finally {
+            setIsSavingWaba(false);
+        }
+    };
+
+    const handleTestWhatsapp = async () => {
+        if (!testPhone) {
+            setSaveStatus('❌ Enter a test phone number (with country code) first.');
+            return;
+        }
+        setIsTestingWaba(true);
+        setSaveStatus('Connecting to Meta Cloud API...');
+        try {
+            const url = `https://graph.facebook.com/${whatsappConfig.apiVersion || 'v22.0'}/${whatsappConfig.phoneNumberId}/messages`;
+            const body = {
+                messaging_product: 'whatsapp',
+                to: testPhone,
+                type: 'template',
+                template: {
+                    name: whatsappConfig.templateName || 'hello_world',
+                    language: { code: whatsappConfig.templateLang || 'en_US' }
+                }
+            };
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${whatsappConfig.accessToken}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(body),
+            });
+            const data = await response.json();
+            if (response.ok) {
+                setSaveStatus('✅ SUCCESS! Connection verified. Test message sent.');
+            } else {
+                setSaveStatus(`❌ META ERROR: ${data.error?.message || 'Verification failed'}`);
+            }
+        } catch (err) {
+            setSaveStatus(`❌ NETWORK ERROR: ${err.message}`);
+        } finally {
+            setIsTestingWaba(false);
         }
     };
 
@@ -359,6 +434,7 @@ export const PlatformSettingsPage = () => {
                     100% { transform: translateX(-50%); }
                 }
             `}</style>
+            
             {showCropper && (
                 <div className="fixed inset-0 z-[100] bg-slate-900/90 backdrop-blur-sm flex flex-col items-center justify-center p-4">
                     <div className="w-full max-w-2xl bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col h-[80vh]">
@@ -407,7 +483,6 @@ export const PlatformSettingsPage = () => {
                                     min={MIN_CROP_ZOOM}
                                     max={MAX_CROP_ZOOM}
                                     step={0.005}
-                                    aria-labelledby="Zoom"
                                     onChange={(e) => setZoom(clampZoom(e.target.value))}
                                     className="flex-1 accent-blue-600"
                                 />
@@ -518,6 +593,7 @@ export const PlatformSettingsPage = () => {
                                             * When a variation is active, the app appends the suffix (e.g., `_winter`) to icon IDs. Fallback to default if not found.
                                         </p>
                                     </div>
+
                                     <div className="md:col-span-2">
                                         <label className="block text-xs font-black uppercase tracking-widest text-slate-500 mb-2">Global Header Bar Icon</label>
                                         <div className="flex gap-4 items-center">
@@ -547,6 +623,7 @@ export const PlatformSettingsPage = () => {
                                             </div>
                                         </div>
                                     </div>
+
                                     <div className="md:col-span-2">
                                         <label className="block text-xs font-black uppercase tracking-widest text-slate-500 mb-2">Profile Page Branding Icon</label>
                                         <div className="flex gap-4 items-center">
@@ -576,6 +653,7 @@ export const PlatformSettingsPage = () => {
                                             </div>
                                         </div>
                                     </div>
+
                                     <div className="md:col-span-2">
                                         <label className="block text-xs font-black uppercase tracking-widest text-slate-500 mb-2">Global Footer Icon</label>
                                         <div className="space-y-3">
@@ -597,51 +675,53 @@ export const PlatformSettingsPage = () => {
                                                     </div>
                                                 </div>
                                             </div>
+                                            
                                             <div className="flex gap-4 items-center">
-                                            {formData.electronFooterIcon ? (
-                                                <div className="flex h-16 w-48 shrink-0 items-center justify-center rounded-xl border border-blue-200 bg-white p-1.5 shadow-sm overflow-hidden bg-checkered">
-                                                    <img src={formData.electronFooterIcon} alt="Preview" className="h-full w-full object-cover rounded-lg" />
-                                                </div>
-                                            ) : (
-                                                <div className="flex h-16 w-48 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-100 p-1 shadow-sm text-slate-400">
-                                                    No Image
-                                                </div>
-                                            )}
-                                            <div className="flex-1 space-y-1 text-sm">
-                                                <div className="relative inline-block">
-                                                    <input 
-                                                        type="file" 
-                                                        accept="image/*" 
-                                                        onChange={(e) => onFileSelect(e, 'electronFooterIcon')}
-                                                        disabled={isUploadingFooter}
-                                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed" 
-                                                    />
-                                                    <button type="button" disabled={isUploadingFooter} className="px-5 py-2.5 bg-slate-900 border border-slate-700 hover:bg-slate-800 text-white font-bold rounded-xl transition-all disabled:opacity-50 flex items-center gap-2 shadow-lg">
-                                                        {isUploadingFooter ? <Loader2 className="w-4 h-4 animate-spin" /> : <><UploadCloud size={16} /> Visual Manual Crop & Upload</>}
-                                                    </button>
-                                                </div>
-                                                <p className="text-xs text-slate-500 font-medium">Landscape crop mode (720x240) is used for footer watermark/logo.</p>
-                                                <div className="pt-1">
-                                                    <label className="mb-1 block text-[11px] font-black uppercase tracking-widest text-slate-500">Footer Watermark Opacity</label>
-                                                    <div className="flex items-center gap-3">
-                                                        <input
-                                                            type="range"
-                                                            min={0.05}
-                                                            max={1}
-                                                            step={0.01}
-                                                            value={Math.min(1, Math.max(0.05, Number(formData.footerIconOpacity) || 0.28))}
-                                                            onChange={(e) => setFormData((prev) => ({ ...prev, footerIconOpacity: Number(e.target.value) }))}
-                                                            className="flex-1 accent-blue-600"
+                                                {formData.electronFooterIcon ? (
+                                                    <div className="flex h-16 w-48 shrink-0 items-center justify-center rounded-xl border border-blue-200 bg-white p-1.5 shadow-sm overflow-hidden bg-checkered">
+                                                        <img src={formData.electronFooterIcon} alt="Preview" className="h-full w-full object-cover rounded-lg" />
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex h-16 w-48 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-100 p-1 shadow-sm text-slate-400">
+                                                        No Image
+                                                    </div>
+                                                )}
+                                                <div className="flex-1 space-y-1 text-sm">
+                                                    <div className="relative inline-block">
+                                                        <input 
+                                                            type="file" 
+                                                            accept="image/*" 
+                                                            onChange={(e) => onFileSelect(e, 'electronFooterIcon')}
+                                                            disabled={isUploadingFooter}
+                                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed" 
                                                         />
-                                                        <span className="w-14 text-right text-xs font-black text-slate-600">
-                                                            {Math.round((Math.min(1, Math.max(0.05, Number(formData.footerIconOpacity) || 0.28))) * 100)}%
-                                                        </span>
+                                                        <button type="button" disabled={isUploadingFooter} className="px-5 py-2.5 bg-slate-900 border border-slate-700 hover:bg-slate-800 text-white font-bold rounded-xl transition-all disabled:opacity-50 flex items-center gap-2 shadow-lg">
+                                                            {isUploadingFooter ? <Loader2 className="w-4 h-4 animate-spin" /> : <><UploadCloud size={16} /> Visual Manual Crop & Upload</>}
+                                                        </button>
+                                                    </div>
+                                                    <p className="text-xs text-slate-500 font-medium">Landscape crop mode (720x240) is used for footer watermark/logo.</p>
+                                                    <div className="pt-1">
+                                                        <label className="mb-1 block text-[11px] font-black uppercase tracking-widest text-slate-500">Footer Watermark Opacity</label>
+                                                        <div className="flex items-center gap-3">
+                                                            <input
+                                                                type="range"
+                                                                min={0.05}
+                                                                max={1}
+                                                                step={0.01}
+                                                                value={Math.min(1, Math.max(0.05, Number(formData.footerIconOpacity) || 0.28))}
+                                                                onChange={(e) => setFormData((prev) => ({ ...prev, footerIconOpacity: Number(e.target.value) }))}
+                                                                className="flex-1 accent-blue-600"
+                                                            />
+                                                            <span className="w-14 text-right text-xs font-black text-slate-600">
+                                                                {Math.round((Math.min(1, Math.max(0.05, Number(formData.footerIconOpacity) || 0.28))) * 100)}%
+                                                            </span>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
-                                        </div>
                                     </div>
+
                                     <div className="md:col-span-2">
                                         <label className="block text-xs font-black uppercase tracking-widest text-slate-500 mb-2">Privacy Policy (Global)</label>
                                         <textarea
@@ -669,7 +749,7 @@ export const PlatformSettingsPage = () => {
                         </div>
 
                         <div className="pt-6 border-t border-slate-100 flex items-center justify-between gap-4">
-                            <span className="text-sm font-bold text-emerald-600">{saveStatus}</span>
+                            <span className="text-sm font-bold text-emerald-600">{!isSavingWaba && saveStatus}</span>
                             <button
                                 type="submit"
                                 disabled={isSaving || isLoading}
@@ -678,6 +758,158 @@ export const PlatformSettingsPage = () => {
                                 {isSaving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
                                 DEPLOY GLOBAL SETTINGS
                             </button>
+                        </div>
+                    </form>
+                </div>
+
+                {/* WhatsApp Master API Section */}
+                <div className="bg-white rounded-[2rem] border border-slate-200 shadow-sm p-8">
+                    <form onSubmit={handleSaveWhatsapp} className="space-y-8">
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                                <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
+                                    <MessageSquare className="text-emerald-500" />
+                                    Master WhatsApp API Configuration
+                                </h3>
+                                <div className="flex items-center gap-3">
+                                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                                        {whatsappConfig.isServiceEnabled ? 'Global Service ON' : 'Global Service OFF'}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={() => setWhatsappConfig(prev => ({ ...prev, isServiceEnabled: !prev.isServiceEnabled }))}
+                                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${whatsappConfig.isServiceEnabled ? 'bg-emerald-500' : 'bg-slate-300'}`}
+                                    >
+                                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${whatsappConfig.isServiceEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                                    </button>
+                                </div>
+                            </div>
+                            <p className="text-sm font-medium text-slate-500">
+                                This configuration serves as the fallback for all tenants who have "Managed by Platform Master" enabled. It uses the Meta WhatsApp Business Cloud API.
+                            </p>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                                <div className="md:col-span-2">
+                                    <label className="block text-xs font-black uppercase tracking-widest text-slate-500 mb-2">System User Access Token (Permanent)</label>
+                                    <div className="relative">
+                                        <Key className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                        <input 
+                                            name="accessToken"
+                                            type="password"
+                                            value={whatsappConfig.accessToken}
+                                            onChange={(e) => setWhatsappConfig(prev => ({ ...prev, accessToken: e.target.value }))}
+                                            className="w-full pl-10 pr-3 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-800 shadow-sm focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all"
+                                            placeholder="EAA..."
+                                        />
+                                    </div>
+                                    <p className="mt-1.5 text-[10px] font-bold text-slate-400 italic">* This token should be a Permanent System User Token from your Meta App Business Settings.</p>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-black uppercase tracking-widest text-slate-500 mb-2">App ID</label>
+                                    <input 
+                                        name="appId"
+                                        value={whatsappConfig.appId}
+                                        onChange={(e) => setWhatsappConfig(prev => ({ ...prev, appId: e.target.value }))}
+                                        className="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-800 shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all" 
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-black uppercase tracking-widest text-slate-500 mb-2">App Secret</label>
+                                    <input 
+                                        name="appSecret"
+                                        type="password"
+                                        value={whatsappConfig.appSecret}
+                                        onChange={(e) => setWhatsappConfig(prev => ({ ...prev, appSecret: e.target.value }))}
+                                        className="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-800 shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all" 
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-black uppercase tracking-widest text-slate-500 mb-2">Phone Number ID</label>
+                                    <input 
+                                        name="phoneNumberId"
+                                        value={whatsappConfig.phoneNumberId}
+                                        onChange={(e) => setWhatsappConfig(prev => ({ ...prev, phoneNumberId: e.target.value }))}
+                                        className="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-800 shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all" 
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-black uppercase tracking-widest text-slate-500 mb-2">WABA ID (WhatsApp Business Account)</label>
+                                    <input 
+                                        name="wabaId"
+                                        value={whatsappConfig.wabaId}
+                                        onChange={(e) => setWhatsappConfig(prev => ({ ...prev, wabaId: e.target.value }))}
+                                        className="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-800 shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all" 
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-black uppercase tracking-widest text-slate-500 mb-2 flex items-center gap-1">
+                                        <Globe size={12} /> API Version
+                                    </label>
+                                    <input 
+                                        name="apiVersion"
+                                        value={whatsappConfig.apiVersion}
+                                        onChange={(e) => setWhatsappConfig(prev => ({ ...prev, apiVersion: e.target.value }))}
+                                        className="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-800 shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all" 
+                                        placeholder="v22.0"
+                                    />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-xs font-black uppercase tracking-widest text-slate-500 mb-2">Test Template</label>
+                                        <input 
+                                            name="templateName"
+                                            value={whatsappConfig.templateName}
+                                            onChange={(e) => setWhatsappConfig(prev => ({ ...prev, templateName: e.target.value }))}
+                                            className="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-800 shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all" 
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-black uppercase tracking-widest text-slate-500 mb-2">Lang</label>
+                                        <input 
+                                            name="templateLang"
+                                            value={whatsappConfig.templateLang}
+                                            onChange={(e) => setWhatsappConfig(prev => ({ ...prev, templateLang: e.target.value }))}
+                                            className="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-800 shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all" 
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="pt-6 border-t border-slate-100 flex flex-wrap items-center justify-between gap-4">
+                            <div className="flex items-center gap-3 bg-slate-50 p-2 rounded-xl border border-slate-200">
+                                <input 
+                                    type="text"
+                                    value={testPhone}
+                                    onChange={(e) => setTestPhone(e.target.value)}
+                                    placeholder="Test Phone (e.g. 971...)"
+                                    className="p-2 bg-white border border-slate-200 rounded-lg text-xs font-bold outline-none"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={handleTestWhatsapp}
+                                    disabled={isTestingWaba || isLoading}
+                                    className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-black rounded-lg transition-all flex items-center gap-2"
+                                >
+                                    {isTestingWaba ? <Loader2 className="animate-spin" size={12} /> : <Check size={12} />}
+                                    TEST HANDSHAKE
+                                </button>
+                            </div>
+
+                            <div className="flex items-center gap-4">
+                                <span className="text-sm font-bold text-emerald-600">{isSavingWaba && saveStatus}</span>
+                                <button
+                                    type="submit"
+                                    disabled={isSavingWaba || isLoading}
+                                    className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-3.5 rounded-xl font-black tracking-wide shadow-xl shadow-emerald-500/20 transition-all active:scale-95 disabled:opacity-50"
+                                >
+                                    {isSavingWaba ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
+                                    UPDATE MASTER API
+                                </button>
+                            </div>
                         </div>
                     </form>
                 </div>
@@ -802,6 +1034,7 @@ export const PlatformSettingsPage = () => {
                             </div>
                         </div>
                     </div>
+                    
                     <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
                         <p className="text-xs font-black uppercase tracking-widest text-slate-500">Optional Broadcast Image</p>
                         <div className="mt-2 flex flex-wrap items-center gap-3">
@@ -839,6 +1072,7 @@ export const PlatformSettingsPage = () => {
                             ) : null}
                         </div>
                     </div>
+                    
                     <div className="mt-4 flex items-center gap-3">
                         <button
                             type="button"
