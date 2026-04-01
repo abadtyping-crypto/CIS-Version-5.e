@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Edit3, RefreshCcw, Save, Search, Trash2, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import SignatureCard from '../common/SignatureCard';
+import CreatedByIdentityCard from '../common/CreatedByIdentityCard';
 import {
   deleteTenantClientCascade,
   fetchTenantClients,
@@ -210,6 +210,7 @@ const ClientLiveListSection = ({ tenantId, user, refreshKey = 0, onEdit }) => {
       uid,
       name: creator?.displayName || creator?.email || uid,
       avatar: creator?.photoURL || '/avatar.png',
+      role: creator?.role || 'Staff',
     };
   };
 
@@ -482,11 +483,12 @@ const ClientLiveListSection = ({ tenantId, user, refreshKey = 0, onEdit }) => {
                 </div>
               </div>
               <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-                <SignatureCard
+                <CreatedByIdentityCard
                   uid={creator.uid}
                   displayName={creator.name}
                   avatarUrl={creator.avatar}
-                  className="w-full max-w-[200px] h-12"
+                  role={creator.role}
+                  className="w-full max-w-[230px]"
                 />
                 <span className={`inline-flex items-center rounded-lg border px-2 py-0.5 text-[11px] font-semibold leading-5 ${getStatusBadgeClass(item.status)}`}>
                   {toTitleCase(item.status || 'active')}
@@ -579,11 +581,12 @@ const ClientLiveListSection = ({ tenantId, user, refreshKey = 0, onEdit }) => {
                       </span>
                     </td>
                     <td className="px-3 py-3">
-                      <SignatureCard
+                      <CreatedByIdentityCard
                         uid={creator.uid}
                         displayName={creator.name}
                         avatarUrl={creator.avatar}
-                        className="h-12 max-w-[200px]"
+                        role={creator.role}
+                        className="max-w-[230px]"
                       />
                     </td>
                     <td className="px-3 py-3 whitespace-nowrap">

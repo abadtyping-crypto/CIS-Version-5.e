@@ -54,7 +54,7 @@ import { createSyncEvent } from '../lib/syncEvents';
 import { DEFAULT_COUNTRY_PHONE_ISO2 } from '../lib/countryPhoneData';
 import { ENFORCE_UNIVERSAL_APPLICATION_UID } from '../lib/universalLibraryPolicy';
 import { normalizeLibraryDescription } from '../lib/serviceTemplateRules';
-import SignatureCard from '../components/common/SignatureCard';
+import CreatedByIdentityCard from '../components/common/CreatedByIdentityCard';
 import {
   createMobileContact,
   getPrimaryMobileContact,
@@ -1169,11 +1169,12 @@ const ProformaInvoicesPage = () => {
                              </p>
                            </div>
                            <div className="shrink-0">
-                             <SignatureCard 
+                             <CreatedByIdentityCard
                                uid={item.createdBy || ''} 
                                displayName={creator?.displayName || creator?.name || 'Staff'}
                                avatarUrl={creator?.photoURL}
-                               className="h-8 shadow-sm transition-opacity group-hover:opacity-100 opacity-90"
+                               role={creator?.role || ''}
+                               className="max-w-[220px] shadow-sm transition-opacity group-hover:opacity-100 opacity-90"
                              />
                            </div>
                         </div>

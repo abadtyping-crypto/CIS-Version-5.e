@@ -4,6 +4,7 @@ import { useAuth } from '../context/useAuth';
 import { useTenant } from '../context/useTenant';
 import { useTenantNotifications } from '../hooks/useTenantNotifications';
 import QuickViewModal from '../components/common/QuickViewModal';
+import CreatedByIdentityCard from '../components/common/CreatedByIdentityCard';
 import {
   Settings,
   Users,
@@ -222,24 +223,18 @@ const NotificationsPage = () => {
                     {item.title || item.subject || item.eventType || 'Notification'}
                   </p>
                   <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] font-semibold text-[var(--c-muted)]">
-                    <button
-                      type="button"
+                    <CreatedByIdentityCard
+                      uid={item.createdBy || item.createdByUser?.uid || ''}
+                      displayName={item.createdByUser?.displayName || 'System'}
+                      avatarUrl={item.createdByUser?.photoURL || '/avatar.png'}
+                      role={item.createdByUser?.role || ''}
+                      as="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         if (item.createdBy) navigate(`/t/${tenantId}/profile/edit?uid=${encodeURIComponent(item.createdBy)}`);
                       }}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-[var(--c-border)] bg-[var(--c-surface)] px-1.5 py-1 transition hover:border-[var(--c-accent)] hover:text-[var(--c-text)]"
-                      aria-label="View profile"
-                    >
-                      <img
-                        src={item.createdByUser?.photoURL || '/avatar.png'}
-                        alt={item.createdByUser?.displayName || 'User'}
-                        className="h-5 w-5 rounded-full border border-[var(--c-border)] object-cover"
-                      />
-                      <span className="max-w-[12rem] truncate pr-1">
-                        {item.createdByUser?.displayName || 'System'}
-                      </span>
-                    </button>
+                      className="w-full max-w-[240px]"
+                    />
                     {item.createdAt ? (
                       <span>
                         {toRelativeTime(item.createdAt)}

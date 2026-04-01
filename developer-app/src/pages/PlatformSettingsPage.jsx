@@ -17,6 +17,7 @@ import {
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db, storage } from '../lib/firebase';
 import Cropper from 'react-easy-crop';
+import { normalizePublicSiteConfig, PUBLIC_SITE_CONFIG_DOC, PUBLIC_SITE_DEFAULTS } from '../lib/publicSiteConfig';
 
 const MIN_CROP_ZOOM = 1;
 const MAX_CROP_ZOOM = 8;
@@ -66,6 +67,8 @@ export const PlatformSettingsPage = () => {
         termsAndConditions: '',
         systemIconVariation: 'default',
     });
+    const [publicSiteForm, setPublicSiteForm] = useState(PUBLIC_SITE_DEFAULTS);
+    const [isSavingPublicSite, setIsSavingPublicSite] = useState(false);
     const [whatsappConfig, setWhatsappConfig] = useState({
         isServiceEnabled: false,
         appId: '',
@@ -95,9 +98,7 @@ export const PlatformSettingsPage = () => {
 
     const [isUploadingHeader, setIsUploadingHeader] = useState(false);
     const [isUploadingFooter, setIsUploadingFooter] = useState(false);
-    const [isUploadingProfile, setIsUploadingProfile] = useState(false);
     const [isUploadingBroadcastImage, setIsUploadingBroadcastImage] = useState(false);
-    const [profilePageIcon, setProfilePageIcon] = useState('');
 
     // Cropper State
     const [showCropper, setShowCropper] = useState(false);
@@ -111,11 +112,11 @@ export const PlatformSettingsPage = () => {
         const fetchSettings = async () => {
             try {
                 const controllerRef = doc(db, 'acis_system_assets', 'electron_controller');
-                const profileIconRef = doc(db, 'acis_system_assets', 'icon_page_user');
+                const publicSiteRef = doc(db, PUBLIC_SITE_CONFIG_DOC.collection, PUBLIC_SITE_CONFIG_DOC.id);
                 const whatsappRef = doc(db, 'system_configs', 'whatsapp_master');
-                const [docSnap, profileIconSnap, whatsappSnap] = await Promise.all([
+                const [docSnap, publicSiteSnap, whatsappSnap] = await Promise.all([
                     getDoc(controllerRef),
-                    getDoc(profileIconRef),
+                    getDoc(publicSiteRef),
                     getDoc(whatsappRef),
                 ]);
                 if (docSnap.exists()) {
@@ -131,11 +132,11 @@ export const PlatformSettingsPage = () => {
                         systemIconVariation: data.systemIconVariation || 'default',
                     });
                 }
-                if (profileIconSnap.exists()) {
-                    setProfilePageIcon(String(profileIconSnap.data()?.iconUrl || '').trim());
-                }
                 if (whatsappSnap.exists()) {
                     setWhatsappConfig(prev => ({ ...prev, ...whatsappSnap.data() }));
+                }
+                if (publicSiteSnap.exists()) {
+                    setPublicSiteForm(normalizePublicSiteConfig(publicSiteSnap.data()));
                 }
             } catch (err) {
                 console.error('Failed to load platform settings', err);
@@ -191,21 +192,19 @@ export const PlatformSettingsPage = () => {
         const fieldName = cropTargetField;
         const isHeader = fieldName === 'electronHeaderIcon';
         const isFooter = fieldName === 'electronFooterIcon';
-        const isProfile = fieldName === 'profilePageIcon';
         const isBroadcastImage = fieldName === 'broadcastImage';
         const outputWidth = isFooter ? 720 : 256;
         const outputHeight = isFooter ? 240 : 256;
         setShowCropper(false);
         if (isHeader) setIsUploadingHeader(true);
         else if (isFooter) setIsUploadingFooter(true);
-        else if (isProfile) setIsUploadingProfile(true);
         else if (isBroadcastImage) setIsUploadingBroadcastImage(true);
 
         try {
             const croppedBlob = await getCroppedImg(cropImageSrc, croppedAreaPixels, outputWidth, outputHeight);
             const oldUrl = isBroadcastImage
                 ? broadcastForm.imageUrl
-                : (isProfile ? profilePageIcon : formData[fieldName]);
+                : formData[fieldName];
             if (oldUrl && oldUrl.includes('firebasestorage')) {
                 try {
                     const decodedUrl = decodeURIComponent(oldUrl.split('/o/')[1].split('?alt=media')[0]);
@@ -218,8 +217,6 @@ export const PlatformSettingsPage = () => {
 
             const fileId = isBroadcastImage
                 ? `acis_global_broadcast_images/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.png`
-                : isProfile
-                    ? `acis_system_assets/icon_page_user_${Date.now()}.png`
                 : `master_app_assets/${fieldName}_${Date.now()}.png`;
             const storageRef = ref(storage, fileId);
             await uploadBytes(storageRef, croppedBlob);
@@ -228,14 +225,6 @@ export const PlatformSettingsPage = () => {
             if (isBroadcastImage) {
                 setBroadcastForm((prev) => ({ ...prev, imageUrl: downloadURL }));
                 setSaveStatus('✅ Broadcast image cropped and uploaded.');
-            } else if (isProfile) {
-                await setDoc(doc(db, 'acis_system_assets', 'icon_page_user'), {
-                    iconLabel: 'Profile',
-                    iconUrl: downloadURL,
-                    lastUpdated: serverTimestamp(),
-                }, { merge: true });
-                setProfilePageIcon(downloadURL);
-                setSaveStatus('✅ Profile branding icon cropped and uploaded.');
             } else {
                 setFormData(prev => ({ ...prev, [fieldName]: downloadURL }));
                 setSaveStatus(`✅ ${isHeader ? 'Header' : 'Footer'} Icon cropped and successfully uploaded!`);
@@ -246,7 +235,6 @@ export const PlatformSettingsPage = () => {
         } finally {
             if (isHeader) setIsUploadingHeader(false);
             else if (isFooter) setIsUploadingFooter(false);
-            else if (isProfile) setIsUploadingProfile(false);
             else if (isBroadcastImage) setIsUploadingBroadcastImage(false);
             setCropImageSrc(null);
             setCropTargetField('');
@@ -278,6 +266,30 @@ export const PlatformSettingsPage = () => {
             setSaveStatus('❌ Failed to save settings.');
         } finally {
             setIsSaving(false);
+        }
+    };
+
+    const handlePublicSiteFieldChange = (event) => {
+        const { name, value } = event.target;
+        setPublicSiteForm((prev) => ({ ...prev, [name]: value }));
+    };
+
+    const handleSavePublicSite = async (event) => {
+        event.preventDefault();
+        setIsSavingPublicSite(true);
+        setSaveStatus('');
+        try {
+            await setDoc(doc(db, PUBLIC_SITE_CONFIG_DOC.collection, PUBLIC_SITE_CONFIG_DOC.id), {
+                ...normalizePublicSiteConfig(publicSiteForm),
+                updatedAt: serverTimestamp(),
+            }, { merge: true });
+            setSaveStatus('✅ Public website settings updated successfully.');
+            setTimeout(() => setSaveStatus(''), 5000);
+        } catch (err) {
+            console.error('Failed to save public site settings', err);
+            setSaveStatus('❌ Failed to save public website settings.');
+        } finally {
+            setIsSavingPublicSite(false);
         }
     };
 
@@ -625,36 +637,6 @@ export const PlatformSettingsPage = () => {
                                     </div>
 
                                     <div className="md:col-span-2">
-                                        <label className="block text-xs font-black uppercase tracking-widest text-slate-500 mb-2">Profile Page Branding Icon</label>
-                                        <div className="flex gap-4 items-center">
-                                            {profilePageIcon ? (
-                                                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border border-blue-200 bg-white p-1.5 shadow-sm overflow-hidden bg-checkered">
-                                                    <img src={profilePageIcon} alt="Profile page icon preview" className="h-full w-full object-cover rounded-lg" />
-                                                </div>
-                                            ) : (
-                                                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-100 p-1 shadow-sm text-slate-400">
-                                                    No Image
-                                                </div>
-                                            )}
-                                            <div className="flex-1 space-y-1 text-sm">
-                                                <div className="relative inline-block">
-                                                    <input
-                                                        type="file"
-                                                        accept="image/*"
-                                                        onChange={(e) => onFileSelect(e, 'profilePageIcon')}
-                                                        disabled={isUploadingProfile}
-                                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
-                                                    />
-                                                    <button type="button" disabled={isUploadingProfile} className="px-5 py-2.5 bg-slate-900 border border-slate-700 hover:bg-slate-800 text-white font-bold rounded-xl transition-all disabled:opacity-50 flex items-center gap-2 shadow-lg">
-                                                        {isUploadingProfile ? <Loader2 className="w-4 h-4 animate-spin" /> : <><UploadCloud size={16} /> Visual Manual Crop & Upload</>}
-                                                    </button>
-                                                </div>
-                                                <p className="text-xs text-slate-500 font-medium">Uploads the branded asset used by the tenant Profile page header for both `profile` and `user` keys.</p>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="md:col-span-2">
                                         <label className="block text-xs font-black uppercase tracking-widest text-slate-500 mb-2">Global Footer Icon</label>
                                         <div className="space-y-3">
                                             <div className="rounded-2xl border border-slate-200 bg-slate-900 p-3">
@@ -757,6 +739,87 @@ export const PlatformSettingsPage = () => {
                             >
                                 {isSaving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
                                 DEPLOY GLOBAL SETTINGS
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <div className="bg-white rounded-[2rem] border border-slate-200 shadow-sm p-8">
+                    <form onSubmit={handleSavePublicSite} className="space-y-6">
+                        <div className="space-y-3">
+                            <h3 className="text-lg font-black text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-3">
+                                <Globe className="text-blue-600" />
+                                Public Site Controller
+                            </h3>
+                            <p className="text-sm font-medium text-slate-500">
+                                Control the public landing page content and links directly from Developer App.
+                            </p>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                            <label className="text-xs font-black uppercase tracking-widest text-slate-500">
+                                Badge Text
+                                <input name="badgeText" value={publicSiteForm.badgeText} onChange={handlePublicSiteFieldChange} className="mt-2 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm font-bold text-slate-800 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20" />
+                            </label>
+                            <label className="text-xs font-black uppercase tracking-widest text-slate-500">
+                                Hero Title Line 1
+                                <input name="heroTitleLine1" value={publicSiteForm.heroTitleLine1} onChange={handlePublicSiteFieldChange} className="mt-2 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm font-bold text-slate-800 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20" />
+                            </label>
+                            <label className="text-xs font-black uppercase tracking-widest text-slate-500">
+                                Hero Title Line 2
+                                <input name="heroTitleLine2" value={publicSiteForm.heroTitleLine2} onChange={handlePublicSiteFieldChange} className="mt-2 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm font-bold text-slate-800 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20" />
+                            </label>
+                            <label className="text-xs font-black uppercase tracking-widest text-slate-500">
+                                WhatsApp URL
+                                <input name="whatsappUrl" value={publicSiteForm.whatsappUrl} onChange={handlePublicSiteFieldChange} className="mt-2 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm font-bold text-slate-800 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20" />
+                            </label>
+                            <label className="text-xs font-black uppercase tracking-widest text-slate-500">
+                                Website URL
+                                <input name="websiteUrl" value={publicSiteForm.websiteUrl} onChange={handlePublicSiteFieldChange} className="mt-2 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm font-bold text-slate-800 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20" />
+                            </label>
+                            <label className="text-xs font-black uppercase tracking-widest text-slate-500">
+                                Map URL
+                                <input name="mapUrl" value={publicSiteForm.mapUrl} onChange={handlePublicSiteFieldChange} className="mt-2 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm font-bold text-slate-800 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20" />
+                            </label>
+                            <label className="text-xs font-black uppercase tracking-widest text-slate-500">
+                                Contact Phone
+                                <input name="contactPhone" value={publicSiteForm.contactPhone} onChange={handlePublicSiteFieldChange} className="mt-2 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm font-bold text-slate-800 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20" />
+                            </label>
+                            <label className="text-xs font-black uppercase tracking-widest text-slate-500">
+                                Contact Email
+                                <input name="contactEmail" value={publicSiteForm.contactEmail} onChange={handlePublicSiteFieldChange} className="mt-2 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm font-bold text-slate-800 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20" />
+                            </label>
+                            <label className="text-xs font-black uppercase tracking-widest text-slate-500">
+                                Address Line 1
+                                <input name="addressLine1" value={publicSiteForm.addressLine1} onChange={handlePublicSiteFieldChange} className="mt-2 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm font-bold text-slate-800 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20" />
+                            </label>
+                            <label className="text-xs font-black uppercase tracking-widest text-slate-500">
+                                Address Line 2
+                                <input name="addressLine2" value={publicSiteForm.addressLine2} onChange={handlePublicSiteFieldChange} className="mt-2 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm font-bold text-slate-800 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20" />
+                            </label>
+                            <label className="text-xs font-black uppercase tracking-widest text-slate-500">
+                                Facebook URL
+                                <input name="facebookUrl" value={publicSiteForm.facebookUrl} onChange={handlePublicSiteFieldChange} className="mt-2 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm font-bold text-slate-800 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20" />
+                            </label>
+                            <label className="text-xs font-black uppercase tracking-widest text-slate-500">
+                                Instagram URL
+                                <input name="instagramUrl" value={publicSiteForm.instagramUrl} onChange={handlePublicSiteFieldChange} className="mt-2 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm font-bold text-slate-800 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20" />
+                            </label>
+                            <label className="md:col-span-2 text-xs font-black uppercase tracking-widest text-slate-500">
+                                Hero Description
+                                <textarea name="heroDescription" value={publicSiteForm.heroDescription} onChange={handlePublicSiteFieldChange} rows={3} className="mt-2 w-full resize-y rounded-xl border border-slate-200 bg-white p-3 text-sm font-semibold text-slate-800 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20" />
+                            </label>
+                        </div>
+
+                        <div className="pt-4 border-t border-slate-100 flex items-center justify-between gap-4">
+                            <span className="text-sm font-bold text-emerald-600">{!isSavingPublicSite && saveStatus}</span>
+                            <button
+                                type="submit"
+                                disabled={isSavingPublicSite || isLoading}
+                                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-8 py-3.5 rounded-xl font-black tracking-wide shadow-xl shadow-blue-500/20 transition-all active:scale-95 disabled:opacity-50"
+                            >
+                                {isSavingPublicSite ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
+                                UPDATE PUBLIC SITE
                             </button>
                         </div>
                     </form>

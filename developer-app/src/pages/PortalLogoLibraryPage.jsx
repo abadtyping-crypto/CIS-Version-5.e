@@ -100,7 +100,7 @@ const getCroppedBlob = (imageSrc, pixelCrop, size = 256) => {
   });
 };
 
-export const PortalLogoLibraryPage = () => {
+export const PortalLogoLibraryContent = () => {
   const [rows, setRows] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -376,7 +376,7 @@ export const PortalLogoLibraryPage = () => {
   };
 
   return (
-    <ProtectedLayout>
+    <>
       <div className="space-y-6">
         <div className="flex flex-col gap-2 border-b border-slate-200 pb-4">
           <h1 className="text-3xl font-black tracking-tight text-slate-800">Portal Logo Library</h1>
@@ -491,36 +491,36 @@ export const PortalLogoLibraryPage = () => {
               No portal logos in global library yet.
             </p>
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
               {rows.map((row) => (
-                <article key={row.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-white p-1.5">
+                <article key={row.id} className="rounded-xl border border-slate-200 bg-white p-2">
+                  <div className="flex items-start gap-2">
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-white">
                       {row.logoUrl ? (
-                        <img src={row.logoUrl} alt={row.logoName || row.id} className="h-full w-full object-contain" />
+                        <img src={row.logoUrl} alt={row.logoName || row.id} className="h-full w-full object-cover" />
                       ) : (
                         <ImagePlus className="h-5 w-5 text-slate-400" />
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-bold text-slate-800">{row.logoName || row.id}</p>
-                      <p className="truncate text-[10px] font-bold uppercase tracking-widest text-slate-500">UID: {row.id}</p>
+                      <p className="truncate text-[10px] font-black uppercase tracking-wider text-slate-500">{row.logoName || row.id}</p>
+                      <p className="truncate rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[9px] font-bold text-slate-500">{row.id}</p>
                       <p className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-wider ${row.isActive === false ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-700'}`}>
                         {row.isActive === false ? 'Inactive' : 'Active'}
                       </p>
                     </div>
                   </div>
 
-                  <div className="mt-3 grid grid-cols-2 gap-2">
+                  <div className="mt-2 grid grid-cols-2 gap-1.5">
                     <button
                       type="button"
                       onClick={() => handleEdit(row)}
-                      className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2 py-2 text-xs font-bold text-slate-700 transition hover:border-blue-400 hover:text-blue-700"
+                      className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-[10px] font-black text-slate-700 transition hover:border-blue-400 hover:text-blue-700"
                     >
                       <Edit3 className="h-3.5 w-3.5" />
                       Edit
                     </button>
-                    <label className="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2 py-2 text-xs font-bold text-slate-700 transition hover:border-blue-400 hover:text-blue-700">
+                    <label className="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-[10px] font-black text-slate-700 transition hover:border-blue-400 hover:text-blue-700">
                       <ImagePlus className="h-3.5 w-3.5" />
                       Replace
                       <input
@@ -533,7 +533,7 @@ export const PortalLogoLibraryPage = () => {
                     <button
                       type="button"
                       onClick={() => toggleActive(row)}
-                      className={`inline-flex items-center justify-center gap-1.5 rounded-lg border px-2 py-2 text-xs font-bold transition ${row.isActive === false ? 'border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100' : 'border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100'}`}
+                      className={`inline-flex items-center justify-center gap-1.5 rounded-lg border px-2 py-1.5 text-[10px] font-black transition ${row.isActive === false ? 'border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100' : 'border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100'}`}
                     >
                       <Check className="h-3.5 w-3.5" />
                       {row.isActive === false ? 'Enable' : 'Disable'}
@@ -541,7 +541,7 @@ export const PortalLogoLibraryPage = () => {
                     <button
                       type="button"
                       onClick={() => handleDelete(row)}
-                      className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-rose-300 bg-rose-50 px-2 py-2 text-xs font-bold text-rose-700 transition hover:bg-rose-100"
+                      className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-rose-300 bg-rose-50 px-2 py-1.5 text-[10px] font-black text-rose-700 transition hover:bg-rose-100"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                       Delete
@@ -634,6 +634,14 @@ export const PortalLogoLibraryPage = () => {
           </div>
         </div>
       ) : null}
-    </ProtectedLayout>
+    </>
   );
 };
+
+export const PortalLogoLibraryPage = () => (
+  <ProtectedLayout fullWidth>
+    <div className="dev-library-theme">
+      <PortalLogoLibraryContent />
+    </div>
+  </ProtectedLayout>
+);

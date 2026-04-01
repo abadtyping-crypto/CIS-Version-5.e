@@ -52,3 +52,57 @@
     filter: brightness(0.8) contrast(1.1);
   }
 }
+
+@layer components {
+  /* Developer pages: keep legacy slate classes theme-safe in dark mode */
+  [data-theme="dark"] :is(.dev-library-theme, .dev-slate-theme) .bg-white {
+    background-color: var(--c-surface) !important;
+  }
+
+  [data-theme="dark"] :is(.dev-library-theme, .dev-slate-theme) .bg-slate-50 {
+    background-color: var(--c-panel) !important;
+  }
+
+  [data-theme="dark"] :is(.dev-library-theme, .dev-slate-theme) .bg-slate-100 {
+    background-color: color-mix(in srgb, var(--c-panel) 86%, black) !important;
+  }
+
+  [data-theme="dark"] :is(.dev-library-theme, .dev-slate-theme) .border-slate-200,
+  [data-theme="dark"] :is(.dev-library-theme, .dev-slate-theme) .border-slate-300,
+  [data-theme="dark"] :is(.dev-library-theme, .dev-slate-theme) .border-slate-100,
+  [data-theme="dark"] :is(.dev-library-theme, .dev-slate-theme) .border-slate-700 {
+    border-color: var(--c-border) !important;
+  }
+
+  [data-theme="dark"] :is(.dev-library-theme, .dev-slate-theme) .text-slate-900,
+  [data-theme="dark"] :is(.dev-library-theme, .dev-slate-theme) .text-slate-800,
+  [data-theme="dark"] :is(.dev-library-theme, .dev-slate-theme) .text-slate-700 {
+    color: var(--c-text) !important;
+  }
+
+  [data-theme="dark"] :is(.dev-library-theme, .dev-slate-theme) .text-slate-600,
+  [data-theme="dark"] :is(.dev-library-theme, .dev-slate-theme) .text-slate-500,
+  [data-theme="dark"] :is(.dev-library-theme, .dev-slate-theme) .text-slate-400,
+  [data-theme="dark"] :is(.dev-library-theme, .dev-slate-theme) .text-slate-300 {
+    color: var(--c-muted) !important;
+  }
+
+  [data-theme="dark"] :is(.dev-library-theme, .dev-slate-theme) .hover\:bg-slate-100:hover,
+  [data-theme="dark"] :is(.dev-library-theme, .dev-slate-theme) .hover\:bg-slate-50:hover {
+    background-color: color-mix(in srgb, var(--c-panel) 72%, black) !important;
+  }
+
+  [data-theme="dark"] :is(.dev-library-theme, .dev-slate-theme) .hover\:text-slate-800:hover,
+  [data-theme="dark"] :is(.dev-library-theme, .dev-slate-theme) .hover\:text-slate-700:hover,
+  [data-theme="dark"] :is(.dev-library-theme, .dev-slate-theme) .hover\:text-slate-600:hover {
+    color: var(--c-text) !important;
+  }
+
+  [data-theme="dark"] .dev-library-theme img {
+    filter: none !important;
+  }
+
+  [data-theme="dark"] .dev-slate-theme img {
+    filter: none !important;
+  }
+}

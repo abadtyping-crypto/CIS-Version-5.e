@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ExternalLink } from 'lucide-react';
 import PageShell from '../components/layout/PageShell';
 import IconSelect from '../components/common/IconSelect';
 import CurrencyValue from '../components/common/CurrencyValue';
 import DirhamIcon from '../components/common/DirhamIcon';
 import ConfirmDialog from '../components/common/ConfirmDialog';
+import CreatedByIdentityCard from '../components/common/CreatedByIdentityCard';
 import PortalTransactionSelector from '../components/common/PortalTransactionSelector';
 import ProgressVideoOverlay from '../components/common/ProgressVideoOverlay';
 import ActionProgressOverlay from '../components/common/ActionProgressOverlay';
@@ -267,11 +267,21 @@ const PortalDetailPage = () => {
   }, [tenantId, portalId]);
 
   const getCreator = useCallback((uid) => {
-    const creator = usersByUid[String(uid || '')];
-    if (!creator) return { name: uid || 'Unknown user', avatar: '/avatar.png' };
+    const safeUid = String(uid || '').trim();
+    const creator = usersByUid[safeUid];
+    if (!creator) {
+      return {
+        uid: safeUid,
+        name: safeUid || 'Unknown user',
+        avatar: '/avatar.png',
+        role: 'Staff',
+      };
+    }
     return {
-      name: creator.displayName || creator.email || uid || 'Unknown user',
+      uid: safeUid,
+      name: creator.displayName || creator.email || safeUid || 'Unknown user',
       avatar: creator.photoURL || '/avatar.png',
+      role: creator.role || 'Staff',
     };
   }, [usersByUid]);
 
@@ -279,15 +289,14 @@ const PortalDetailPage = () => {
     if (key === 'createdBy') {
       const creator = getCreator(value);
       return (
-        <Link
-          to={`/t/${tenantId}/profile/edit?uid=${encodeURIComponent(String(value || ''))}`}
-          className="inline-flex items-center gap-2 rounded-full border border-[var(--c-border)] bg-[var(--c-panel)] px-2 py-1 pr-3 text-xs text-[var(--c-text)] hover:border-[var(--c-accent)]"
-          aria-label={`Open profile of ${creator.name}`}
-        >
-          <img src={creator.avatar} alt={creator.name} className="h-6 w-6 rounded-full object-cover" />
-          <span>{creator.name}</span>
-          <ExternalLink strokeWidth={1.5} size={12} />
-        </Link>
+        <CreatedByIdentityCard
+          uid={creator.uid}
+          displayName={creator.name}
+          avatarUrl={creator.avatar}
+          role={creator.role}
+          to={`/t/${tenantId}/profile/edit?uid=${encodeURIComponent(String(creator.uid || ''))}`}
+          className="max-w-[240px]"
+        />
       );
     }
 
@@ -1601,15 +1610,14 @@ const PortalDetailPage = () => {
                               {amt === 0 ? EMPTY_LEDGER_CELL : <CurrencyValue value={amt} iconSize="h-3.5 w-3.5" />}
                             </td>
                             <td className="py-2 pr-2">
-                              <Link
-                                to={`/t/${tenantId}/profile`}
-                                className="inline-flex items-center gap-2 rounded-full border border-[var(--c-border)] bg-[var(--c-panel)] px-2 py-1 pr-3 text-xs text-[var(--c-text)] hover:border-[var(--c-accent)]"
-                                aria-label={`Open profile of ${creator.name}`}
-                              >
-                                <img src={creator.avatar} alt={creator.name} className="h-6 w-6 rounded-full object-cover" />
-                                <span>{creator.name}</span>
-                                <ExternalLink strokeWidth={1.5} size={12} />
-                              </Link>
+                              <CreatedByIdentityCard
+                                uid={creator.uid}
+                                displayName={creator.name}
+                                avatarUrl={creator.avatar}
+                                role={creator.role}
+                                to={`/t/${tenantId}/profile/edit?uid=${encodeURIComponent(String(creator.uid || ''))}`}
+                                className="max-w-[220px]"
+                              />
                             </td>
                             <td className="py-2 pr-2 text-[var(--c-muted)]">{row.description || EMPTY_LEDGER_CELL}</td>
                             <td className="py-2 text-[var(--c-muted)]">{toDateText(row.date || row.createdAt)}</td>

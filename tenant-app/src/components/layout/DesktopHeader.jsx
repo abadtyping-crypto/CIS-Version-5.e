@@ -8,6 +8,7 @@ import { DEFAULT_PORTAL_ICON } from '../../lib/transactionMethodConfig';
 import { useTenantBrandingLogos } from '../../hooks/useTenantBrandingLogos';
 import { resolveNotificationPrimaryVisual } from '../../lib/notificationVisuals';
 import QuickViewModal from '../common/QuickViewModal';
+import CreatedByIdentityCard from '../common/CreatedByIdentityCard';
 import { useTenantNotifications } from '../../hooks/useTenantNotifications';
 import { resolveTenantRoute } from '../../lib/tenantRoutes';
 import { useSystemAssets } from '../../lib/systemAssetsCache';
@@ -353,22 +354,19 @@ const DesktopHeader = ({ tenant, user, onLogout, layoutMode = 'wide', onToggleSi
                                     </div>
                                   ) : null}
                                   <div className="mt-1.5 flex items-center justify-between gap-2 text-[10px] text-[var(--c-muted)]">
-                                    <button
-                                      type="button"
-                                      className="inline-flex min-w-0 items-center gap-1.5 hover:text-[var(--c-text)]"
+                                    <CreatedByIdentityCard
+                                      uid={item.createdBy || item.createdByUser?.uid || ''}
+                                      displayName={item.createdByUser?.displayName || 'System'}
+                                      avatarUrl={item.createdByUser?.photoURL || '/avatar.png'}
+                                      role={item.createdByUser?.role || ''}
+                                      as="button"
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         setNotificationsOpen(false);
                                         if (item.createdBy) goTo(`profile/edit?uid=${encodeURIComponent(item.createdBy)}`);
                                       }}
-                                    >
-                                      <img
-                                        src={item.createdByUser?.photoURL || '/avatar.png'}
-                                        alt={item.createdByUser?.displayName || 'User'}
-                                        className="h-4 w-4 rounded-full border border-[var(--c-border)] bg-white object-cover"
-                                      />
-                                      <span className="truncate">{item.createdByUser?.displayName || 'System'}</span>
-                                    </button>
+                                      className="max-w-[210px]"
+                                    />
                                     <span>{toDateLabel(item.createdAt)}</span>
                                   </div>
                                   {item.actionTakenBy ? (

@@ -27,6 +27,7 @@ const SignatureCard = ({
   as,
   className = '',
   contentClassName = '',
+  titleMode = 'truncate',
   children,
 }) => {
   const { tenantId } = useParams();
@@ -54,6 +55,11 @@ const SignatureCard = ({
     ? 'hover:border-[var(--c-ring)] hover:bg-[color:color-mix(in_srgb,var(--c-panel)_94%,white_6%)] hover:shadow-md'
     : '';
 
+  const titleClassName =
+    titleMode === 'wrap'
+      ? 'text-sm font-bold leading-tight whitespace-normal break-words'
+      : 'truncate text-sm font-bold leading-tight';
+
   return (
     <Component
       {...(Component === Link ? { to: targetHref } : {})}
@@ -79,7 +85,7 @@ const SignatureCard = ({
       </div>
 
       <div className={`flex min-w-0 flex-1 flex-col justify-center gap-0.5 px-3 py-2 ${contentClassName}`}>
-        <p className={`truncate text-sm font-bold leading-tight transition-colors ${
+        <p className={`${titleClassName} transition-colors ${
           isActive ? 'text-[var(--c-text)]' : 'text-[var(--c-text)]'
         }`}>
           {resolvedTitle}

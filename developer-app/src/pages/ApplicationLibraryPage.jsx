@@ -5,6 +5,7 @@ import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage
 import { CheckCircle2, Edit3, FileSpreadsheet, LibraryBig, Mail, Power, UploadCloud, X, XCircle } from 'lucide-react';
 import { ProtectedLayout } from '../components/layout/ProtectedLayout';
 import { db, storage } from '../lib/firebase';
+import { PortalLogoLibraryContent } from './PortalLogoLibraryPage';
 
 const EMIRATE_OPTIONS = ['ABU DHABI', 'DUBAI', 'SHARJAH', 'AJMAN', 'UMM AL QUWAIN', 'RAS AL KHAIMAH', 'FUJAIRAH'];
 const SCOPE_OPTIONS = [
@@ -23,7 +24,14 @@ const toSafeDocId = (value, fallback = 'item') => {
   return normalized || fallback;
 };
 const toAppDocId = (appName) => toSafeDocId(toUpperTrim(appName), 'app');
+const toIconDocId = (iconName) => {
+  const normalized = toUpperTrim(iconName)
+    .replace(/[^A-Z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+  return normalized || 'ICON';
+};
 const getFileKey = (file) => `${file.name}-${file.size}-${file.lastModified}`;
+const LIBRARY_TABS = ['global_libraries', 'system_interface_assets', 'page_title_assets', 'portal_logo_library'];
 const SYSTEM_ASSET_CATEGORIES = [
   {
     title: 'Main Onboarding Icons',
@@ -161,6 +169,29 @@ const SYSTEM_ASSET_CATEGORIES = [
   },
 ];
 
+const PAGE_TITLE_ASSET_CATEGORIES = [
+  {
+    title: 'Page Title Assets',
+    items: [
+      { id: 'title_page_dashboard', label: 'Dashboard Title' },
+      { id: 'title_page_client_onboarding', label: 'Clients Onboarding Title' },
+      { id: 'title_page_daily_transactions', label: 'Daily Transactions Title' },
+      { id: 'title_page_tasks_tracking', label: 'Task / Tracking Title' },
+      { id: 'title_page_quotations', label: 'Quotations Title' },
+      { id: 'title_page_proforma_invoices', label: 'Proforma Invoices Title' },
+      { id: 'title_page_receive_payments', label: 'Receive Payments Title' },
+      { id: 'title_page_invoice_management', label: 'Invoice Management Title' },
+      { id: 'title_page_operation_expenses', label: 'Operation Expenses Title' },
+      { id: 'title_page_portal_management', label: 'Portal Management Title' },
+      { id: 'title_page_document_calendar', label: 'Document Calendar Title' },
+      { id: 'title_page_settings', label: 'Settings Title' },
+      { id: 'title_page_notifications', label: 'Notifications Title' },
+      { id: 'title_page_user', label: 'Profile Title' },
+      { id: 'title_page_recycle_bin', label: 'Recycle Bin Title' },
+    ],
+  },
+];
+
 const parseExcelRows = async (file) => {
   const workbook = XLSX.read(await file.arrayBuffer(), { type: 'array' });
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
@@ -275,8 +306,8 @@ const ScopePicker = ({ scopeType, targetEmirates, onScopeChange, onToggleEmirate
   </div>
 );
 
-export const ApplicationLibraryPage = () => {
-  const [activeTab, setActiveTab] = useState('global_libraries');
+export const ApplicationLibraryPage = ({ defaultTab = 'global_libraries' }) => {
+  const [activeTab, setActiveTab] = useState(() => (LIBRARY_TABS.includes(defaultTab) ? defaultTab : 'global_libraries'));
   const [iconRecords, setIconRecords] = useState([]);
   const [appRecords, setAppRecords] = useState([]);
   const [systemAssets, setSystemAssets] = useState({});
@@ -375,6 +406,10 @@ export const ApplicationLibraryPage = () => {
   useEffect(() => {
     Promise.all([loadIcons(), loadApps(), loadSystemAssets()]).catch(() => setStatus({ type: 'error', message: 'Failed to load global libraries.' }));
   }, []);
+
+  useEffect(() => {
+    setActiveTab(LIBRARY_TABS.includes(defaultTab) ? defaultTab : 'global_libraries');
+  }, [defaultTab]);
 
   useEffect(() => {
     if (scopeMode !== 'batch') return;
@@ -579,12 +614,18 @@ export const ApplicationLibraryPage = () => {
         const queueConfig = cropMap[fileKey];
         const iconName = toUpperTrim(queueConfig?.iconName);
         if (!iconName) throw new Error('Icon Reference Name is required for all uploads.');
+        const iconDocId = toIconDocId(iconName);
         const crop = queueConfig?.crop || { zoom: 1 };
         const blob = await processTo128(file, crop);
-        const storageRef = ref(storage, `acis_global_icons/${Date.now()}_${iconName.replace(/\s+/g, '_')}.png`);
+        const storageRef = ref(storage, `acis_global_icons/${iconDocId}_${Date.now()}.png`);
         await uploadBytes(storageRef, blob, { contentType: 'image/png' });
         const iconUrl = await getDownloadURL(storageRef);
-        await addDoc(collection(db, 'acis_global_icons'), { iconName, iconUrl, createdAt: serverTimestamp() });
+        await setDoc(doc(db, 'acis_global_icons', iconDocId), {
+          iconName,
+          iconUrl,
+          updatedAt: serverTimestamp(),
+          createdAt: serverTimestamp(),
+        }, { merge: true });
       }
       setIconFiles([]);
       setCropMap({});
@@ -790,30 +831,135 @@ export const ApplicationLibraryPage = () => {
     }
   };
 
+  const commitCollectionOps = async (collectionName, setOps, deleteIds, maxBatchOps = 400) => {
+    const opChunks = [];
+    let cursor = 0;
+    while (cursor < setOps.length) {
+      opChunks.push({ sets: setOps.slice(cursor, cursor + maxBatchOps), deletes: [] });
+      cursor += maxBatchOps;
+    }
+
+    const deleteList = Array.from(deleteIds);
+    let deleteCursor = 0;
+    if (opChunks.length === 0) opChunks.push({ sets: [], deletes: [] });
+
+    opChunks.forEach((chunk, index) => {
+      const room = Math.max(0, maxBatchOps - chunk.sets.length);
+      if (room <= 0) return;
+      const nextDeletes = deleteList.slice(deleteCursor, deleteCursor + room);
+      opChunks[index].deletes = nextDeletes;
+      deleteCursor += nextDeletes.length;
+    });
+
+    while (deleteCursor < deleteList.length) {
+      opChunks.push({ sets: [], deletes: deleteList.slice(deleteCursor, deleteCursor + maxBatchOps) });
+      deleteCursor += maxBatchOps;
+    }
+
+    for (const chunk of opChunks) {
+      const batch = writeBatch(db);
+      chunk.sets.forEach((item) => {
+        batch.set(doc(db, collectionName, item.id), item.payload, { merge: true });
+      });
+      chunk.deletes.forEach((id) => {
+        batch.delete(doc(db, collectionName, id));
+      });
+      // eslint-disable-next-line no-await-in-loop
+      await batch.commit();
+    }
+  };
+
   const handleNormalizeApplicationRecords = async () => {
-    if (!appRecords.length) {
-      setStatus({ type: 'error', message: 'No applications found to normalize.' });
+    if (!appRecords.length && !iconRecords.length) {
+      setStatus({ type: 'error', message: 'No global icons or applications found to normalize.' });
       return;
     }
-    if (!window.confirm('Normalize all applications to app-name UID and icon UID-only mapping? This will migrate legacy IDs and remove app-level iconUrl fields.')) return;
+    if (!window.confirm('Normalize all icon UIDs + application UIDs now? This migrates legacy random IDs to canonical IDs and rewires app icon links automatically.')) return;
 
     setIsNormalizingApps(true);
     try {
-      const grouped = new Map();
-      let skipped = 0;
+      const groupedIcons = new Map();
+      let skippedIcons = 0;
+
+      iconRecords.forEach((icon) => {
+        const normalizedName = toUpperTrim(icon?.iconName);
+        if (!normalizedName) {
+          skippedIcons += 1;
+          return;
+        }
+        const targetId = toIconDocId(normalizedName);
+        if (!groupedIcons.has(targetId)) groupedIcons.set(targetId, []);
+        groupedIcons.get(targetId).push(icon);
+      });
+
+      const scoreIconCandidate = (icon, targetId) => {
+        let score = 0;
+        if (icon.id === targetId) score += 1000;
+        if (String(icon.iconUrl || '').trim()) score += 100;
+        if (icon.updatedAt) score += 10;
+        if (icon.createdAt) score += 5;
+        return score;
+      };
+
+      const iconSetOps = [];
+      const iconDeleteIds = new Set();
+      const legacyIconIdToTarget = new Map();
+      const canonicalIconNameById = new Map();
+      let iconMigratedIds = 0;
+      let iconMergedDuplicates = 0;
+
+      groupedIcons.forEach((group, targetId) => {
+        const ordered = [...group].sort((a, b) => scoreIconCandidate(b, targetId) - scoreIconCandidate(a, targetId));
+        const primary = ordered[0];
+        if (!primary) return;
+
+        const canonicalIconName = toUpperTrim(primary.iconName);
+        const payload = {
+          iconName: canonicalIconName,
+          iconUrl: String(primary.iconUrl || ''),
+          updatedAt: serverTimestamp(),
+        };
+        if (primary.id !== targetId && primary.createdAt) payload.createdAt = primary.createdAt;
+        iconSetOps.push({ id: targetId, payload });
+        canonicalIconNameById.set(targetId, canonicalIconName);
+
+        if (primary.id !== targetId) {
+          iconDeleteIds.add(primary.id);
+          iconMigratedIds += 1;
+        }
+
+        ordered.forEach((item) => {
+          legacyIconIdToTarget.set(item.id, targetId);
+        });
+
+        ordered.slice(1).forEach((item) => {
+          if (item.id !== targetId) {
+            iconDeleteIds.add(item.id);
+            iconMergedDuplicates += 1;
+          }
+        });
+
+        iconDeleteIds.delete(targetId);
+      });
+
+      const canonicalIconIds = new Set(iconSetOps.map((item) => item.id));
+      await commitCollectionOps('acis_global_icons', iconSetOps, iconDeleteIds);
+
+      const groupedApps = new Map();
+      let skippedApps = 0;
 
       appRecords.forEach((app) => {
         const normalizedName = toUpperTrim(app?.appName);
         if (!normalizedName) {
-          skipped += 1;
+          skippedApps += 1;
           return;
         }
         const targetId = toAppDocId(normalizedName);
-        if (!grouped.has(targetId)) grouped.set(targetId, []);
-        grouped.get(targetId).push(app);
+        if (!groupedApps.has(targetId)) groupedApps.set(targetId, []);
+        groupedApps.get(targetId).push(app);
       });
 
-      const scoreCandidate = (app, targetId) => {
+      const scoreAppCandidate = (app, targetId) => {
         let score = 0;
         if (app.id === targetId) score += 1000;
         if (String(app.iconId || app.globalIconId || app.linkedIconId || '').trim()) score += 100;
@@ -822,25 +968,32 @@ export const ApplicationLibraryPage = () => {
         return score;
       };
 
-      const setOps = [];
-      const deleteIds = new Set();
-      let migrated = 0;
-      let mergedDuplicates = 0;
+      const appSetOps = [];
+      const appDeleteIds = new Set();
+      let appMigratedIds = 0;
+      let appMergedDuplicates = 0;
 
-      grouped.forEach((group, targetId) => {
-        const ordered = [...group].sort((a, b) => scoreCandidate(b, targetId) - scoreCandidate(a, targetId));
+      groupedApps.forEach((group, targetId) => {
+        const ordered = [...group].sort((a, b) => scoreAppCandidate(b, targetId) - scoreAppCandidate(a, targetId));
         const primary = ordered[0];
         if (!primary) return;
 
-        const resolvedIconId = String(primary.iconId || primary.globalIconId || primary.linkedIconId || '').trim();
-        const resolvedIcon = iconsById.get(resolvedIconId) || null;
+        const legacyIconId = String(primary.iconId || primary.globalIconId || primary.linkedIconId || '').trim();
+        const mappedIconId = legacyIconId ? (legacyIconIdToTarget.get(legacyIconId) || legacyIconId) : '';
+        const fallbackIconId = toIconDocId(primary.iconName || '');
+
+        let resolvedIconId = mappedIconId;
+        if (canonicalIconIds.size > 0 && (!resolvedIconId || !canonicalIconIds.has(resolvedIconId))) {
+          resolvedIconId = canonicalIconIds.has(fallbackIconId) ? fallbackIconId : '';
+        }
+
         const payload = {
           appName: toUpperTrim(primary.appName),
           description: String(primary.description || '').trim(),
           iconId: resolvedIconId,
           globalIconId: resolvedIconId,
           linkedIconId: resolvedIconId,
-          iconName: resolvedIcon?.iconName || String(primary.iconName || ''),
+          iconName: canonicalIconNameById.get(resolvedIconId) || String(primary.iconName || ''),
           scopeType: primary.scopeType || 'all_emirates',
           targetEmirates: Array.isArray(primary.targetEmirates) ? primary.targetEmirates : [],
           isActive: primary.isActive !== false,
@@ -851,62 +1004,30 @@ export const ApplicationLibraryPage = () => {
         if (Array.isArray(primary.services)) payload.services = primary.services;
         if (primary.id !== targetId && primary.createdAt) payload.createdAt = primary.createdAt;
 
-        setOps.push({ id: targetId, payload });
+        appSetOps.push({ id: targetId, payload });
         if (primary.id !== targetId) {
-          deleteIds.add(primary.id);
-          migrated += 1;
+          appDeleteIds.add(primary.id);
+          appMigratedIds += 1;
         }
 
         ordered.slice(1).forEach((item) => {
           if (item.id !== targetId) {
-            deleteIds.add(item.id);
-            mergedDuplicates += 1;
+            appDeleteIds.add(item.id);
+            appMergedDuplicates += 1;
           }
         });
 
-        deleteIds.delete(targetId);
+        appDeleteIds.delete(targetId);
       });
 
-      const opChunks = [];
-      const MAX_BATCH_OPS = 400;
-      let cursor = 0;
-      while (cursor < setOps.length) {
-        opChunks.push({ sets: setOps.slice(cursor, cursor + MAX_BATCH_OPS), deletes: [] });
-        cursor += MAX_BATCH_OPS;
-      }
+      await commitCollectionOps('acis_global_applications', appSetOps, appDeleteIds);
 
-      const deleteList = Array.from(deleteIds);
-      let deleteCursor = 0;
-      if (opChunks.length === 0) opChunks.push({ sets: [], deletes: [] });
-      opChunks.forEach((chunk, index) => {
-        const room = Math.max(0, MAX_BATCH_OPS - chunk.sets.length);
-        if (room <= 0) return;
-        const nextDeletes = deleteList.slice(deleteCursor, deleteCursor + room);
-        opChunks[index].deletes = nextDeletes;
-        deleteCursor += nextDeletes.length;
-      });
-      while (deleteCursor < deleteList.length) {
-        opChunks.push({ sets: [], deletes: deleteList.slice(deleteCursor, deleteCursor + MAX_BATCH_OPS) });
-        deleteCursor += MAX_BATCH_OPS;
-      }
-
-      for (const chunk of opChunks) {
-        const batch = writeBatch(db);
-        chunk.sets.forEach((item) => {
-          batch.set(doc(db, 'acis_global_applications', item.id), item.payload, { merge: true });
-        });
-        chunk.deletes.forEach((id) => {
-          batch.delete(doc(db, 'acis_global_applications', id));
-        });
-        // eslint-disable-next-line no-await-in-loop
-        await batch.commit();
-      }
-
+      await loadIcons();
       await loadApps();
       setSelectedAppIds([]);
       setStatus({
         type: 'success',
-        message: `Normalization complete. ${setOps.length} canonical app IDs synced, ${migrated} migrated IDs replaced, ${mergedDuplicates} duplicate records removed${skipped ? `, ${skipped} skipped (missing name)` : ''}.`,
+        message: `Normalization complete. Icons: ${iconSetOps.length} canonical synced, ${iconMigratedIds} legacy IDs migrated, ${iconMergedDuplicates} duplicate icons removed${skippedIcons ? `, ${skippedIcons} skipped` : ''}. Applications: ${appSetOps.length} canonical synced, ${appMigratedIds} legacy IDs migrated, ${appMergedDuplicates} duplicate apps removed${skippedApps ? `, ${skippedApps} skipped` : ''}.`,
       });
     } catch (err) {
       setStatus({ type: 'error', message: err.message || 'Normalization failed.' });
@@ -915,9 +1036,14 @@ export const ApplicationLibraryPage = () => {
     }
   };
 
+  const handleTabChange = (tab) => {
+    if (!LIBRARY_TABS.includes(tab)) return;
+    setActiveTab(tab);
+  };
+
   return (
-    <ProtectedLayout>
-      <div className="space-y-6">
+    <ProtectedLayout fullWidth>
+      <div className="dev-library-theme space-y-6">
         <div className="flex items-end justify-between border-b border-slate-200 pb-4">
           <div>
             <h1 className="text-3xl font-black tracking-tight text-slate-800">Global Application Library</h1>
@@ -928,12 +1054,16 @@ export const ApplicationLibraryPage = () => {
 
         {status.message ? <div className={`rounded-2xl border px-4 py-3 text-sm font-semibold ${status.type === 'error' ? 'border-rose-200 bg-rose-50 text-rose-700' : status.type === 'success' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-blue-200 bg-blue-50 text-blue-700'}`}>{status.message}</div> : null}
 
-        <div className="flex gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
-          <button type="button" onClick={() => setActiveTab('global_libraries')} className={`rounded-xl px-4 py-2 text-xs font-black uppercase tracking-wider transition ${activeTab === 'global_libraries' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'}`}>Global Libraries</button>
-          <button type="button" onClick={() => setActiveTab('system_interface_assets')} className={`rounded-xl px-4 py-2 text-xs font-black uppercase tracking-wider transition ${activeTab === 'system_interface_assets' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-100'}`}>System Interface Assets</button>
+        <div className="flex flex-wrap gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
+          <button type="button" onClick={() => handleTabChange('global_libraries')} className={`rounded-xl px-4 py-2 text-xs font-black uppercase tracking-wider transition ${activeTab === 'global_libraries' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'}`}>Global Libraries</button>
+          <button type="button" onClick={() => handleTabChange('system_interface_assets')} className={`rounded-xl px-4 py-2 text-xs font-black uppercase tracking-wider transition ${activeTab === 'system_interface_assets' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-100'}`}>System Interface Assets</button>
+          <button type="button" onClick={() => handleTabChange('page_title_assets')} className={`rounded-xl px-4 py-2 text-xs font-black uppercase tracking-wider transition ${activeTab === 'page_title_assets' ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-100'}`}>Page Title Assets</button>
+          <button type="button" onClick={() => handleTabChange('portal_logo_library')} className={`rounded-xl px-4 py-2 text-xs font-black uppercase tracking-wider transition ${activeTab === 'portal_logo_library' ? 'bg-emerald-600 text-white' : 'text-slate-600 hover:bg-slate-100'}`}>Portal Logo Library</button>
         </div>
 
-        {activeTab === 'global_libraries' ? (
+        {activeTab === 'portal_logo_library' ? (
+        <PortalLogoLibraryContent />
+        ) : activeTab === 'global_libraries' ? (
         <>
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="text-sm font-black uppercase tracking-widest text-slate-500">Phase 1: Bulk Icon Upload (1:1, 128x128)</h2>
@@ -957,12 +1087,19 @@ export const ApplicationLibraryPage = () => {
           </div>
 
           <p className="mt-3 text-xs font-semibold text-slate-500">Current icon library count: {iconRecords.length}</p>
-          <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <div className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
             {iconRecords.slice(0, 18).map((icon) => (
-              <div key={icon.id} className="rounded-xl border border-slate-200 bg-slate-50 p-2">
-                <div className="aspect-square overflow-hidden rounded-lg border border-slate-200 bg-white"><img src={icon.iconUrl} alt={icon.iconName} className="h-full w-full object-contain" /></div>
-                <p className="mt-1 truncate text-[10px] font-bold text-slate-600">{icon.iconName}</p>
-                <button type="button" onClick={() => { replaceInputRef.current.value = ''; replaceInputRef.current.click(); replaceInputRef.current.onchange = (e) => { const file = e.target.files?.[0]; if (!file) return; openCropDialog(file, `${icon.id}-${file.name}-${file.lastModified}`, 'replace', icon); }; }} className="mt-1 w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-[10px] font-bold text-slate-600 transition hover:border-blue-400 hover:text-blue-600">Replace Image</button>
+              <div key={icon.id} className="rounded-xl border border-slate-200 bg-white p-2">
+                <div className="flex items-start gap-2">
+                  <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-white">
+                    <img src={icon.iconUrl} alt={icon.iconName} className="h-full w-full rounded object-cover" />
+                  </div>
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <p className="truncate text-[10px] font-black uppercase tracking-wider text-slate-500">{icon.iconName}</p>
+                    <p className="truncate rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[9px] font-bold text-slate-500">{icon.id}</p>
+                    <button type="button" onClick={() => { replaceInputRef.current.value = ''; replaceInputRef.current.click(); replaceInputRef.current.onchange = (e) => { const file = e.target.files?.[0]; if (!file) return; openCropDialog(file, `${icon.id}-${file.name}-${file.lastModified}`, 'replace', icon); }; }} className="inline-flex w-full items-center justify-center rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-[10px] font-black text-slate-600 transition hover:border-blue-400 hover:text-blue-600">Replace</button>
+                  </div>
+                </div>
               </div>
             ))}
           </div>
@@ -990,6 +1127,63 @@ export const ApplicationLibraryPage = () => {
           <button type="button" disabled={isImportingApps || mappedRows.length === 0 || hasMissingIcons} onClick={handleImportMappedApplications} className="mt-5 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white transition hover:opacity-90 disabled:opacity-50">{isImportingApps ? 'Importing...' : 'Import to acis_global_applications'}</button>
         </section>
         </>
+        ) : activeTab === 'page_title_assets' ? (
+          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <h2 className="text-sm font-black uppercase tracking-widest text-slate-500">Page Title Assets - Header Library</h2>
+                <p className="mt-1 text-xs font-semibold text-slate-500">Upload dedicated page-title graphics here. Keep existing navigation icons unchanged.</p>
+              </div>
+            </div>
+
+            <div className="mt-6 space-y-4">
+              {PAGE_TITLE_ASSET_CATEGORIES.map((category) => (
+                <details key={category.title} className="rounded-2xl border border-slate-200 bg-slate-50 p-4" open>
+                  <summary className="cursor-pointer text-sm font-black uppercase tracking-widest text-slate-600">{category.title}</summary>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
+                    {category.items.map((item) => {
+                      const asset = systemAssets[item.id] || null;
+                      return (
+                        <div key={item.id} className="rounded-xl border border-slate-200 bg-white p-2 transition">
+                          <div className="flex items-center justify-between">
+                            <p className="truncate pr-2 text-[10px] font-black uppercase tracking-wider text-slate-500">{item.label}</p>
+                            <p className="rounded-md bg-indigo-50 px-1.5 py-0.5 text-[9px] font-black text-indigo-600">TITLE</p>
+                          </div>
+                          <div className="mt-2 flex items-start gap-2">
+                            <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-white">
+                              {asset?.iconUrl ? (
+                                <img src={asset.iconUrl} alt={item.label} className="h-full w-full rounded object-cover" />
+                              ) : (
+                                <div className="text-[9px] font-black text-slate-400">NO IMG</div>
+                              )}
+                            </div>
+                            <div className="min-w-0 flex-1 space-y-1">
+                              <p className="truncate rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[9px] font-bold text-slate-500">{item.id}</p>
+                              <p className="text-[9px] font-black uppercase tracking-wider text-slate-400">{asset?.lastUpdated ? 'Synced' : 'Pending'}</p>
+                              <label className="inline-flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-[10px] font-black text-slate-600 transition hover:border-indigo-400 hover:text-indigo-600">
+                                <UploadCloud className="h-3.5 w-3.5" />
+                                {asset?.iconUrl ? 'Replace' : 'Upload'}
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (!file) return;
+                                    openCropDialog(file, `title-${item.id}-${file.lastModified}`, 'system', { ...item, id: item.id });
+                                  }}
+                                />
+                              </label>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </details>
+              ))}
+            </div>
+          </section>
         ) : (
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-4">
@@ -1024,41 +1218,43 @@ export const ApplicationLibraryPage = () => {
               {SYSTEM_ASSET_CATEGORIES.map((category) => (
                 <details key={category.title} className="rounded-2xl border border-slate-200 bg-slate-50 p-4" open>
                   <summary className="cursor-pointer text-sm font-black uppercase tracking-widest text-slate-600">{category.title}</summary>
-                  <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
                     {category.items.map((item) => {
                       const effectiveId = activeSystemVariation === 'default' ? item.id : `${item.id}_${activeSystemVariation}`;
                       const asset = systemAssets[effectiveId] || null;
                       return (
-                        <div key={effectiveId} className={`rounded-xl border p-3 transition ${activeSystemVariation !== 'default' ? 'border-blue-200 bg-blue-50/30' : 'border-slate-200 bg-white'}`}>
+                        <div key={effectiveId} className={`rounded-xl border p-2 transition ${activeSystemVariation !== 'default' ? 'border-blue-200 bg-blue-50/30' : 'border-slate-200 bg-white'}`}>
                           <div className="flex items-center justify-between">
-                            <p className="text-[11px] font-black uppercase tracking-wider text-slate-500">{item.label}</p>
-                            <p className="text-[10px] font-semibold text-blue-500">{activeSystemVariation.toUpperCase()}</p>
+                            <p className="truncate pr-2 text-[10px] font-black uppercase tracking-wider text-slate-500">{item.label}</p>
+                            <p className="rounded-md bg-blue-50 px-1.5 py-0.5 text-[9px] font-black text-blue-600">{activeSystemVariation.toUpperCase()}</p>
                           </div>
-                          <div className="mt-2 aspect-square overflow-hidden rounded-lg border border-slate-200 bg-white">
-                            {asset?.iconUrl ? (
-                              <img src={asset.iconUrl} alt={item.label} className="h-full w-full object-contain" />
-                            ) : (
-                              <div className="flex h-full w-full items-center justify-center text-[10px] font-bold text-slate-400 bg-slate-50">No {activeSystemVariation} Image</div>
-                            )}
+                          <div className="mt-2 flex items-start gap-2">
+                            <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-white">
+                              {asset?.iconUrl ? (
+                                <img src={asset.iconUrl} alt={item.label} className="h-full w-full rounded object-cover" />
+                              ) : (
+                                <div className="text-[9px] font-black text-slate-400">NO IMG</div>
+                              )}
+                            </div>
+                            <div className="min-w-0 flex-1 space-y-1">
+                              <p className="truncate rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[9px] font-bold text-slate-500">{effectiveId}</p>
+                              <p className="text-[9px] font-black uppercase tracking-wider text-slate-400">{asset?.lastUpdated ? 'Synced' : 'Pending'}</p>
+                              <label className={`inline-flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border px-2 py-1.5 text-[10px] font-black transition ${activeSystemVariation !== 'default' ? 'border-blue-300 bg-white text-blue-600 hover:bg-blue-600 hover:text-white' : 'border-slate-300 bg-white text-slate-600 hover:border-blue-400 hover:text-blue-600'}`}>
+                                <UploadCloud className="h-3.5 w-3.5" />
+                                {asset?.iconUrl ? 'Replace' : 'Upload'}
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (!file) return;
+                                    openCropDialog(file, `system-${effectiveId}-${file.lastModified}`, 'system', { ...item, id: effectiveId });
+                                  }}
+                                />
+                              </label>
+                            </div>
                           </div>
-                          <div className="mt-2 flex items-center justify-between text-[9px] font-bold text-slate-400">
-                             <span>{effectiveId}</span>
-                             <span>{asset?.lastUpdated ? 'SYNCED' : 'PENDING'}</span>
-                          </div>
-                          <label className={`mt-2 inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border px-3 py-2 text-[11px] font-bold transition ${activeSystemVariation !== 'default' ? 'border-blue-300 bg-white text-blue-600 hover:bg-blue-600 hover:text-white' : 'border-slate-300 bg-white text-slate-600 hover:border-blue-400 hover:text-blue-600'}`}>
-                            <UploadCloud className="h-3.5 w-3.5" />
-                            {asset?.iconUrl ? 'Replace' : 'Upload'} {activeSystemVariation}
-                            <input
-                              type="file"
-                              accept="image/*"
-                              className="hidden"
-                              onChange={(e) => {
-                                const file = e.target.files?.[0];
-                                if (!file) return;
-                                openCropDialog(file, `system-${effectiveId}-${file.lastModified}`, 'system', { ...item, id: effectiveId });
-                              }}
-                            />
-                          </label>
                         </div>
                       );
                     })}
@@ -1069,6 +1265,7 @@ export const ApplicationLibraryPage = () => {
           </section>
         )}
 
+        {activeTab === 'global_libraries' ? (
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-black uppercase tracking-widest text-slate-500">Manage Global Applications</h2>
@@ -1079,7 +1276,7 @@ export const ApplicationLibraryPage = () => {
                 disabled={isNormalizingApps || isDeletingApps}
                 className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-bold text-amber-700 transition hover:bg-amber-100 disabled:opacity-50"
               >
-                {isNormalizingApps ? 'Normalizing...' : 'Normalize UID + Icon UID'}
+                {isNormalizingApps ? 'Normalizing...' : 'Normalize Icons + Apps UID'}
               </button>
               {selectedAppIds.length > 0 && (
                 <button type="button" onClick={handleDeleteSelected} disabled={isDeletingApps} className="rounded-xl border border-rose-300 bg-rose-50 px-4 py-2 text-sm font-bold text-rose-700 transition hover:bg-rose-100 disabled:opacity-50">
@@ -1217,6 +1414,7 @@ export const ApplicationLibraryPage = () => {
             </table>
           </div>
         </section>
+        ) : null}
 
         {cropDialog.open ? (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/55 p-4">

@@ -53,7 +53,7 @@ import {
 } from '../lib/pdfTemplateRenderer';
 import { resolvePageIconUrl } from '../lib/pageIconAssets';
 import { getCachedSystemAssetsSnapshot, getSystemAssets } from '../lib/systemAssetsCache';
-import SignatureCard from '../components/common/SignatureCard';
+import CreatedByIdentityCard from '../components/common/CreatedByIdentityCard';
 import QuotationClientQuickCreate from '../components/quotation/QuotationClientQuickCreate';
 
 const inputClass = 'compact-field mt-1 w-full rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] px-3 py-2.5 text-sm font-bold text-[var(--c-text)] outline-none transition focus:border-[var(--c-accent)] focus:ring-4 focus:ring-[var(--c-accent)]/5';
@@ -1944,11 +1944,12 @@ const QuotationPage = () => {
                           </div>
                         </div>
                         <div className="min-w-0">
-                          <SignatureCard
+                          <CreatedByIdentityCard
                             uid={quotation.createdBy || ''}
                             displayName={creatorName}
                             avatarUrl={creator?.photoURL || '/avatar.png'}
-                            className="h-9 max-w-[150px]"
+                            role={creator?.role || ''}
+                            className="max-w-[190px]"
                           />
                         </div>
                       </div>

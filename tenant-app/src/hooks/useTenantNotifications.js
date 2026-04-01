@@ -171,11 +171,13 @@ export const useTenantNotifications = (tenantId, user) => {
             uid: creatorUid,
             displayName: creator.displayName || creator.name || creator.email || 'Unknown user',
             photoURL: creator.photoURL || '',
+            role: creator.role || '',
           },
           actionTakenByUser: actionTakenBy ? {
             uid: actionTakenBy,
             displayName: actionByUser?.displayName || actionByUser?.name || actionByUser?.email || actionTakenBy,
             photoURL: actionByUser?.photoURL || '',
+            role: actionByUser?.role || '',
           } : null,
           entityMeta: portal ? {
             iconUrl: resolvedPortalIconUrl,

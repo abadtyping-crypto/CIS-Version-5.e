@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, Ticket, LogOut, Code2, Menu, X, LibraryBig, ImagePlus, Clapperboard, LayoutPanelTop } from 'lucide-react';
+import { LayoutDashboard, Users, Ticket, LogOut, Code2, Menu, X, LibraryBig, Clapperboard, LayoutPanelTop } from 'lucide-react';
 import { auth } from '../../lib/firebase';
 import { DevHeader } from './DevHeader';
 
@@ -21,7 +21,6 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
         { icon: Users, label: 'Tenant Management', path: '/tenants' },
         { icon: Ticket, label: 'Support Tickets', path: '/tickets' },
         { icon: LibraryBig, label: 'Global Libraries', path: '/libraries' },
-        { icon: ImagePlus, label: 'Portal Logo Library', path: '/portal-logo-library' },
         { icon: Clapperboard, label: 'Instructions Library', path: '/instructions-library' },
         { icon: LayoutPanelTop, label: 'Header Control Center', path: '/header-control-center' },
         { icon: Code2, label: 'Platform Settings', path: '/platform-settings' },
@@ -59,7 +58,8 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                 {/* Navigation */}
                 <div className="flex-1 py-6 px-4 space-y-2 overflow-y-auto">
                     {menuItems.map((item) => {
-                        const isActive = location.pathname === item.path;
+                        const isActive = location.pathname === item.path
+                            || (item.path === '/libraries' && location.pathname === '/portal-logo-library');
                         return (
                             <NavLink
                                 key={item.path}
@@ -98,7 +98,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
     );
 };
 
-export const ProtectedLayout = ({ children }) => {
+export const ProtectedLayout = ({ children, fullWidth = false }) => {
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
     return (
@@ -106,9 +106,11 @@ export const ProtectedLayout = ({ children }) => {
             <Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} />
 
             <main className="flex-1 lg:ml-64 p-4 md:p-6 lg:p-8 overflow-y-auto">
-                <div className="max-w-6xl mx-auto">
+                <div className={fullWidth ? 'w-full' : 'max-w-6xl mx-auto'}>
                     <DevHeader onOpenSidebar={() => setSidebarOpen(true)} />
-                    {children}
+                    <div className="dev-slate-theme">
+                        {children}
+                    </div>
                 </div>
             </main>
         </div>
