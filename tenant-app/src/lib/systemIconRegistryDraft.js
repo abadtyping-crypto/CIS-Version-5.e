@@ -17,6 +17,12 @@ export const SYSTEM_ICON_REGISTRY = {
   ui_action_delete: { uid: "", note: "action indicator: Trash/Delete/Reject" },
   ui_action_confirm: { uid: "", note: "action indicator: Check/Confirm/Approve" },
   ui_action_restore: { uid: "", note: "action indicator: Undo/Restore/Retrieve" },
+  ui_action_pdf: { uid: "", note: "quotation action: Download PDF" },
+  ui_action_email: { uid: "", note: "quotation action: Send Email" },
+  ui_action_clone: { uid: "", note: "quotation action: Clone" },
+  ui_action_extend: { uid: "", note: "quotation action: Extend" },
+  ui_action_accept: { uid: "", note: "quotation action: Accept" },
+  ui_action_cancel: { uid: "", note: "quotation action: Cancel" },
 
   // --- Chat Assistant Personalization ---
   bot_avatar: { uid: "", note: "ayman bot chatbot avatar" },

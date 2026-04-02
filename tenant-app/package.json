@@ -19,6 +19,7 @@
     "@capacitor/core": "^8.1.0",
     "firebase": "^12.9.0",
     "google-auth-library": "^10.6.1",
+    "googleapis": "^171.4.0",
     "jspdf": "^4.2.0",
     "jspdf-autotable": "^5.0.7",
     "lottie-web": "^5.13.0",

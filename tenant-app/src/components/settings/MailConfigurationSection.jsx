@@ -18,6 +18,19 @@ const TABS = [
 // ─── SMTP Sub-panel ───────────────────────────────────────────────────────────
 const SmtpPanel = ({ config, setConfig, onSave, isSaving, status, onTest }) => (
   <div className="space-y-6">
+    {/* Active Strategy Notice */}
+    <div className="flex items-start gap-4 rounded-2xl border border-indigo-500/20 bg-indigo-500/5 p-4">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-400">
+        <Mail strokeWidth={1.5} className="h-6 w-6" />
+      </div>
+      <div>
+        <h4 className="text-sm font-bold text-indigo-200">Cloud-Triggered Delivery Active</h4>
+        <p className="mt-1 text-xs font-semibold leading-relaxed text-indigo-300/80">
+          Invoices and documents are delivered via highly-available Firestore triggers. SMTP and Gmail settings below are applied as global identity headers (From Name, Reply-To) for these outgoing communications.
+        </p>
+      </div>
+    </div>
+
     {/* SMTP Server */}
     <div className="rounded-xl bg-(--c-panel)/60 p-4 space-y-1">
       <h3 className="text-xs font-bold uppercase tracking-wider text-(--c-muted) mb-3">Server Settings</h3>

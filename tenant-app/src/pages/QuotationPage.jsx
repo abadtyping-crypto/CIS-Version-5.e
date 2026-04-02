@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FileText, Copy, Mail, Ban, CheckCircle2, RefreshCcw, Plus, Tags, X, GripVertical, Users, UserPlus, ChevronUp, ChevronDown, Trash2, Check, Minus, Search } from 'lucide-react';
+import { FileText, Copy, Mail, Ban, CheckCircle2, RefreshCcw, Plus, Tags, X, GripVertical, Users, UserPlus, ChevronUp, ChevronDown, Trash2, Check, Minus, Search, CalendarDays } from 'lucide-react';
 import PageShell from '../components/layout/PageShell';
 import useElectronLayoutMode from '../hooks/useElectronLayoutMode';
 import { useTenant } from '../context/useTenant';
@@ -51,10 +51,11 @@ import {
   DEFAULT_QUOTATION_TERMS,
   resolvePdfTemplateForRenderer,
 } from '../lib/pdfTemplateRenderer';
-import { resolvePageIconUrl } from '../lib/pageIconAssets';
-import { getCachedSystemAssetsSnapshot, getSystemAssets } from '../lib/systemAssetsCache';
+import { getCachedSystemAssetsSnapshot, getSystemAssets, resolveAssetWithVariation } from '../lib/systemAssetsCache';
 import CreatedByIdentityCard from '../components/common/CreatedByIdentityCard';
 import QuotationClientQuickCreate from '../components/quotation/QuotationClientQuickCreate';
+import DocumentActionButton from '../components/common/DocumentActionButton';
+import ApplicationIdentityRow from '../components/common/ApplicationIdentityRow';
 
 const inputClass = 'compact-field mt-1 w-full rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] px-3 py-2.5 text-sm font-bold text-[var(--c-text)] outline-none transition focus:border-[var(--c-accent)] focus:ring-4 focus:ring-[var(--c-accent)]/5';
 const selectClass = 'compact-field mt-1 w-full rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] px-3 py-2.5 text-sm font-bold text-[var(--c-text)] outline-none transition focus:border-[var(--c-accent)] focus:ring-4 focus:ring-[var(--c-accent)]/5';
@@ -62,6 +63,16 @@ const activeTabClass = 'bg-[var(--c-accent)] text-white shadow-lg shadow-[color-
 const activeChoiceCardClass = 'border-[var(--c-accent)] bg-[color:color-mix(in_srgb,var(--c-accent)_10%,var(--c-surface))]';
 const activeChoiceIconClass = 'bg-[var(--c-accent)] text-white';
 const primaryActionClass = 'bg-[var(--c-accent)] text-white shadow-lg shadow-[color-mix(in_srgb,var(--c-accent)_24%,transparent)] hover:opacity-95';
+const proformaReferenceInlineClass = 'inline-flex min-w-0 max-w-[12rem] items-center text-xs font-black text-[var(--c-success)] transition hover:text-[color:color-mix(in_srgb,var(--c-success)_70%,var(--c-text)_30%)] hover:underline';
+const proformaReferenceHeaderClass = 'inline-flex min-w-0 max-w-full items-center text-lg font-bold leading-tight text-[var(--c-success)] transition hover:text-[color:color-mix(in_srgb,var(--c-success)_70%,var(--c-text)_30%)] hover:underline';
+const statusBadgeBaseClass = 'inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.12em]';
+const statusBadgeClassMap = {
+  generated: 'bg-[color:color-mix(in_srgb,var(--c-info)_14%,var(--c-surface))] text-[var(--c-info)]',
+  draft: 'bg-[color:color-mix(in_srgb,var(--c-info)_14%,var(--c-surface))] text-[var(--c-info)]',
+  converted: 'bg-[color:color-mix(in_srgb,var(--c-success)_14%,var(--c-surface))] text-[var(--c-success)]',
+  canceled: 'bg-[color:color-mix(in_srgb,var(--c-danger)_14%,var(--c-surface))] text-[var(--c-danger)]',
+  expired: 'bg-[color:color-mix(in_srgb,var(--c-warning)_14%,var(--c-surface))] text-[var(--c-warning)]',
+};
 
 const makeContactId = (prefix) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 const createManualMobileContact = (overrides = {}) => ({
@@ -204,6 +215,9 @@ const toProperText = (value) =>
     .trim()
     .toLowerCase()
     .replace(/\b\w/g, (c) => c.toUpperCase());
+const normalizeQuotationStatus = (value) => String(value || 'generated').trim().toLowerCase().replace(/\s+/g, '_');
+const formatQuotationStatusLabel = (value) => normalizeQuotationStatus(value).replaceAll('_', ' ').toUpperCase();
+const resolveQuotationStatusBadgeClass = (value) => statusBadgeClassMap[normalizeQuotationStatus(value)] || statusBadgeClassMap.generated;
 
 const QuotationPage = () => {
   const lockToUniversalApps = ENFORCE_UNIVERSAL_APPLICATION_UID;
@@ -361,7 +375,7 @@ const QuotationPage = () => {
   }, [loadData]);
 
   useEffect(() => {
-    getSystemAssets().then(setSystemAssets).catch(() => {});
+    getSystemAssets({ forceRefresh: true }).then(setSystemAssets).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -428,9 +442,36 @@ const QuotationPage = () => {
     () => systemAssets?.icon_main_individual?.iconUrl || '/individual.png',
     [systemAssets],
   );
+  const resolveActionIconUrl = useCallback((...keys) => {
+    for (const key of keys) {
+      const normalizedKey = String(key || '').trim();
+      if (!normalizedKey) continue;
+      const systemUrl = String(resolveAssetWithVariation(systemAssets, normalizedKey) || '').trim();
+      if (systemUrl) return systemUrl;
+      const directSystemUrl = String(systemAssets?.[normalizedKey]?.iconUrl || '').trim();
+      if (directSystemUrl) return directSystemUrl;
+      const libraryUrl = String(appIconUrlById?.[normalizedKey] || '').trim();
+      if (libraryUrl) return libraryUrl;
+    }
+    return '';
+  }, [systemAssets, appIconUrlById]);
+  const actionIconUrls = useMemo(() => ({
+    downloadPdf: resolveActionIconUrl('ui_action_pdf', 'ui_action_download', 'ui_action_file_download', 'ui_action_download_pdf'),
+    email: resolveActionIconUrl('ui_action_email', 'ui_action_mail'),
+    clone: resolveActionIconUrl('ui_action_clone', 'ui_action_copy'),
+    extend: resolveActionIconUrl('ui_action_extend'),
+    accept: resolveActionIconUrl('ui_action_accept', 'ui_action_confirm'),
+    cancel: resolveActionIconUrl('ui_action_cancel', 'ui_action_close'),
+  }), [resolveActionIconUrl]);
   const selectedQuotation = useMemo(
     () => rows.find((item) => item.id === selectedQuotationId) || rows[0] || null,
     [rows, selectedQuotationId],
+  );
+  const selectedProformaRef = useMemo(
+    () => (selectedQuotation
+      ? selectedQuotation.proformaDisplayRef || selectedQuotation.proformaId || selectedQuotation.convertedToProformaId || ''
+      : ''),
+    [selectedQuotation],
   );
   const subtotalAmount = useMemo(
     () => items.reduce((sum, item) => sum + ((Number(item.qty) || 0) * (Number(item.amount) || 0)), 0),
@@ -1646,17 +1687,11 @@ const QuotationPage = () => {
                             <span className="rounded-md bg-[var(--c-surface)] px-1.5 py-0.5 text-[10px] font-black tracking-wider text-[var(--c-muted)]">
                               {String(index + 1).padStart(2, '0')}
                             </span>
-                            <div className="h-9 w-9 shrink-0 overflow-hidden rounded-lg border border-[var(--c-border)] bg-white/80 p-1">
-                              <img
-                                src={resolveItemIconUrl(item)}
-                                alt=""
-                                className="h-full w-full rounded-[inherit] object-cover"
-                                onError={(event) => {
-                                  event.currentTarget.src = '/defaultIcons/documents.png';
-                                }}
-                              />
-                            </div>
-                            <p className="truncate text-sm font-black text-[var(--c-text)]">{resolveItemName(item)}</p>
+                            <ApplicationIdentityRow
+                              name={resolveItemName(item)}
+                              iconUrl={resolveItemIconUrl(item)}
+                              className="min-w-0 flex-1"
+                            />
                           </div>
                           <div className="mt-2 flex items-center gap-2">
                             <button
@@ -1904,7 +1939,8 @@ const QuotationPage = () => {
                   const creatorName = String(creatorRawName || '').includes('@')
                     ? creatorRawName
                     : toProperText(creatorRawName);
-                  const quotationIconUrl = resolvePageIconUrl(systemAssets, 'quotations') || '/documents.png';
+                  const linkedProformaRef = quotation.proformaDisplayRef || quotation.proformaId || quotation.convertedToProformaId;
+                  const isConvertedRow = normalizeQuotationStatus(quotation.status) === 'converted' && Boolean(linkedProformaRef);
                   return (
                     <div
                       key={quotation.id}
@@ -1921,27 +1957,57 @@ const QuotationPage = () => {
                     >
                       <div className="flex items-center gap-2 px-3 py-2">
                         <div className="min-w-0 flex-1 space-y-1">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <p className="truncate text-xs font-black text-[var(--c-text)]">{quotation.displayRef}</p>
-                            {(quotation.proformaDisplayRef || quotation.proformaId || quotation.convertedToProformaId) ? (
+                          {isConvertedRow ? (
+                            <div className="space-y-1 min-w-0">
                               <button
                                 type="button"
-                                onClick={(e) => { e.stopPropagation(); goToProforma(quotation.proformaDisplayRef || quotation.proformaId || quotation.convertedToProformaId); }}
-                                className="inline-flex items-center gap-1 rounded border border-emerald-300 bg-emerald-50 px-1.5 py-0.5 text-[10px] font-black text-emerald-700 hover:border-emerald-400"
+                                onClick={(e) => { e.stopPropagation(); goToProforma(linkedProformaRef); }}
+                                title={linkedProformaRef}
+                                className="inline-flex min-w-0 max-w-full items-center text-xs font-black text-[var(--c-success)] transition hover:text-[color:color-mix(in_srgb,var(--c-success)_70%,var(--c-text)_30%)] hover:underline"
                               >
-                                {quotation.proformaDisplayRef || quotation.proformaId || quotation.convertedToProformaId}
+                                <span className="min-w-0 truncate">{linkedProformaRef}</span>
                               </button>
-                            ) : null}
-                          </div>
-                          <div className="flex flex-wrap items-center gap-2 text-[10px] font-semibold text-[var(--c-muted)]">
-                            <span className="uppercase">{String(quotation.status || 'generated').toUpperCase()}</span>
-                            <span className="h-1 w-1 rounded-full bg-[var(--c-border)]" />
-                            <span>Date: {quotation.quoteDate || '-'}</span>
-                            <span className="h-1 w-1 rounded-full bg-[var(--c-border)]" />
-                            <span className="text-[var(--c-text)]">
-                              <CurrencyValue value={quotation.totalAmount || 0} iconSize="h-3 w-3" />
-                            </span>
-                          </div>
+                              <p className="min-w-0 truncate text-xs font-black text-[var(--c-text)]">{quotation.displayRef}</p>
+                              <div className="inline-flex min-w-0 items-center gap-2 text-[10px] font-semibold text-[var(--c-muted)]">
+                                <CalendarDays strokeWidth={1.6} className="h-3.5 w-3.5 shrink-0" />
+                                <span className="truncate">{quotation.quoteDate || '-'}</span>
+                                <span className="h-1 w-1 shrink-0 rounded-full bg-[var(--c-border)]" />
+                                <span className="shrink-0 text-[var(--c-text)]">
+                                  <CurrencyValue value={quotation.totalAmount || 0} iconSize="h-3 w-3" />
+                                </span>
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="flex items-center gap-2 min-w-0">
+                                <p className="truncate text-xs font-black text-[var(--c-text)]">{quotation.displayRef}</p>
+                                {linkedProformaRef ? (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); goToProforma(linkedProformaRef); }}
+                                    title={linkedProformaRef}
+                                    className={proformaReferenceInlineClass}
+                                  >
+                                    <span className="min-w-0 truncate">{linkedProformaRef}</span>
+                                  </button>
+                                ) : null}
+                              </div>
+                              <div className="flex flex-wrap items-center gap-2 text-[10px] font-semibold text-[var(--c-muted)]">
+                                <span className={`${statusBadgeBaseClass} ${resolveQuotationStatusBadgeClass(quotation.status)}`}>
+                                  {formatQuotationStatusLabel(quotation.status)}
+                                </span>
+                                <span className="h-1 w-1 rounded-full bg-[var(--c-border)]" />
+                                <span className="inline-flex items-center gap-1">
+                                  <CalendarDays strokeWidth={1.6} className="h-3.5 w-3.5" />
+                                  <span>{quotation.quoteDate || '-'}</span>
+                                </span>
+                                <span className="h-1 w-1 rounded-full bg-[var(--c-border)]" />
+                                <span className="text-[var(--c-text)]">
+                                  <CurrencyValue value={quotation.totalAmount || 0} iconSize="h-3 w-3" />
+                                </span>
+                              </div>
+                            </>
+                          )}
                         </div>
                         <div className="min-w-0">
                           <CreatedByIdentityCard
@@ -1968,79 +2034,90 @@ const QuotationPage = () => {
                     <div className="space-y-1">
                       <p className="text-lg font-bold text-[var(--c-text)]">{selectedQuotation.displayRef}</p>
                       <p className="text-sm font-bold text-[var(--c-muted)]">{selectedQuotation.clientSnapshot?.name || selectedQuotation.clientSnapshot?.tradeName || 'Client'}</p>
-                      {(selectedQuotation.proformaDisplayRef || selectedQuotation.proformaId || selectedQuotation.convertedToProformaId) ? (
+                      {selectedProformaRef ? (
                         <button
                           type="button"
-                          onClick={() => goToProforma(selectedQuotation.proformaDisplayRef || selectedQuotation.proformaId || selectedQuotation.convertedToProformaId)}
-                          className="inline-flex items-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700 hover:border-emerald-400"
+                          onClick={() => goToProforma(selectedProformaRef)}
+                          title={selectedProformaRef}
+                          className={proformaReferenceHeaderClass}
                         >
-                          Open Proforma {selectedQuotation.proformaDisplayRef || selectedQuotation.proformaId || selectedQuotation.convertedToProformaId}
+                          <span className="min-w-0 truncate">{selectedProformaRef}</span>
                         </button>
                       ) : null}
                     </div>
                     <div className="text-right">
                       <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--c-muted)]">Status</p>
-                      <p className="text-sm font-black text-[var(--c-text)]">{String(selectedQuotation.status || 'generated').toUpperCase()}</p>
+                      <span className={`${statusBadgeBaseClass} ${resolveQuotationStatusBadgeClass(selectedQuotation.status)}`}>
+                        {formatQuotationStatusLabel(selectedQuotation.status)}
+                      </span>
                     </div>
                   </div>
                   <div className="grid gap-4 md:grid-cols-3"><div className="rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)] p-4"><p className="text-[10px] font-bold uppercase tracking-widest text-[var(--c-muted)]">Quote Date</p><p className="mt-2 text-sm font-black text-[var(--c-text)]">{selectedQuotation.quoteDate || '-'}</p></div><div className="rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)] p-4"><p className="text-[10px] font-bold uppercase tracking-widest text-[var(--c-muted)]">Expiry Date</p><p className="mt-2 text-sm font-black text-[var(--c-text)]">{selectedQuotation.expiryDate || '-'}</p></div><div className="rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)] p-4"><p className="text-[10px] font-bold uppercase tracking-widest text-[var(--c-muted)]">Total</p><div className="mt-2 text-sm font-black text-[var(--c-text)]"><CurrencyValue value={selectedQuotation.totalAmount || 0} iconSize="h-3 w-3" /></div></div></div>
-                  <div className="rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)] p-4"><p className="mb-3 text-sm font-black text-[var(--c-text)]">Applications</p><div className="space-y-2">{(selectedQuotation.items || []).map((item, index) => <div key={`${selectedQuotation.id}-${index}`} className="flex items-center justify-between rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] px-4 py-3"><div><p className="text-sm font-black text-[var(--c-text)]">{resolveItemName(item)}</p><p className="text-[10px] font-bold uppercase text-[var(--c-muted)]">Qty {item.qty}</p></div><div className="text-sm font-black text-[var(--c-text)]"><CurrencyValue value={item.lineTotal || 0} iconSize="h-3 w-3" /></div></div>)}</div></div>
+                  <div className="rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)] p-4">
+                    <p className="mb-3 text-sm font-black text-[var(--c-text)]">Applications</p>
+                    <div className="space-y-2">
+                      {(selectedQuotation.items || []).map((item, index) => (
+                        <div key={`${selectedQuotation.id}-${index}`} className="flex items-center justify-between gap-3 rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] px-4 py-3">
+                          <ApplicationIdentityRow
+                            name={resolveItemName(item)}
+                            subtitle={`Qty ${item.qty}`}
+                            iconUrl={resolveItemIconUrl(item)}
+                            className="min-w-0 flex-1"
+                          />
+                          <div className="shrink-0 text-sm font-black text-[var(--c-text)]">
+                            <CurrencyValue value={item.lineTotal || 0} iconSize="h-3 w-3" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                   {String(selectedQuotation.termsAndConditions || '').trim() ? <div className="rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)] p-4"><p className="mb-3 text-sm font-black text-[var(--c-text)]">Terms and Conditions</p><div className="space-y-2">{String(selectedQuotation.termsAndConditions || '').split(/\r?\n/).filter(Boolean).map((term, index) => <p key={`${selectedQuotation.id}-term-${index}`} className="text-sm font-bold text-[var(--c-text)]">{term}</p>)}</div></div> : null}
                   {selectedQuotation.cancellationReason ? <div className="rounded-2xl border border-rose-300 bg-rose-50 p-4 text-sm font-bold text-rose-700">Cancellation reason: {selectedQuotation.cancellationReason}</div> : null}
                   <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
-                    <button
-                      type="button"
+                    <DocumentActionButton
+                      icon={FileText}
+                      iconUrl={actionIconUrls.downloadPdf}
+                      label="Download"
                       disabled={isActionBusy}
                       onClick={() => void handleDownloadPdf(selectedQuotation)}
-                      className="rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)] px-4 py-3 text-xs font-black text-[var(--c-text)] disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      Download PDF
-                    </button>
-                    <button
-                      type="button"
+                    />
+                    <DocumentActionButton
+                      icon={Mail}
+                      iconUrl={actionIconUrls.email}
+                      label="Email"
                       disabled={isActionBusy}
                       onClick={() => void handleEmail(selectedQuotation)}
-                      className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)] px-4 py-3 text-xs font-black text-[var(--c-text)] disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      <Mail strokeWidth={1.5} className="h-4 w-4" />
-                      Email
-                    </button>
-                    <button
-                      type="button"
+                    />
+                    <DocumentActionButton
+                      icon={Copy}
+                      iconUrl={actionIconUrls.clone}
+                      label="Clone"
                       disabled={isActionBusy}
                       onClick={() => void handleClone(selectedQuotation)}
-                      className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)] px-4 py-3 text-xs font-black text-[var(--c-text)] disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      <Copy strokeWidth={1.5} className="h-4 w-4" />
-                      Clone
-                    </button>
-                    <button
-                      type="button"
+                    />
+                    <DocumentActionButton
+                      icon={RefreshCcw}
+                      iconUrl={actionIconUrls.extend}
+                      label="Extend"
                       disabled={isActionBusy}
                       onClick={() => void handleExtend(selectedQuotation)}
-                      className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)] px-4 py-3 text-xs font-black text-[var(--c-text)] disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      <RefreshCcw strokeWidth={1.5} className="h-4 w-4" />
-                      Extend
-                    </button>
-                    <button
-                      type="button"
+                    />
+                    <DocumentActionButton
+                      icon={CheckCircle2}
+                      iconUrl={actionIconUrls.accept}
+                      label="Accept"
+                      tone="success"
                       disabled={isActionBusy || String(selectedQuotation.status || '').toLowerCase() === 'converted'}
                       onClick={() => void handleAccept(selectedQuotation)}
-                      className="inline-flex items-center justify-center gap-2 rounded-2xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-xs font-black text-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      <CheckCircle2 strokeWidth={1.5} className="h-4 w-4" />
-                      Accept
-                    </button>
-                    <button
-                      type="button"
+                    />
+                    <DocumentActionButton
+                      icon={Ban}
+                      iconUrl={actionIconUrls.cancel}
+                      label="Cancel"
+                      tone="danger"
                       disabled={isActionBusy}
                       onClick={() => void handleCancel(selectedQuotation)}
-                      className="inline-flex items-center justify-center gap-2 rounded-2xl border border-rose-300 bg-rose-50 px-4 py-3 text-xs font-black text-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      <Ban strokeWidth={1.5} className="h-4 w-4" />
-                      Cancel
-                    </button>
+                    />
                   </div>
                 </div>
               ) : <div className="rounded-2xl border border-dashed border-[var(--c-border)] bg-[var(--c-panel)] p-6 text-center text-xs font-bold uppercase tracking-widest text-[var(--c-muted)]">Select a quotation to review it.</div>}

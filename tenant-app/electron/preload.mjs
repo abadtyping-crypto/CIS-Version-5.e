@@ -22,6 +22,9 @@ contextBridge.exposeInMainWorld(
         send: (payload) => ipcRenderer.invoke('mail-send', payload),
         authStart: (config) => ipcRenderer.invoke('mail-auth-start', config),
     },
+    drive: {
+        upload: (payload) => ipcRenderer.invoke('drive-upload', payload),
+    },
     desktopAppearance: {
         saveWallpaper: (payload) => ipcRenderer.invoke('desktop-wallpaper-save', payload),
     },

@@ -43,6 +43,7 @@ import {
   upsertClient,
   createTenantTask,
   fetchTenantUsersMap,
+  fetchTenantIntegrationConfig,
 } from '../lib/backendStore';
 import { fetchMergedServiceTemplates } from '../lib/serviceTemplateStore';
 import { fetchGlobalPortalLogoMap } from '../lib/portalLogoLibraryStore';
@@ -55,6 +56,7 @@ import { DEFAULT_COUNTRY_PHONE_ISO2 } from '../lib/countryPhoneData';
 import { ENFORCE_UNIVERSAL_APPLICATION_UID } from '../lib/universalLibraryPolicy';
 import { normalizeLibraryDescription } from '../lib/serviceTemplateRules';
 import CreatedByIdentityCard from '../components/common/CreatedByIdentityCard';
+import ApplicationIdentityRow from '../components/common/ApplicationIdentityRow';
 import {
   createMobileContact,
   getPrimaryMobileContact,
@@ -922,8 +924,43 @@ const ProformaInvoicesPage = () => {
       status: 'Rendering PDF...',
     });
     try {
-      const res = await generateTenantPdf({ tenantId, documentType: 'nextInvoice', data: buildPdfData(selectedProforma), save: true, filename: `${selectedProforma.displayRef}.pdf` });
-      pushStatus(res.ok ? 'PDF generated.' : 'PDF failed.', res.ok ? 'success' : 'error');
+      const pdfData = buildPdfData(selectedProforma);
+      const res = await generateTenantPdf({ 
+        tenantId, 
+        documentType: 'nextInvoice', 
+        data: pdfData, 
+        save: true, 
+        returnBase64: true,
+        filename: `${selectedProforma.displayRef}.pdf` 
+      });
+
+      if (res.ok && res.base64) {
+        // Attempt automatic Drive upload if configured
+        try {
+          const driveRes = await fetchTenantIntegrationConfig(tenantId);
+          if (driveRes.ok && driveRes.data?.driveConnected && driveRes.data?.driveRefreshToken) {
+            setActionOverlay(prev => ({ ...prev, status: 'Uploading to Google Drive...' }));
+            const uploadRes = await window.electron.drive.upload({
+              clientId: driveRes.data.driveClientId,
+              clientSecret: driveRes.data.driveClientSecret,
+              refreshToken: driveRes.data.driveRefreshToken,
+              fileName: `${selectedProforma.displayRef}.pdf`,
+              base64: res.base64,
+              folderId: driveRes.data.driveRootFolderId,
+            });
+            if (uploadRes.ok) {
+              pushStatus('Uploaded to Google Drive.', 'success');
+            } else {
+              console.warn('[Drive] Auto-upload failed:', uploadRes.error);
+              pushStatus(`Drive upload failed: ${uploadRes.error}`, 'error');
+            }
+          }
+        } catch (driveErr) {
+          console.error('[Drive] Integration error:', driveErr);
+        }
+      }
+
+      pushStatus(res.ok ? 'PDF generated.' : (res.error || 'PDF failed.'), res.ok ? 'success' : 'error');
     } finally {
       setActionOverlay((prev) => ({ ...prev, open: false }));
     }
@@ -1638,17 +1675,11 @@ const ProformaInvoicesPage = () => {
                                   <span className="rounded-md bg-[var(--c-surface)] px-1.5 py-0.5 text-[10px] font-black tracking-wider text-[var(--c-muted)]">
                                     {String(index + 1).padStart(2, '0')}
                                   </span>
-                                  <div className="h-9 w-9 shrink-0 overflow-hidden rounded-lg border border-[var(--c-border)] bg-white/80 p-1">
-                                    <img
-                                      src={resolveItemIconUrl(item)}
-                                      alt=""
-                                      className="h-full w-full rounded-[inherit] object-cover"
-                                      onError={(event) => {
-                                        event.currentTarget.src = '/defaultIcons/documents.png';
-                                      }}
-                                    />
-                                  </div>
-                                  <p className="truncate text-sm font-black text-[var(--c-text)]">{resolveItemName(item)}</p>
+                                  <ApplicationIdentityRow
+                                    name={resolveItemName(item)}
+                                    iconUrl={resolveItemIconUrl(item)}
+                                    className="min-w-0 flex-1"
+                                  />
                                 </div>
                                 <div className="mt-2 flex items-center gap-2">
                                   <button

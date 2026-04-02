@@ -17,7 +17,6 @@ import {
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db, storage } from '../lib/firebase';
 import Cropper from 'react-easy-crop';
-import { normalizePublicSiteConfig, PUBLIC_SITE_CONFIG_DOC, PUBLIC_SITE_DEFAULTS } from '../lib/publicSiteConfig';
 
 const MIN_CROP_ZOOM = 1;
 const MAX_CROP_ZOOM = 8;
@@ -67,8 +66,6 @@ export const PlatformSettingsPage = () => {
         termsAndConditions: '',
         systemIconVariation: 'default',
     });
-    const [publicSiteForm, setPublicSiteForm] = useState(PUBLIC_SITE_DEFAULTS);
-    const [isSavingPublicSite, setIsSavingPublicSite] = useState(false);
     const [whatsappConfig, setWhatsappConfig] = useState({
         isServiceEnabled: false,
         appId: '',
@@ -112,11 +109,9 @@ export const PlatformSettingsPage = () => {
         const fetchSettings = async () => {
             try {
                 const controllerRef = doc(db, 'acis_system_assets', 'electron_controller');
-                const publicSiteRef = doc(db, PUBLIC_SITE_CONFIG_DOC.collection, PUBLIC_SITE_CONFIG_DOC.id);
                 const whatsappRef = doc(db, 'system_configs', 'whatsapp_master');
-                const [docSnap, publicSiteSnap, whatsappSnap] = await Promise.all([
+                const [docSnap, whatsappSnap] = await Promise.all([
                     getDoc(controllerRef),
-                    getDoc(publicSiteRef),
                     getDoc(whatsappRef),
                 ]);
                 if (docSnap.exists()) {
@@ -134,9 +129,6 @@ export const PlatformSettingsPage = () => {
                 }
                 if (whatsappSnap.exists()) {
                     setWhatsappConfig(prev => ({ ...prev, ...whatsappSnap.data() }));
-                }
-                if (publicSiteSnap.exists()) {
-                    setPublicSiteForm(normalizePublicSiteConfig(publicSiteSnap.data()));
                 }
             } catch (err) {
                 console.error('Failed to load platform settings', err);
@@ -266,30 +258,6 @@ export const PlatformSettingsPage = () => {
             setSaveStatus('❌ Failed to save settings.');
         } finally {
             setIsSaving(false);
-        }
-    };
-
-    const handlePublicSiteFieldChange = (event) => {
-        const { name, value } = event.target;
-        setPublicSiteForm((prev) => ({ ...prev, [name]: value }));
-    };
-
-    const handleSavePublicSite = async (event) => {
-        event.preventDefault();
-        setIsSavingPublicSite(true);
-        setSaveStatus('');
-        try {
-            await setDoc(doc(db, PUBLIC_SITE_CONFIG_DOC.collection, PUBLIC_SITE_CONFIG_DOC.id), {
-                ...normalizePublicSiteConfig(publicSiteForm),
-                updatedAt: serverTimestamp(),
-            }, { merge: true });
-            setSaveStatus('✅ Public website settings updated successfully.');
-            setTimeout(() => setSaveStatus(''), 5000);
-        } catch (err) {
-            console.error('Failed to save public site settings', err);
-            setSaveStatus('❌ Failed to save public website settings.');
-        } finally {
-            setIsSavingPublicSite(false);
         }
     };
 
@@ -731,7 +699,7 @@ export const PlatformSettingsPage = () => {
                         </div>
 
                         <div className="pt-6 border-t border-slate-100 flex items-center justify-between gap-4">
-                            <span className="text-sm font-bold text-emerald-600">{!isSavingWaba && saveStatus}</span>
+                            <span className="text-sm font-bold text-emerald-600">{!isSavingWaba && !isTestingWaba && saveStatus}</span>
                             <button
                                 type="submit"
                                 disabled={isSaving || isLoading}
@@ -739,87 +707,6 @@ export const PlatformSettingsPage = () => {
                             >
                                 {isSaving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
                                 DEPLOY GLOBAL SETTINGS
-                            </button>
-                        </div>
-                    </form>
-                </div>
-
-                <div className="bg-white rounded-[2rem] border border-slate-200 shadow-sm p-8">
-                    <form onSubmit={handleSavePublicSite} className="space-y-6">
-                        <div className="space-y-3">
-                            <h3 className="text-lg font-black text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-3">
-                                <Globe className="text-blue-600" />
-                                Public Site Controller
-                            </h3>
-                            <p className="text-sm font-medium text-slate-500">
-                                Control the public landing page content and links directly from Developer App.
-                            </p>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-6 rounded-2xl border border-slate-100">
-                            <label className="text-xs font-black uppercase tracking-widest text-slate-500">
-                                Badge Text
-                                <input name="badgeText" value={publicSiteForm.badgeText} onChange={handlePublicSiteFieldChange} className="mt-2 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm font-bold text-slate-800 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20" />
-                            </label>
-                            <label className="text-xs font-black uppercase tracking-widest text-slate-500">
-                                Hero Title Line 1
-                                <input name="heroTitleLine1" value={publicSiteForm.heroTitleLine1} onChange={handlePublicSiteFieldChange} className="mt-2 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm font-bold text-slate-800 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20" />
-                            </label>
-                            <label className="text-xs font-black uppercase tracking-widest text-slate-500">
-                                Hero Title Line 2
-                                <input name="heroTitleLine2" value={publicSiteForm.heroTitleLine2} onChange={handlePublicSiteFieldChange} className="mt-2 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm font-bold text-slate-800 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20" />
-                            </label>
-                            <label className="text-xs font-black uppercase tracking-widest text-slate-500">
-                                WhatsApp URL
-                                <input name="whatsappUrl" value={publicSiteForm.whatsappUrl} onChange={handlePublicSiteFieldChange} className="mt-2 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm font-bold text-slate-800 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20" />
-                            </label>
-                            <label className="text-xs font-black uppercase tracking-widest text-slate-500">
-                                Website URL
-                                <input name="websiteUrl" value={publicSiteForm.websiteUrl} onChange={handlePublicSiteFieldChange} className="mt-2 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm font-bold text-slate-800 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20" />
-                            </label>
-                            <label className="text-xs font-black uppercase tracking-widest text-slate-500">
-                                Map URL
-                                <input name="mapUrl" value={publicSiteForm.mapUrl} onChange={handlePublicSiteFieldChange} className="mt-2 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm font-bold text-slate-800 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20" />
-                            </label>
-                            <label className="text-xs font-black uppercase tracking-widest text-slate-500">
-                                Contact Phone
-                                <input name="contactPhone" value={publicSiteForm.contactPhone} onChange={handlePublicSiteFieldChange} className="mt-2 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm font-bold text-slate-800 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20" />
-                            </label>
-                            <label className="text-xs font-black uppercase tracking-widest text-slate-500">
-                                Contact Email
-                                <input name="contactEmail" value={publicSiteForm.contactEmail} onChange={handlePublicSiteFieldChange} className="mt-2 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm font-bold text-slate-800 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20" />
-                            </label>
-                            <label className="text-xs font-black uppercase tracking-widest text-slate-500">
-                                Address Line 1
-                                <input name="addressLine1" value={publicSiteForm.addressLine1} onChange={handlePublicSiteFieldChange} className="mt-2 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm font-bold text-slate-800 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20" />
-                            </label>
-                            <label className="text-xs font-black uppercase tracking-widest text-slate-500">
-                                Address Line 2
-                                <input name="addressLine2" value={publicSiteForm.addressLine2} onChange={handlePublicSiteFieldChange} className="mt-2 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm font-bold text-slate-800 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20" />
-                            </label>
-                            <label className="text-xs font-black uppercase tracking-widest text-slate-500">
-                                Facebook URL
-                                <input name="facebookUrl" value={publicSiteForm.facebookUrl} onChange={handlePublicSiteFieldChange} className="mt-2 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm font-bold text-slate-800 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20" />
-                            </label>
-                            <label className="text-xs font-black uppercase tracking-widest text-slate-500">
-                                Instagram URL
-                                <input name="instagramUrl" value={publicSiteForm.instagramUrl} onChange={handlePublicSiteFieldChange} className="mt-2 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm font-bold text-slate-800 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20" />
-                            </label>
-                            <label className="md:col-span-2 text-xs font-black uppercase tracking-widest text-slate-500">
-                                Hero Description
-                                <textarea name="heroDescription" value={publicSiteForm.heroDescription} onChange={handlePublicSiteFieldChange} rows={3} className="mt-2 w-full resize-y rounded-xl border border-slate-200 bg-white p-3 text-sm font-semibold text-slate-800 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20" />
-                            </label>
-                        </div>
-
-                        <div className="pt-4 border-t border-slate-100 flex items-center justify-between gap-4">
-                            <span className="text-sm font-bold text-emerald-600">{!isSavingPublicSite && saveStatus}</span>
-                            <button
-                                type="submit"
-                                disabled={isSavingPublicSite || isLoading}
-                                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-8 py-3.5 rounded-xl font-black tracking-wide shadow-xl shadow-blue-500/20 transition-all active:scale-95 disabled:opacity-50"
-                            >
-                                {isSavingPublicSite ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
-                                UPDATE PUBLIC SITE
                             </button>
                         </div>
                     </form>
@@ -963,7 +850,11 @@ export const PlatformSettingsPage = () => {
                             </div>
 
                             <div className="flex items-center gap-4">
-                                <span className="text-sm font-bold text-emerald-600">{isSavingWaba && saveStatus}</span>
+                                <span className={`text-sm font-bold ${
+                                    saveStatus.startsWith('✅') ? 'text-emerald-600' :
+                                    saveStatus.startsWith('❌') ? 'text-red-500' :
+                                    saveStatus ? 'text-amber-500' : ''
+                                }`}>{saveStatus}</span>
                                 <button
                                     type="submit"
                                     disabled={isSavingWaba || isLoading}
@@ -1175,3 +1066,5 @@ export const PlatformSettingsPage = () => {
         </ProtectedLayout>
     );
 };
+
+export default PlatformSettingsPage;

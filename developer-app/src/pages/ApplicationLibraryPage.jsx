@@ -143,6 +143,12 @@ const SYSTEM_ASSET_CATEGORIES = [
       { id: 'ui_action_delete', label: 'Action: Delete (Trash)' },
       { id: 'ui_action_confirm', label: 'Action: Confirm (Check)' },
       { id: 'ui_action_restore', label: 'Action: Restore (Undo)' },
+      { id: 'ui_action_pdf', label: 'Action: PDF' },
+      { id: 'ui_action_email', label: 'Action: Email' },
+      { id: 'ui_action_clone', label: 'Action: Clone' },
+      { id: 'ui_action_extend', label: 'Action: Extend' },
+      { id: 'ui_action_accept', label: 'Action: Accept' },
+      { id: 'ui_action_cancel', label: 'Action: Cancel' },
     ],
   },
   {

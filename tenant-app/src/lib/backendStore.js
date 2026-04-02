@@ -1,4 +1,5 @@
 import {
+  addDoc,
   collection,
   collectionGroup,
   deleteDoc,
@@ -3300,30 +3301,32 @@ export const sendTenantDocumentEmail = async (tenantId, email, documentType, pdf
     const subject = applyTemplateTokens(subjectTemplate, tokens);
     const html = applyTemplateTokens(htmlTemplate, tokens);
 
-    const attachments = [
-      {
-        filename: `${documentType}_${data.txId}.pdf`,
-        content: pdfBase64,
-        encoding: 'base64',
-      }
-    ];
-
-    const smtpSend = await trySendViaElectronSmtp({
-      config: cfg,
+    const emailDoc = {
       to: email,
-      subject,
-      html,
-      attachments
-    });
+      message: {
+        subject,
+        html,
+        attachments: [
+          {
+            filename: `${documentType}_${data.txId}.pdf`,
+            content: pdfBase64,
+            encoding: 'base64',
+          }
+        ],
+      },
+      tenantId,
+      documentType,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    };
 
-    if (smtpSend.ok) return { ok: true };
-    if (smtpSend.skipped) {
-      return { ok: false, error: 'Email service (SMTP) is only available in the Desktop application.' };
-    }
-    return { ok: false, error: smtpSend.error || 'Failed to send document email.' };
+    // Write to the global 'mail' collection for the Firebase Trigger Email Extension
+    await addDoc(collection(db, 'mail'), emailDoc);
+
+    return { ok: true };
   } catch (error) {
     const message = toSafeError(error);
-    console.warn(`[backendStore] Email send failed for ${email}: ${message}`);
+    console.warn(`[backendStore] Email trigger failed for ${email}: ${message}`);
     return { ok: false, error: message };
   }
 };

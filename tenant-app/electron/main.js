@@ -8,6 +8,7 @@ import nodemailer from 'nodemailer';
 const require = createRequire(import.meta.url);
 const { app, BrowserWindow, clipboard, ipcMain, protocol, shell } = require('electron');
 import { OAuth2Client } from 'google-auth-library';
+import { google } from 'googleapis';
 import http from 'http';
 import { parse, pathToFileURL } from 'url';
 import { mkdirSync, readdirSync, unlinkSync } from 'fs';
@@ -460,7 +461,7 @@ function createWindow() {
 
             const authUrl = oauth2Client.generateAuthUrl({
                 access_type: 'offline',
-                scope: ['https://www.googleapis.com/auth/gmail.send', 'https://www.googleapis.com/auth/userinfo.email'],
+                scope: ['https://www.googleapis.com/auth/gmail.send', 'https://www.googleapis.com/auth/drive.file', 'https://www.googleapis.com/auth/userinfo.email'],
                 prompt: 'consent'
             });
 
@@ -491,6 +492,45 @@ function createWindow() {
                 }
             }).listen(8888);
         });
+    });
+
+    ipcMain.handle('drive-upload', async (_event, payload) => {
+        try {
+            const { clientId, clientSecret, refreshToken, fileName, base64, folderId, mimeType = 'application/pdf' } = payload;
+
+            if (!clientId || !clientSecret || !refreshToken || !base64) {
+                return { ok: false, error: 'Missing credentials or file content for Drive upload.' };
+            }
+
+            const oauth2Client = new OAuth2Client(clientId, clientSecret);
+            oauth2Client.setCredentials({ refresh_token: refreshToken });
+
+            const drive = google.drive({ version: 'v3', auth: oauth2Client });
+            const buffer = Buffer.from(base64, 'base64');
+            const stream = new (require('stream').PassThrough)();
+            stream.end(buffer);
+
+            const fileMetadata = {
+                name: fileName || `acis_document_${Date.now()}.pdf`,
+                parents: folderId ? [folderId] : undefined,
+            };
+
+            const media = {
+                mimeType,
+                body: stream,
+            };
+
+            const response = await drive.files.create({
+                resource: fileMetadata,
+                media: media,
+                fields: 'id, webViewLink',
+            });
+
+            return { ok: true, fileId: response.data.id, webViewLink: response.data.webViewLink };
+        } catch (error) {
+            console.error('[Electron Main] Drive upload failed:', error);
+            return { ok: false, error: String(error?.message || 'Drive upload failed.') };
+        }
     });
 
     ipcMain.removeHandler('desktop-wallpaper-save');
