@@ -38,12 +38,18 @@ const toSafeError = (error) => {
 };
 
 const PDF_DOCUMENT_TYPES = new Set([
-  'paymentReceipt',
-  'nextInvoice',
+  'invoice',
   'quotation',
-  'performerInvoice',
+  'claim',
+  'acknowledgement',
+  'payment',
+  'clientStatement',
   'statement',
   'portalStatement',
+  'portalStatementQuotation',
+  'paymentReceipt',
+  'nextInvoice',
+  'performerInvoice',
 ]);
 
 const DIRECT_BALANCE_ACTION_APPROVE = 'portal_balance_adjust_approve';
@@ -2033,13 +2039,134 @@ export const releaseOperationExpenseWithFinancials = async (tenantId, expenseId,
   }
 };
 
+const QUOTATION_SUMMARY_FIELD_KEYS = [
+  'displayRef',
+  'quoteDate',
+  'description',
+  'validityWeeks',
+  'expiryDate',
+  'termsAndConditions',
+  'termsTemplateLines',
+  'clientMode',
+  'clientId',
+  'dependentIds',
+  'dependentNames',
+  'clientSnapshot',
+  'subtotalAmount',
+  'discountEnabled',
+  'discountMode',
+  'discountValue',
+  'discountAmount',
+  'totalAmount',
+  'status',
+  'sourceQuotationId',
+  'cancellationReason',
+  'acceptedAt',
+  'acceptedBy',
+  'canceledAt',
+  'canceledBy',
+  'proformaId',
+  'proformaDisplayRef',
+  'convertedAt',
+  'convertedBy',
+  'createdBy',
+  'createdAt',
+];
+
+const isPlainObjectValue = (value) => {
+  if (!value || typeof value !== 'object') return false;
+  const proto = Object.getPrototypeOf(value);
+  return proto === Object.prototype || proto === null;
+};
+
+const pruneEmptyQuotationValue = (value) => {
+  if (value === undefined || value === null) return undefined;
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed ? trimmed : undefined;
+  }
+
+  if (Array.isArray(value)) {
+    const cleaned = value
+      .map((item) => pruneEmptyQuotationValue(item))
+      .filter((item) => item !== undefined);
+    return cleaned.length ? cleaned : undefined;
+  }
+
+  if (isPlainObjectValue(value)) {
+    const cleanedEntries = Object.entries(value).reduce((acc, [key, nestedValue]) => {
+      const cleanedValue = pruneEmptyQuotationValue(nestedValue);
+      if (cleanedValue !== undefined) acc[key] = cleanedValue;
+      return acc;
+    }, {});
+    return Object.keys(cleanedEntries).length ? cleanedEntries : undefined;
+  }
+
+  return value;
+};
+
+const pickQuotationSummaryFields = (payload = {}) => {
+  const next = {};
+  QUOTATION_SUMMARY_FIELD_KEYS.forEach((key) => {
+    const cleanedValue = pruneEmptyQuotationValue(payload[key]);
+    if (cleanedValue !== undefined) next[key] = cleanedValue;
+  });
+  return next;
+};
+
 export const fetchTenantQuotations = async (tenantId) => {
   try {
+    const toQuotationDocRef = (qid) => doc(db, 'tenants', tenantId, 'quotations', qid);
+    const toQuotationApplicationsCollection = (qid) => collection(toQuotationDocRef(qid), 'applications');
+    const toQuotationApplicationRow = (docItem, index = 0) => {
+      const data = docItem?.data ? (docItem.data() || {}) : (docItem || {});
+      const qty = Math.max(1, Number(data?.qty || 1));
+      const amount = Math.max(0, Number(data?.amount || 0));
+      const rawLineTotal = Number(data?.lineTotal);
+      const lineTotal = Number.isFinite(rawLineTotal) ? Math.max(0, rawLineTotal) : qty * amount;
+      return {
+        rowId: String(docItem?.id || data?.rowId || `item-${index + 1}`),
+        applicationId: String(data?.applicationId || ''),
+        name: String(data?.name || ''),
+        iconId: String(data?.iconId || ''),
+        iconUrl: String(data?.iconUrl || ''),
+        description: String(data?.description || ''),
+        qty,
+        amount,
+        lineTotal,
+        govCharge: Number(data?.govCharge || 0) || 0,
+        discountType: String(data?.discountType || ''),
+        discountValue: Number(data?.discountValue || 0) || 0,
+        sortOrder: Number(data?.sortOrder || index + 1) || index + 1,
+      };
+    };
+
     const snap = await getDocs(collection(db, 'tenants', tenantId, 'quotations'));
-    const rows = snap.docs
+    const baseRows = snap.docs
       .map((item) => ({ id: item.id, ...item.data() }))
-      .filter((item) => !item.deletedAt)
-      .sort((a, b) => toDateMillis(b.createdAt || b.updatedAt) - toDateMillis(a.createdAt || a.updatedAt));
+      .filter((item) => !item.deletedAt);
+
+    const rows = await Promise.all(baseRows.map(async (row) => {
+      try {
+        const appsSnap = await getDocs(toQuotationApplicationsCollection(row.id));
+        const appRows = appsSnap.docs
+          .map((docItem, index) => toQuotationApplicationRow(docItem, index))
+          .sort((a, b) => (Number(a.sortOrder || 0) - Number(b.sortOrder || 0)));
+        if (appRows.length) return { ...row, items: appRows };
+      } catch (error) {
+        const message = toSafeError(error);
+        console.warn(`[backendStore] quotation applications read failed tenants/${tenantId}/quotations/${row.id}/applications: ${message}`);
+      }
+      return {
+        ...row,
+        items: Array.isArray(row.items)
+          ? row.items.map((item, index) => toQuotationApplicationRow(item, index))
+          : [],
+      };
+    }));
+
+    rows.sort((a, b) => toDateMillis(b.createdAt || b.updatedAt) - toDateMillis(a.createdAt || a.updatedAt));
     return { ok: true, rows };
   } catch (error) {
     const message = toSafeError(error);
@@ -2051,14 +2178,78 @@ export const fetchTenantQuotations = async (tenantId) => {
 export const upsertTenantQuotation = async (tenantId, quotationId, payload) => {
   try {
     if (!tenantId || !quotationId) return { ok: false, error: 'Missing tenantId or quotationId.' };
-    await setDoc(
-      doc(db, 'tenants', tenantId, 'quotations', quotationId),
+    const quotationRef = doc(db, 'tenants', tenantId, 'quotations', quotationId);
+    const applicationsCollectionRef = collection(quotationRef, 'applications');
+    const hasApplicationItems = Array.isArray(payload?.items);
+    const summaryBasePayload = pickQuotationSummaryFields(payload || {});
+
+    if (!hasApplicationItems) {
+      await setDoc(
+        quotationRef,
+        {
+          ...summaryBasePayload,
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true },
+      );
+      return { ok: true, id: quotationId };
+    }
+
+    const normalizeApplicationWrite = (item, index = 0) => {
+      const qty = Math.max(1, Number(item?.qty || 1));
+      const amount = Math.max(0, Number(item?.amount || 0));
+      const govCharge = Number(item?.govCharge || 0);
+      const discountValue = Number(item?.discountValue || 0);
+      const discountType = String(item?.discountType || '').trim().toLowerCase();
+      const applicationId = String(item?.applicationId || '').trim();
+      const description = String(item?.description || '').trim();
+      return {
+        applicationId,
+        qty,
+        amount,
+        sortOrder: index + 1,
+        ...(description ? { description } : {}),
+        ...(Number.isFinite(govCharge) && govCharge !== 0 ? { govCharge } : {}),
+        ...(discountType ? { discountType } : {}),
+        ...(Number.isFinite(discountValue) && discountValue !== 0 ? { discountValue } : {}),
+      };
+    };
+
+    const normalizedItems = (payload.items || [])
+      .map((item, index) => normalizeApplicationWrite(item, index))
+      .filter((item) => Boolean(item.applicationId));
+
+    const summaryPayload = {
+      ...summaryBasePayload,
+      applicationCount: normalizedItems.length,
+    };
+
+    const existingAppsSnap = await getDocs(applicationsCollectionRef);
+    const batch = writeBatch(db);
+    batch.set(
+      quotationRef,
       {
-        ...payload,
+        ...summaryPayload,
         updatedAt: serverTimestamp(),
       },
       { merge: true },
     );
+    existingAppsSnap.docs.forEach((appDoc) => batch.delete(appDoc.ref));
+
+    const usedIds = new Set();
+    normalizedItems.forEach((item, index) => {
+      const baseId = toSafeDocId(`${item.applicationId}_${index + 1}`, 'q_app');
+      let nextId = baseId;
+      let suffix = 2;
+      while (usedIds.has(nextId)) {
+        nextId = `${baseId}_${suffix}`;
+        suffix += 1;
+      }
+      usedIds.add(nextId);
+      batch.set(doc(applicationsCollectionRef, nextId), item, { merge: false });
+    });
+    await batch.commit();
+
     return { ok: true, id: quotationId };
   } catch (error) {
     const message = toSafeError(error);
@@ -2399,6 +2590,27 @@ export const convertQuotationToProforma = async (tenantId, quotationId, conversi
     if (!quotationSnap.exists()) return { ok: false, error: 'Quotation not found.' };
 
     const quotation = quotationSnap.data() || {};
+    const quotationApplicationsSnap = await getDocs(collection(quotationRef, 'applications'));
+    const quotationApplications = quotationApplicationsSnap.docs
+      .map((docItem, index) => {
+        const data = docItem.data() || {};
+        const qty = Math.max(1, Number(data?.qty || 1));
+        const amount = Math.max(0, Number(data?.amount || 0));
+        const rawLineTotal = Number(data?.lineTotal);
+        const lineTotal = Number.isFinite(rawLineTotal) ? Math.max(0, rawLineTotal) : qty * amount;
+        return {
+          rowId: String(docItem.id || `${index + 1}`),
+          applicationId: String(data?.applicationId || ''),
+          name: String(data?.name || ''),
+          description: String(data?.description || ''),
+          qty,
+          amount,
+          govCharge: Number(data?.govCharge || 0) || 0,
+          lineTotal,
+          sortOrder: Number(data?.sortOrder || index + 1) || index + 1,
+        };
+      })
+      .sort((a, b) => (Number(a.sortOrder || 0) - Number(b.sortOrder || 0)));
     if (quotation.proformaId) {
       return {
         ok: true,
@@ -2415,7 +2627,7 @@ export const convertQuotationToProforma = async (tenantId, quotationId, conversi
 
     const sourceItems = Array.isArray(conversionPayload?.items) && conversionPayload.items.length
       ? conversionPayload.items
-      : (Array.isArray(quotation.items) ? quotation.items : []);
+      : (quotationApplications.length ? quotationApplications : (Array.isArray(quotation.items) ? quotation.items : []));
     const normalizedItems = sourceItems.map((item, index) => {
       const qty = Math.max(1, Number(item?.qty || 1));
       const amount = Math.max(0, Number(item?.amount || 0));

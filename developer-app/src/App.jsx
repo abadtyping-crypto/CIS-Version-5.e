@@ -11,7 +11,7 @@ import { InstructionsLibraryPage } from './pages/InstructionsLibraryPage';
 import { HeaderControlCenterPage } from './pages/HeaderControlCenterPageImpl';
 import { ElectronMain } from './layouts/ElectronMain';
 import { TenantApplicationLibrary } from './pages/TenantApplicationLibrary';
-import DownloadPage from './pages/DownloadPage';
+
 
 const LandingPage = () => {
     const navigate = useNavigate();
@@ -198,7 +198,7 @@ function App() {
         <Routes>
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<LoginPage />} />
-            <Route path="/dl/:fileId" element={<DownloadPage />} />
+
             
             {/* Developer Shell with Tenant Prefix */}
             <Route path="/t/:tenantId" element={<ElectronMain />}>

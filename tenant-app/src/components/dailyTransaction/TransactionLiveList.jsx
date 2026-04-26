@@ -1,9 +1,10 @@
 import { memo, useCallback, useEffect, useState } from 'react';
-import { fetchDailyTransactionsPage, fetchTenantClients, softDeleteTransaction } from '../../lib/backendStore';
+import { fetchDailyTransactionsPage, fetchTenantClients, fetchTenantUsersMap, softDeleteTransaction } from '../../lib/backendStore';
 import { fetchServiceTemplates } from '../../lib/serviceTemplateStore';
 import { useAuth } from '../../context/useAuth';
 import { canUserPerformAction } from '../../lib/userControlPreferences';
 import CurrencyValue from '../common/CurrencyValue';
+import CreatedByIdentityCard from '../common/CreatedByIdentityCard';
 import { Trash2, Lock, Clock } from 'lucide-react';
 
 const TransactionLiveList = ({ tenantId, refreshKey }) => {
@@ -14,6 +15,7 @@ const TransactionLiveList = ({ tenantId, refreshKey }) => {
 
     const [clientsById, setClientsById] = useState({});
     const [applicationsById, setApplicationsById] = useState({});
+    const [usersById, setUsersById] = useState({});
     const [pageSize, setPageSize] = useState(50);
     const [pageIndex, setPageIndex] = useState(0);
     const [pageCursors, setPageCursors] = useState([null]);
@@ -23,9 +25,10 @@ const TransactionLiveList = ({ tenantId, refreshKey }) => {
 
     const loadLookupData = useCallback(async () => {
         if (!tenantId) return;
-        const [clientsRes, appRes] = await Promise.all([
+        const [clientsRes, appRes, usersRes] = await Promise.all([
             fetchTenantClients(tenantId),
             fetchServiceTemplates(tenantId),
+            fetchTenantUsersMap(tenantId),
         ]);
         if (clientsRes.ok) {
             const next = {};
@@ -40,6 +43,15 @@ const TransactionLiveList = ({ tenantId, refreshKey }) => {
                 next[item.id] = item;
             });
             setApplicationsById(next);
+        }
+        if (usersRes.ok) {
+            const next = {};
+            (usersRes.rows || []).forEach((item) => {
+                const key = String(item?.uid || item?.id || '').trim();
+                if (!key || item?.deletedAt) return;
+                next[key] = item;
+            });
+            setUsersById(next);
         }
     }, [tenantId]);
 
@@ -145,6 +157,7 @@ const TransactionLiveList = ({ tenantId, refreshKey }) => {
                                 <th>Client</th>
                                 <th>Service</th>
                                 <th className="text-right">Charge</th>
+                                <th>Created By</th>
                                 <th className="text-center">Audit</th>
                             </tr>
                         </thead>
@@ -154,6 +167,7 @@ const TransactionLiveList = ({ tenantId, refreshKey }) => {
                                 const isLocked = row.invoiced === true || Boolean(row.invoiceId) || normalizedStatus === 'invoiced';
                                 const client = clientsById[row.clientId];
                                 const app = applicationsById[row.applicationId];
+                                const creator = usersById[String(row.createdBy || '')] || null;
                                 const clientName = client?.fullName || client?.tradeName || 'Unknown Client';
                                 const applicationName = app?.name || 'Unknown Application';
                                 return (
@@ -173,7 +187,6 @@ const TransactionLiveList = ({ tenantId, refreshKey }) => {
                                         </td>
                                         <td>
                                             <p className="font-semibold text-[var(--c-text)]">{applicationName}</p>
-                                            <p className="text-[10px] text-[var(--c-muted)] truncate max-w-[120px]">{row.applicationId || '-'}</p>
                                         </td>
                                         <td className="text-right">
                                             <div className="font-semibold text-[var(--c-text)]">
@@ -182,6 +195,15 @@ const TransactionLiveList = ({ tenantId, refreshKey }) => {
                                             <p className="text-[9px] font-semibold text-emerald-500">
                                                 + <CurrencyValue value={row.profit || 0} iconSize="h-2 w-2" />
                                             </p>
+                                        </td>
+                                        <td>
+                                            <CreatedByIdentityCard
+                                                uid={row.createdBy || ''}
+                                                displayName={creator?.displayName || creator?.name || creator?.email || 'System'}
+                                                avatarUrl={creator?.photoURL || '/avatar.png'}
+                                                role={creator?.role || ''}
+                                                className="max-w-[190px]"
+                                            />
                                         </td>
                                         <td>
                                             <div className="flex items-center justify-center gap-2">
@@ -237,4 +259,3 @@ const TransactionLiveList = ({ tenantId, refreshKey }) => {
 };
 
 export default memo(TransactionLiveList);
-

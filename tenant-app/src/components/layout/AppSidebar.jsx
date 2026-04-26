@@ -68,7 +68,7 @@ const renderNavIcon = (iconKey, customIconUrl = '', iconLabel = '') => {
         <img
           src={customIconUrl}
           alt={iconLabel || 'Navigation'}
-          className="relative z-[1] h-full w-full object-cover drop-shadow-[0_6px_10px_rgba(15,23,42,0.18)]"
+          className="absolute inset-0 z-[1] block h-full w-full object-cover object-center drop-shadow-[0_6px_10px_rgba(15,23,42,0.18)]"
           onError={(event) => {
             event.currentTarget.onerror = null;
             event.currentTarget.src = '/appIcon.png';
@@ -101,7 +101,7 @@ const renderSignatureNavLead = (iconKey, customIconUrl = '', iconLabel = '', Ico
         <img
           src={customIconUrl}
           alt={iconLabel || 'Navigation'}
-          className="absolute inset-0 h-full w-full object-cover"
+          className="absolute inset-0 block h-full w-full object-cover object-center"
           onError={(event) => {
             event.currentTarget.onerror = null;
             event.currentTarget.src = '/appIcon.png';
@@ -175,10 +175,10 @@ const AppSidebar = ({ isCollapsed, isHidden = false, isOverlay = false, layoutMo
                   to={`/t/${tenantId}/${item.path}`}
                   title={isCollapsed ? item.label : undefined}
                   className={({ isActive }) =>
-                    `compact-nav-item flex flex-1 items-stretch gap-0 overflow-hidden rounded-xl text-[13px] font-bold transition h-12 ${isActive
+                    `compact-nav-item flex flex-1 gap-0 overflow-hidden rounded-xl text-[13px] font-bold transition h-12 ${isActive
                       ? 'bg-[color:color-mix(in_srgb,var(--c-panel)_88%,transparent)] text-[var(--c-accent)] border border-[var(--c-accent)]'
                       : `bg-[color:color-mix(in_srgb,var(--c-panel)_75%,transparent)] text-[var(--c-text)] hover:bg-[color:color-mix(in_srgb,var(--c-panel)_92%,transparent)] hover:text-[var(--c-accent)] ${isCollapsed ? 'border-transparent' : 'border border-[var(--c-border)]'}`
-                    } ${isCollapsed ? 'justify-center px-0' : 'justify-start'}`
+                    } ${isCollapsed ? 'items-center justify-center px-0' : 'items-stretch justify-start'}`
                   }
                 >
                   {isCollapsed
@@ -199,11 +199,11 @@ const AppSidebar = ({ isCollapsed, isHidden = false, isOverlay = false, layoutMo
                   onClick={onToggle}
                   aria-label={isCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
                   title={isCollapsed ? 'Expand Sidebar' : undefined}
-                  className={`flex h-12 flex-1 items-stretch gap-0 overflow-hidden rounded-xl bg-[color:color-mix(in_srgb,var(--c-panel)_75%,transparent)] text-[13px] font-bold text-[var(--c-text)] transition hover:bg-[color:color-mix(in_srgb,var(--c-panel)_92%,transparent)] hover:border-[var(--c-accent)] hover:text-[var(--c-accent)] ${isCollapsed ? 'justify-center border-transparent' : 'justify-start border border-[var(--c-border)]'}`}
+                  className={`flex h-12 flex-1 gap-0 overflow-hidden rounded-xl bg-[color:color-mix(in_srgb,var(--c-panel)_75%,transparent)] text-[13px] font-bold text-[var(--c-text)] transition hover:bg-[color:color-mix(in_srgb,var(--c-panel)_92%,transparent)] hover:border-[var(--c-accent)] hover:text-[var(--c-accent)] ${isCollapsed ? 'items-center justify-center border-transparent' : 'items-stretch justify-start border border-[var(--c-border)]'}`}
                 >
                   {isCollapsed 
-                    ? renderNavIcon('sidebarToggle', '', 'Toggle', ({ className }) => <DynamicAppIcon iconKey="sidebarToggle" className={`${className} ${isCollapsed ? 'rotate-180' : ''}`} />)
-                    : renderSignatureNavLead('sidebarToggle', '', 'Toggle', ({ className }) => <DynamicAppIcon iconKey="sidebarToggle" className={className} />)}
+                    ? renderNavIcon('sidebarToggle', resolvePageIconUrl(systemAssets, 'sidebarToggle'), 'Toggle')
+                    : renderSignatureNavLead('sidebarToggle', resolvePageIconUrl(systemAssets, 'sidebarToggle'), 'Toggle')}
                   <span className={`flex-1 flex items-center px-4 transition-opacity duration-300 ${isCollapsed ? 'hidden' : 'inline-flex'}`}>Collapse Sidebar</span>
                 </button>
               </div>
@@ -214,10 +214,10 @@ const AppSidebar = ({ isCollapsed, isHidden = false, isOverlay = false, layoutMo
                 type="button"
                 onClick={openRecycleBin}
                 title={isCollapsed ? 'Recycle Bin' : undefined}
-                className={`relative flex h-12 flex-1 items-stretch gap-0 overflow-hidden rounded-xl transition ${recycleBinIsOpen
+                className={`relative flex h-12 flex-1 gap-0 overflow-hidden rounded-xl transition ${recycleBinIsOpen
                   ? 'border border-[var(--c-accent)] bg-[color:color-mix(in_srgb,var(--c-panel)_88%,transparent)] text-[var(--c-accent)]'
                   : `bg-[color:color-mix(in_srgb,var(--c-panel)_75%,transparent)] text-[var(--c-text)] hover:border-[var(--c-accent)] hover:bg-[color:color-mix(in_srgb,var(--c-panel)_92%,transparent)] hover:text-[var(--c-accent)] ${isCollapsed ? 'border-transparent' : 'border border-[var(--c-border)]'}`
-                  } text-[13px] font-bold ${isCollapsed ? 'justify-center' : 'justify-start'}`}
+                  } text-[13px] font-bold ${isCollapsed ? 'items-center justify-center' : 'items-stretch justify-start'}`}
               >
                 {isCollapsed
                   ? renderNavIcon('recycleBin', resolvePageIconUrl(systemAssets, 'recycleBin'), 'Recycle Bin', RecycleBinIcon)
@@ -236,10 +236,10 @@ const AppSidebar = ({ isCollapsed, isHidden = false, isOverlay = false, layoutMo
                 to={`/t/${tenantId}/settings`}
                 title={isCollapsed ? 'Settings' : undefined}
                 className={({ isActive }) =>
-                  `flex h-12 flex-1 items-stretch gap-0 overflow-hidden rounded-xl text-[13px] font-bold transition ${isActive
+                  `flex h-12 flex-1 gap-0 overflow-hidden rounded-xl text-[13px] font-bold transition ${isActive
                     ? 'bg-[color:color-mix(in_srgb,var(--c-panel)_88%,transparent)] text-[var(--c-accent)] border border-[var(--c-accent)]'
                     : `bg-[color:color-mix(in_srgb,var(--c-panel)_75%,transparent)] text-[var(--c-text)] hover:bg-[color:color-mix(in_srgb,var(--c-panel)_92%,transparent)] hover:text-[var(--c-accent)] ${isCollapsed ? 'border-transparent' : 'border border-[var(--c-border)]'}`
-                  } ${isCollapsed ? 'justify-center' : 'justify-start'}`
+                  } ${isCollapsed ? 'items-center justify-center' : 'items-stretch justify-start'}`
                 }
               >
                 {isCollapsed

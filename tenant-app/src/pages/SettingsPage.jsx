@@ -20,9 +20,9 @@ import BrandDetailsSection from '../components/settings/BrandDetailsSection';
 import UserControlCenterSection from '../components/settings/UserControlCenterSection';
 import UserCustomizationSection from '../components/settings/UserCustomizationSection';
 import IDRulesSection from '../components/settings/IDRulesSection';
-import PdfCustomizationStudioSection from '../components/settings/PdfCustomizationStudioSection';
-import MailConfigurationSection from '../components/settings/MailConfigurationSection';
+import PdfMasterStudioSection from '../components/settings/PdfMasterStudioSection';
 import ApplicationIconLibrarySection from '../components/settings/ApplicationIconLibrarySection';
+import MailConfigurationSection from '../components/settings/MailConfigurationSection';
 import ServiceTemplateSection from '../components/settings/ServiceTemplateSection';
 import EmailTemplateSection from '../components/settings/EmailTemplateSection';
 import FileManagerSection from '../components/settings/FileManagerSection';
@@ -32,7 +32,7 @@ import useIsDesktopLayout from '../hooks/useIsDesktopLayout';
 
 const SETTINGS_SECTIONS = [
   { key: 'brand', label: 'Brand Details', icon: Building2 },
-  { key: 'pdfStudio', label: 'PDF Studio', icon: FileText },
+  { key: 'pdfStudio', label: 'PDF Master Studio', icon: FileText },
   { key: 'svcTemplates', label: 'Application Templates', icon: LayoutTemplate },
   { key: 'appIconLibrary', label: 'Applications Icon Library', icon: Library },
   { key: 'users', label: 'User Management', icon: Users },
@@ -59,7 +59,7 @@ const MOBILE_SETTINGS_SECTIONS = [
   { key: 'control', label: 'User Control Center' },
   { key: 'appIconLibrary', label: 'Applications Icon Library' },
   { key: 'brand', label: 'Brand Details' },
-  { key: 'pdfStudio', label: 'PDF Studio' },
+  { key: 'pdfStudio', label: 'PDF Master Studio' },
 ];
 
 const SettingsPage = () => {
@@ -86,11 +86,11 @@ const SettingsPage = () => {
     if (!isDesktop) {
       if (activeSection === 'appIconLibrary') return <ApplicationIconLibrarySection />;
       if (activeSection === 'brand') return <BrandDetailsSection />;
-      if (activeSection === 'pdfStudio') return <PdfCustomizationStudioSection />;
+      if (activeSection === 'pdfStudio') return <PdfMasterStudioSection />;
       return <UserControlCenterSection />;
     }
     if (activeSection === 'brand') return <BrandDetailsSection />;
-    if (activeSection === 'pdfStudio') return <PdfCustomizationStudioSection />;
+    if (activeSection === 'pdfStudio') return <PdfMasterStudioSection />;
     if (activeSection === 'svcTemplates') return <ServiceTemplateSection />;
     if (activeSection === 'appIconLibrary') return <ApplicationIconLibrarySection />;
     if (activeSection === 'users') return <UserCustomizationSection />;
@@ -111,7 +111,7 @@ const SettingsPage = () => {
           ? `Tenant-scoped configuration for branding, preferences, and operations. Currency: ${tenant.currency}`
           : 'Mobile access: User control and icon library customization.'}
         iconKey="settings"
-        widthPreset="data"
+        widthPreset="full"
       >
         {!isDesktop ? (
           <div className="space-y-3">
@@ -136,14 +136,19 @@ const SettingsPage = () => {
             </div>
           </div>
         ) : (
-        <div className="grid h-full lg:grid-cols-[auto_1fr] sm:gap-4 overflow-hidden">
+        <div className="grid min-h-0 xl:grid-cols-[auto_1fr] sm:gap-4 overflow-visible">
           <aside 
             onMouseEnter={() => setIsNavExpanded(true)}
             onMouseLeave={() => setIsNavExpanded(false)}
-            className={`sticky top-3 z-20 h-fit rounded-2xl border border-(--c-border) bg-(--c-surface) p-1.5 shadow-sm transition-all duration-300 ease-in-out hidden lg:block ${isNavExpanded ? 'w-[232px]' : 'w-[58px]'}`}
+            className={`sticky top-3 z-20 hidden h-fit rounded-2xl border border-(--c-border) bg-(--c-surface) p-1.5 shadow-sm transition-all duration-300 ease-in-out xl:block ${isNavExpanded ? 'w-[232px]' : 'w-[58px]'}`}
           >
-            <div className="mb-2 flex items-center gap-3 px-3 py-1">
-              <Settings strokeWidth={1.5} className="h-4 w-4 shrink-0 text-(--c-accent)" />
+            <div className={`mb-2 flex py-1 ${isNavExpanded ? 'items-center gap-3 px-3' : 'justify-center px-0'}`}>
+              <div className={`relative flex shrink-0 items-center justify-center rounded-xl ${isNavExpanded ? 'h-8 w-8 bg-(--c-accent)/10' : 'h-10 w-10 bg-(--c-accent)/12 ring-1 ring-(--c-accent)/15'}`}>
+                <Settings strokeWidth={2} className={`${isNavExpanded ? 'h-4 w-4' : 'h-5.5 w-5.5'} text-(--c-accent)`} />
+                {!isNavExpanded ? (
+                  <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-(--c-accent)" />
+                ) : null}
+              </div>
               <p className={`text-[10px] font-semibold uppercase tracking-[0.12em] text-(--c-muted) transition-all duration-300 whitespace-nowrap overflow-hidden ${isNavExpanded ? 'opacity-100' : 'opacity-0'}`}>
                 Settings
               </p>
@@ -185,8 +190,8 @@ const SettingsPage = () => {
             </div>
           </aside>
           
-          <div className="min-w-0 flex-1 overflow-hidden">
-            <div className="mb-3 lg:hidden">
+          <div className="min-w-0 flex-1 overflow-visible">
+            <div className="mb-3 xl:hidden">
               <label className="text-xs font-semibold uppercase tracking-[0.16em] text-(--c-muted)">
                 Quick Section
                 <select
@@ -205,7 +210,7 @@ const SettingsPage = () => {
             
             <div 
               key={activeSection}
-              className="h-full animate-in fade-in slide-in-from-bottom-2 duration-300"
+              className="min-h-0 animate-in fade-in slide-in-from-bottom-2 duration-300"
             >
               {sectionContent}
             </div>

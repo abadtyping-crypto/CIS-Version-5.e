@@ -6,6 +6,7 @@ import { generateOTP } from '../lib/whatsappAuth';
 import { findTenantById } from '../config/tenants';
 import { Eye, EyeOff, Lock, User, Mail, ArrowLeft, CheckCircle2, ShieldAlert, X, AlertTriangle, FileText, LifeBuoy, BellRing, Phone, Send, ShieldCheck, RefreshCw } from 'lucide-react';
 import { getRuntimePlatform, PLATFORM_ELECTRON } from '../lib/runtimePlatform';
+import { useTenantBrandingLogos } from '../hooks/useTenantBrandingLogos';
 
 const WhatsAppIcon = ({ className }) => (
   <svg viewBox="0 0 16 16" fill="currentColor" className={className} xmlns="http://www.w3.org/2000/svg">
@@ -21,6 +22,7 @@ const LoginPage = () => {
 
   const tenant = findTenantById(tenantId);
   const displayTenantName = tenant ? tenant.name : tenantId;
+  const { loginLogoUrl } = useTenantBrandingLogos(tenantId, tenant?.logoUrl || '/logo.png');
   const isElectronRuntime = getRuntimePlatform() === PLATFORM_ELECTRON;
   const hasNativeTitleBar = typeof window !== 'undefined' && Boolean(window.electron?.windowControls);
 
@@ -598,11 +600,11 @@ const LoginPage = () => {
             <div className="grid h-full lg:grid-cols-[1.12fr_0.88fr]">
               <aside className="hidden border-r border-white/10 bg-[var(--c-panel)]/55 p-10 lg:flex lg:flex-col lg:justify-between">
                 <div>
-              <div className="mb-6 flex h-28 items-center justify-center rounded-2xl bg-white/90 px-3 py-2">
+                  <div className="mb-6 flex h-28 w-28 items-center justify-center overflow-hidden rounded-2xl bg-white/90">
                     <img
-                      src="/logo.png"
-                      alt="ACIS Logo"
-                      className="h-full w-auto max-w-[260px] rounded-2xl object-contain"
+                      src={loginLogoUrl}
+                      alt={`${displayTenantName} Logo`}
+                      className="h-full w-full rounded-2xl object-cover"
                       onError={(e) => {
                         e.target.style.display = 'none';
                       }}
@@ -624,11 +626,11 @@ const LoginPage = () => {
               <div className="overflow-hidden p-5 md:p-6">
                 <div className="rounded-3xl border border-white/10 bg-[var(--c-surface)]/80 p-6 shadow-xl backdrop-blur-xl">
                   <div className="mb-8 flex flex-col items-center text-center">
-                    <div className="mb-6 flex h-20 items-center justify-center rounded-2xl bg-white/90 px-3 py-2">
+                    <div className="mb-6 flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl bg-white/90">
                       <img
-                        src="/logo.png"
-                        alt="ACIS Logo"
-                        className="h-full w-auto object-contain"
+                        src={loginLogoUrl}
+                        alt={`${displayTenantName} Logo`}
+                        className="h-full w-full rounded-2xl object-cover"
                         onError={(e) => {
                           e.target.style.display = 'none';
                         }}
@@ -649,11 +651,11 @@ const LoginPage = () => {
           <>
             <div className="rounded-3xl border border-white/10 bg-[var(--c-surface)]/80 p-8 shadow-2xl backdrop-blur-xl">
               <div className="mb-8 flex flex-col items-center text-center">
-                <div className="mb-6 flex h-20 items-center justify-center rounded-2xl bg-white/90 px-3 py-2">
+                <div className="mb-6 flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl bg-white/90">
                   <img
-                    src="/logo.png"
-                    alt="ACIS Logo"
-                    className="h-full w-auto object-contain"
+                    src={loginLogoUrl}
+                    alt={`${displayTenantName} Logo`}
+                    className="h-full w-full rounded-2xl object-cover"
                     onError={(e) => {
                       e.target.style.display = 'none';
                     }}
@@ -845,4 +847,3 @@ const LoginPage = () => {
 };
 
 export default LoginPage;
-

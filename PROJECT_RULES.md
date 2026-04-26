@@ -227,10 +227,29 @@
   - Styling must include: `border border-[var(--c-border)] bg-[var(--c-panel)] text-[var(--c-text)] shadow-sm`.
   - Focus logic must utilize: `focus-within:border-[var(--c-accent)] focus-within:ring-4 focus-within:ring-[var(--c-accent)]/5`.
 - **Common Tools Must Be Reused**:
-  - Do NOT build raw generic inputs for specialized data.
-  - **Mobile Numbers**: ALWAYS use `MobileContactsField` or `CountryPhoneField`.
+  - Do NOT build raw generic inputs for specialized data when a shared tool already exists.
+  - **Generic Text / Number / URL / Multiline Input**: ALWAYS use `InputActionField` for standard text entry, paste/copy actions, uppercase transforms, append buttons, and multiline text areas.
+  - **Mobile Numbers**: ALWAYS use `MobileContactsField` for multi-mobile entries or `CountryPhoneField` for one phone field with UAE/country formatting.
   - **Email Addresses**: ALWAYS use `EmailContactsField`.
-  - **Emirate Selection**: ALWAYS use `EmirateSelect` (Do not use `select` or `IconSelect`).
-  - **Addresses**: ALWAYS use `AddressField` (Multilined textarea preset to `h-[112px]`).
-  - **Generic Form Input with Actions**: ALWAYS use `InputActionField`.
-- **Enforcement**: Any agent editing or creating a new page MUST use `src/components/common/*` tools heavily. No custom raw HTML `<input>` fields should bypass the universal sizing.
+  - **Contact Persons**: ALWAYS use `ContactPersonsField` for repeated contact person names.
+  - **Addresses**: ALWAYS use `AddressField` for branch/company/client address text. Do not hand-roll address textareas.
+  - **Identity Documents**: ALWAYS use `IdentityDocumentField` for Emirates ID, Passport, Person Code, Work Permit, and Unified Number input/type selection.
+  - **Emirate Selection**: ALWAYS use `EmirateSelect` (do not replace it with raw `<select>` or `IconSelect`).
+  - **Generic Dropdowns**: Use `GenericSelectField` for normal option lists and `IconSelect` only when icon-backed choices are required.
+  - **Relationship Selection**: Use `RelationSelect` for family/dependent relationship fields.
+  - **Portal Selection**: Use `PortalSelectField` for portal picking, `PortalMethodSelectField` for portal method choices, and `PortalTransactionSelector` for transaction selection inside portal workflows.
+  - **Application Identity / Application Rows**: Use `ApplicationIdentityRow` and `ApplicationSignatureLine` for repeated application display/signature lines instead of recreating bespoke row layouts.
+  - **Application Icon Quick Add**: Use `ApplicationIconQuickAddPanel` when a page needs quick application/icon creation from the shared icon library flow.
+  - **Currency / AED Display**: ALWAYS use `CurrencyValue` and `DirhamIcon` for money display. Do not use `$`, `Dhs`, or raw AED text unless a PDF fallback requires plain text.
+  - **Creator / User Attribution**: Use `CreatedByIdentityCard` for compact creator attribution displays.
+  - **Document Actions**: Use `DocumentActionButton` for download/preview/print/email-style document action controls.
+  - **Confirmations**: Use `ConfirmDialog` for destructive or confirmation flows.
+  - **Prominent Validation / Error Awareness**: Use `FocusErrorOverlay` for blocking validation errors or important failures that must capture the user's attention. Do not hide critical errors only at the top/bottom of a long page.
+  - **Action Progress**: Use `ActionProgressOverlay` or `ProgressVideoOverlay` for blocking generation/save/send progress states instead of one-off loading panels.
+  - **Secure Preview / Quick View**: Use `SecureViewer` for secure document/PDF preview and `QuickViewModal` for structured record previews.
+  - **Image Tools**: Use `ImageStudio` for image crop/edit workflows and `ImageZoomTool` for zoomable image viewing.
+  - **Service Template Editing**: Use `ServiceTemplateEditor` for application/service template editing flows.
+  - **Signatures**: Reuse `SignatureCard` for signature capture/display areas. Do not redesign it page-by-page.
+- **Logo Display Standard**: Uploaded logos are square 512x512 assets and must be displayed in square containers with `aspect-square` and `object-cover` unless the specific task is document/PDF rendering where `object-contain` is explicitly needed. Logo selection rows should use the shared left-image-cover pattern: the image fills the left square of the option/card with no extra inner frame.
+- **Raw HTML Exception**: Raw `<input>`, `<select>`, or `<textarea>` is allowed only for tiny local controls where no shared tool exists yet (for example a range slider, color picker, hidden file input, or internal search field). Even then, it must visually match the universal sizing, border, radius, focus, and theme-token rules.
+- **Enforcement**: Any agent editing or creating a new page MUST first check `tenant-app/src/components/common/*` and reuse the matching component. New shared field components belong in `src/components/common`, not inside page files, when the pattern will appear more than once.

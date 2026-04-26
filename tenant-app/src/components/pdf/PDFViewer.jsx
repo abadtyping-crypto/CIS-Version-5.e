@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 const toFileName = (filePath = '') => String(filePath).split(/[/\\\\]/).pop() || 'Document.pdf';
 
 /**
- * ACIS Version 5.0 Sovereign Viewer
+ * ACIS Version 5.0 Internal Viewer
  * Rule: No External APIs. 100% Local (Electron internal Chromium PDF engine).
  */
 const PDFViewer = ({ localFilePath }) => {
@@ -62,7 +62,7 @@ const PDFViewer = ({ localFilePath }) => {
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden rounded-2xl border border-[var(--c-border)] bg-[var(--c-surface)] shadow-sm">
-      {/* Sovereign Toolbar: Fixed 40px (h-10) */}
+      {/* Internal Toolbar: Fixed 40px (h-10) */}
       <div className="glass flex h-10 w-full items-center gap-3 border-b border-[var(--c-border)] px-4">
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold text-[var(--c-text)]">
@@ -97,7 +97,7 @@ const PDFViewer = ({ localFilePath }) => {
           ref={iframeRef}
           src={sovereignUrl}
           className="flex-1 w-full border-none"
-          title="Sovereign Document"
+          title="Internal Document"
           onLoad={() => setLoading(false)}
         />
       )}

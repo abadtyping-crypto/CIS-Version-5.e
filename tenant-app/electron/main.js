@@ -28,6 +28,9 @@ const getSatelliteUrl = () => {
     return `${pathToFileURL(join(__dirname, '../dist/index.html')).toString()}${SATELLITE_ROUTE}`;
 };
 const WALLPAPER_DIR = join(app.getPath('userData'), 'desktop-wallpapers');
+const ACIS_ATTACHMENTS_ROOT = process.platform === 'win32'
+    ? 'C:\\ACIS Attachments'
+    : join(app.getPath('documents'), 'ACIS Attachments');
 const APP_WINDOW_ICON = join(__dirname, isDev ? '../public/appIcon.ico' : '../dist/appIcon.ico');
 
 if (isDev) {
@@ -71,6 +74,39 @@ const isSafePdfPath = (filePath) => {
 
 const encodePdfPathToken = (filePath) => Buffer.from(String(filePath), 'utf8').toString('base64url');
 const decodePdfPathToken = (token) => Buffer.from(String(token || ''), 'base64url').toString('utf8');
+
+const sanitizePathSegment = (value, fallback = 'document') => {
+    const cleaned = String(value || '')
+        .replace(/[<>:"/\\|?*\x00-\x1F]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    return (cleaned || fallback).slice(0, 120);
+};
+
+const resolveAttachmentTypeFolder = (documentType) => {
+    const normalizedType = String(documentType || '').trim().toLowerCase();
+    const map = {
+        quotation: 'Quotations',
+        quotations: 'Quotations',
+        nextinvoice: 'Proformas',
+        proforma: 'Proformas',
+        performainvoice: 'Proformas',
+        proformainvoice: 'Proformas',
+        invoice: 'Invoices',
+        payment: 'Payments',
+        paymentreceipt: 'Payments',
+        receipt: 'Payments',
+        portalstatement: 'Portal Statements',
+        clientstatement: 'Client Statements',
+        statement: 'Statements',
+    };
+    return map[normalizedType] || 'General';
+};
+
+const ensurePdfExtension = (fileName) => {
+    const safeName = sanitizePathSegment(fileName || 'document.pdf', 'document.pdf');
+    return extname(safeName).toLowerCase() === '.pdf' ? safeName : `${safeName}.pdf`;
+};
 
 const setupSovereignPdfViewer = () => {
     protocol.registerFileProtocol('acis-pdf', (request, callback) => {
@@ -306,8 +342,8 @@ function createWindow() {
         height: state.height,
         x: state.x,
         y: state.y,
-        minWidth: 1024,
-        minHeight: 768,
+        minWidth: 420,
+        minHeight: 560,
         frame: false,
         icon: APP_WINDOW_ICON,
         backgroundColor: '#00000000',
@@ -649,6 +685,47 @@ function createWindow() {
             });
         } catch (error) {
             return { ok: false, error: String(error?.message || 'Failed to print document.') };
+        }
+    });
+
+    ipcMain.removeHandler('document-save-pdf-base64');
+    ipcMain.handle('document-save-pdf-base64', async (_event, payload) => {
+        try {
+            const base64 = String(payload?.base64 || '').trim();
+            if (!base64) return { ok: false, error: 'Missing PDF content.' };
+
+            const tenantId = sanitizePathSegment(payload?.tenantId || 'tenant', 'tenant');
+            const typeFolder = resolveAttachmentTypeFolder(payload?.documentType);
+            const fileName = ensurePdfExtension(payload?.fileName || `${Date.now()}.pdf`);
+            const targetDir = join(ACIS_ATTACHMENTS_ROOT, tenantId, typeFolder);
+            mkdirSync(targetDir, { recursive: true });
+            const targetPath = join(targetDir, fileName);
+            writeFileSync(targetPath, Buffer.from(base64, 'base64'));
+            return {
+                ok: true,
+                filePath: targetPath,
+                fileName,
+                folderPath: targetDir,
+                rootPath: ACIS_ATTACHMENTS_ROOT,
+            };
+        } catch (error) {
+            return { ok: false, error: String(error?.message || 'Failed to save PDF attachment.') };
+        }
+    });
+
+    ipcMain.removeHandler('document-copy-to-downloads');
+    ipcMain.handle('document-copy-to-downloads', async (_event, payload) => {
+        try {
+            const sourcePath = normalize(String(payload?.filePath || ''));
+            if (!isSafePdfPath(sourcePath)) {
+                return { ok: false, error: 'Invalid PDF path.' };
+            }
+            const fileName = ensurePdfExtension(payload?.fileName || sourcePath.split(/[/\\\\]/).pop() || 'document.pdf');
+            const targetPath = join(app.getPath('downloads'), fileName);
+            writeFileSync(targetPath, readFileSync(sourcePath));
+            return { ok: true, filePath: targetPath, fileName };
+        } catch (error) {
+            return { ok: false, error: String(error?.message || 'Failed to copy PDF to Downloads.') };
         }
     });
 }

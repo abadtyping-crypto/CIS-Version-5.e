@@ -58,6 +58,12 @@ const desktopWallpaperPreviewMap = {
     'radial-gradient(130% 110% at -8% -10%, rgba(251, 191, 36, 0.56) 0%, transparent 56%), radial-gradient(130% 110% at 110% -8%, rgba(245, 158, 11, 0.46) 0%, transparent 58%), radial-gradient(150% 120% at 50% 120%, rgba(180, 120, 20, 0.38) 0%, transparent 66%), #2A1A04',
   ember:
     'radial-gradient(130% 110% at -8% -12%, rgba(244, 63, 94, 0.56) 0%, transparent 56%), radial-gradient(120% 110% at 108% -8%, rgba(220, 38, 38, 0.46) 0%, transparent 58%), radial-gradient(150% 120% at 50% 120%, rgba(109, 16, 40, 0.68) 0%, transparent 66%), #210910',
+  sandstone:
+    'radial-gradient(130% 110% at -10% -10%, rgba(196, 154, 108, 0.52) 0%, transparent 56%), radial-gradient(120% 110% at 108% -8%, rgba(183, 121, 63, 0.4) 0%, transparent 58%), radial-gradient(145% 120% at 50% 120%, rgba(129, 95, 60, 0.44) 0%, transparent 66%), #2A2018',
+  slate:
+    'radial-gradient(130% 110% at -10% -12%, rgba(119, 169, 217, 0.52) 0%, transparent 56%), radial-gradient(120% 110% at 108% -8%, rgba(58, 110, 165, 0.44) 0%, transparent 58%), radial-gradient(150% 120% at 50% 120%, rgba(36, 61, 90, 0.66) 0%, transparent 66%), #0E1824',
+  forest:
+    'radial-gradient(130% 110% at -10% -12%, rgba(99, 180, 135, 0.52) 0%, transparent 56%), radial-gradient(120% 110% at 108% -8%, rgba(47, 122, 85, 0.46) 0%, transparent 58%), radial-gradient(150% 120% at 50% 120%, rgba(21, 62, 43, 0.68) 0%, transparent 66%), #0D1B14',
 };
 
 const desktopLayoutOptions = [

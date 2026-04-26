@@ -46,7 +46,7 @@ import {
   fetchTenantIntegrationConfig,
 } from '../lib/backendStore';
 import { fetchMergedServiceTemplates } from '../lib/serviceTemplateStore';
-import { fetchGlobalPortalLogoMap } from '../lib/portalLogoLibraryStore';
+import { fetchApplicationIconLibrary } from '../lib/applicationIconLibraryStore';
 import { sendWhatsAppDocument } from '../lib/whatsappService';
 import { TasksIcon, WhatsAppColorIcon } from '../components/icons/AppIcons';
 import { toSafeDocId } from '../lib/idUtils';
@@ -268,7 +268,7 @@ const ProformaInvoicesPage = () => {
       fetchTenantPortals(tenantId),
       fetchTenantUsersMap(tenantId),
       fetchMergedServiceTemplates(tenantId),
-      fetchGlobalPortalLogoMap(),
+      fetchApplicationIconLibrary(tenantId),
     ]);
     if (proRes.ok) {
       setRows(proRes.rows || []);
@@ -280,8 +280,11 @@ const ProformaInvoicesPage = () => {
     if (serviceRes.ok) setServiceTemplates(serviceRes.rows || []);
     if (iconRes.ok) {
       const next = {};
-      Object.keys(iconRes.map || {}).forEach((key) => {
-        next[key] = iconRes.map[key].logoUrl || '';
+      (iconRes.rows || []).forEach((item) => {
+        const iconId = String(item?.iconId || '').trim();
+        const iconUrl = String(item?.iconUrl || '').trim();
+        if (!iconId || !iconUrl) return;
+        next[iconId] = iconUrl;
       });
       setAppIconUrlById(next);
     }

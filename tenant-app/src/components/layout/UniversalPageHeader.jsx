@@ -116,7 +116,7 @@ const UniversalPageHeader = ({
               <img
                 src={effectiveConfig.iconUrl}
                 alt={titleText || 'Page Icon'}
-                className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+                className="absolute inset-0 h-full w-full object-cover object-center scale-[1.03] transition-transform duration-700 ease-out group-hover:scale-[1.08]"
                 loading="lazy"
               />
             ) : effectiveConfig.iconKey ? (

@@ -1,5 +1,5 @@
 /**
- * Sovereign Satellite Intelligence - Client Usage Scoring logic.
+ * Master Satellite Intelligence - Client Usage Scoring logic.
  */
 
 export const computeUsageScore = (client) => {

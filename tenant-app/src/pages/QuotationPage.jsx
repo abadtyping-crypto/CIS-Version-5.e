@@ -1,21 +1,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FileText, Copy, Mail, Ban, CheckCircle2, RefreshCcw, Plus, Tags, X, GripVertical, Users, UserPlus, ChevronUp, ChevronDown, Trash2, Check, Minus, Search, CalendarDays } from 'lucide-react';
+import { FileText, Copy, Mail, Eye, Printer, Ban, CheckCircle2, RefreshCcw, Plus, Tags, X, GripVertical, Users, UserPlus, ChevronUp, ChevronDown, Trash2, Check, Minus, Search, CalendarDays } from 'lucide-react';
 import PageShell from '../components/layout/PageShell';
 import useElectronLayoutMode from '../hooks/useElectronLayoutMode';
 import { useTenant } from '../context/useTenant';
 import { useAuth } from '../context/useAuth';
-import { useTheme } from '../context/useTheme';
 import ClientSearchField from '../components/dailyTransaction/ClientSearchField';
 import ServiceSearchField from '../components/dailyTransaction/ServiceSearchField';
 import { fetchApplicationIconLibrary } from '../lib/applicationIconLibraryStore';
 import CurrencyValue from '../components/common/CurrencyValue';
 import DirhamIcon from '../components/common/DirhamIcon';
-import ProgressVideoOverlay from '../components/common/ProgressVideoOverlay';
 import ConfirmDialog from '../components/common/ConfirmDialog';
 import ActionProgressOverlay from '../components/common/ActionProgressOverlay';
 import MobileContactsField from '../components/common/MobileContactsField';
 import EmailContactsField from '../components/common/EmailContactsField';
+import ContactPersonsField from '../components/common/ContactPersonsField';
 import AddressField from '../components/common/AddressField';
 import InputActionField from '../components/common/InputActionField';
 import EmirateSelect from '../components/common/EmirateSelect';
@@ -52,16 +51,18 @@ import {
   resolvePdfTemplateForRenderer,
 } from '../lib/pdfTemplateRenderer';
 import { getCachedSystemAssetsSnapshot, getSystemAssets, resolveAssetWithVariation } from '../lib/systemAssetsCache';
+import { canUserPerformAction } from '../lib/userControlPreferences';
 import CreatedByIdentityCard from '../components/common/CreatedByIdentityCard';
 import QuotationClientQuickCreate from '../components/quotation/QuotationClientQuickCreate';
 import DocumentActionButton from '../components/common/DocumentActionButton';
-import ApplicationIdentityRow from '../components/common/ApplicationIdentityRow';
+import ApplicationSignatureLine from '../components/common/ApplicationSignatureLine';
+import SignatureCard from '../components/common/SignatureCard';
+import SecureViewer from '../components/common/SecureViewer';
 
 const inputClass = 'compact-field mt-1 w-full rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] px-3 py-2.5 text-sm font-bold text-[var(--c-text)] outline-none transition focus:border-[var(--c-accent)] focus:ring-4 focus:ring-[var(--c-accent)]/5';
 const selectClass = 'compact-field mt-1 w-full rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] px-3 py-2.5 text-sm font-bold text-[var(--c-text)] outline-none transition focus:border-[var(--c-accent)] focus:ring-4 focus:ring-[var(--c-accent)]/5';
 const activeTabClass = 'bg-[var(--c-accent)] text-white shadow-lg shadow-[color-mix(in_srgb,var(--c-accent)_28%,transparent)]';
 const activeChoiceCardClass = 'border-[var(--c-accent)] bg-[color:color-mix(in_srgb,var(--c-accent)_10%,var(--c-surface))]';
-const activeChoiceIconClass = 'bg-[var(--c-accent)] text-white';
 const primaryActionClass = 'bg-[var(--c-accent)] text-white shadow-lg shadow-[color-mix(in_srgb,var(--c-accent)_24%,transparent)] hover:opacity-95';
 const proformaReferenceInlineClass = 'inline-flex min-w-0 max-w-[12rem] items-center text-xs font-black text-[var(--c-success)] transition hover:text-[color:color-mix(in_srgb,var(--c-success)_70%,var(--c-text)_30%)] hover:underline';
 const proformaReferenceHeaderClass = 'inline-flex min-w-0 max-w-full items-center text-lg font-bold leading-tight text-[var(--c-success)] transition hover:text-[color:color-mix(in_srgb,var(--c-success)_70%,var(--c-text)_30%)] hover:underline';
@@ -88,6 +89,11 @@ const createManualEmailContact = (overrides = {}) => ({
   emailEnabled: true,
   ...overrides,
 });
+const createManualContactPerson = (overrides = {}) => ({
+  id: makeContactId('contact-person'),
+  value: '',
+  ...overrides,
+});
 const syncManualClientContacts = (draft) => {
   const mobileContacts = Array.isArray(draft.mobileContacts) && draft.mobileContacts.length
     ? draft.mobileContacts
@@ -95,12 +101,23 @@ const syncManualClientContacts = (draft) => {
   const emailContacts = Array.isArray(draft.emailContacts) && draft.emailContacts.length
     ? draft.emailContacts
     : [createManualEmailContact()];
+  const contactPersons = Array.isArray(draft.contactPersons) && draft.contactPersons.length
+    ? draft.contactPersons.map((contact) => ({
+      id: contact?.id || makeContactId('contact-person'),
+      value: String(contact?.value || ''),
+    }))
+    : [createManualContactPerson({
+      value: String(draft.contactPersonName || ''),
+    })];
+  const primaryContactPerson = contactPersons.find((contact) => String(contact.value || '').trim()) || contactPersons[0];
   const primaryMobileContact = mobileContacts.find((contact) => String(contact.value || '').trim()) || mobileContacts[0];
   const primaryEmailContact = emailContacts.find((contact) => String(contact.value || '').trim()) || emailContacts[0];
   return {
     ...draft,
     mobileContacts,
     emailContacts,
+    contactPersons,
+    contactPersonName: primaryContactPerson?.value || '',
     primaryMobile: primaryMobileContact?.value || '',
     primaryMobileCountry: primaryMobileContact?.countryIso2 || DEFAULT_COUNTRY_PHONE_ISO2,
     primaryEmail: primaryEmailContact?.value || '',
@@ -116,6 +133,7 @@ const createEmptyManualClient = () => syncManualClientContacts({
   primaryEmail: '',
   emirate: '',
   address: '',
+  contactPersons: [createManualContactPerson()],
   mobileContacts: [createManualMobileContact()],
   emailContacts: [createManualEmailContact()],
 });
@@ -223,7 +241,6 @@ const QuotationPage = () => {
   const lockToUniversalApps = ENFORCE_UNIVERSAL_APPLICATION_UID;
   const { tenantId } = useTenant();
   const { user } = useAuth();
-  const { resolvedTheme } = useTheme();
   const navigate = useNavigate();
   const { layoutMode } = useElectronLayoutMode();
 
@@ -254,6 +271,10 @@ const QuotationPage = () => {
   const [itemBuilderError, setItemBuilderError] = useState('');
   const [status, setStatus] = useState('');
   const [statusType, setStatusType] = useState('info');
+  const [cloneAwareness, setCloneAwareness] = useState(null);
+  const [quotationPreviewUrl, setQuotationPreviewUrl] = useState('');
+  const [quotationPreviewFilePath, setQuotationPreviewFilePath] = useState('');
+  const [isQuotationPreviewOpen, setIsQuotationPreviewOpen] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState({ open: false });
   const [actionOverlay, setActionOverlay] = useState({
     open: false,
@@ -267,6 +288,11 @@ const QuotationPage = () => {
     quotation: null,
     reason: '',
     error: '',
+  });
+  const [extendDialog, setExtendDialog] = useState({
+    open: false,
+    quotation: null,
+    weeks: 2,
   });
   const [serviceRefreshKey, setServiceRefreshKey] = useState(0);
   const [isInlineTemplateOpen, setIsInlineTemplateOpen] = useState(false);
@@ -319,6 +345,7 @@ const QuotationPage = () => {
   const quotationDateFieldRef = useRef(null);
   const validityFieldRef = useRef(null);
   const actionLockRef = useRef(false);
+  const quotationPreviewFrameRef = useRef(null);
 
   const tenantUserMap = useMemo(() => {
     const next = {};
@@ -429,6 +456,12 @@ const QuotationPage = () => {
     };
   }, [tenantId]);
 
+  useEffect(() => () => {
+    if (quotationPreviewUrl) {
+      URL.revokeObjectURL(quotationPreviewUrl);
+    }
+  }, [quotationPreviewUrl]);
+
   const expiryDate = useMemo(() => addWeeks(quotationDate, validityWeeks), [quotationDate, validityWeeks]);
   const resolvedQuotationTerms = useMemo(
     () => serializeQuotationTerms(quotationTerms, expiryDate),
@@ -457,6 +490,8 @@ const QuotationPage = () => {
   }, [systemAssets, appIconUrlById]);
   const actionIconUrls = useMemo(() => ({
     downloadPdf: resolveActionIconUrl('ui_action_pdf', 'ui_action_download', 'ui_action_file_download', 'ui_action_download_pdf'),
+    viewPdf: resolveActionIconUrl('ui_action_view', 'ui_action_preview'),
+    printPdf: resolveActionIconUrl('ui_action_print'),
     email: resolveActionIconUrl('ui_action_email', 'ui_action_mail'),
     clone: resolveActionIconUrl('ui_action_clone', 'ui_action_copy'),
     extend: resolveActionIconUrl('ui_action_extend'),
@@ -472,6 +507,22 @@ const QuotationPage = () => {
       ? selectedQuotation.proformaDisplayRef || selectedQuotation.proformaId || selectedQuotation.convertedToProformaId || ''
       : ''),
     [selectedQuotation],
+  );
+  const selectedQuotationStatus = useMemo(
+    () => normalizeQuotationStatus(selectedQuotation?.status),
+    [selectedQuotation?.status],
+  );
+  const canExtendQuotation = useMemo(
+    () => Boolean(user) && canUserPerformAction(tenantId, user, 'extendQuotation'),
+    [tenantId, user],
+  );
+  const canCancelQuotation = useMemo(
+    () => Boolean(user) && canUserPerformAction(tenantId, user, 'cancelQuotation'),
+    [tenantId, user],
+  );
+  const isSelectedQuotationConverted = useMemo(
+    () => selectedQuotationStatus === 'converted' || Boolean(selectedProformaRef),
+    [selectedQuotationStatus, selectedProformaRef],
   );
   const subtotalAmount = useMemo(
     () => items.reduce((sum, item) => sum + ((Number(item.qty) || 0) * (Number(item.amount) || 0)), 0),
@@ -517,7 +568,7 @@ const QuotationPage = () => {
     const preferredName = String(item?.name || '').trim();
     if (preferredName) return preferredName;
     const serviceMeta = resolveServiceMeta(item?.applicationId);
-    return serviceMeta?.name || serviceMeta?.label || serviceMeta?.iconName || item?.applicationId || 'Application';
+    return serviceMeta?.name || serviceMeta?.label || serviceMeta?.iconName || 'Application';
   }, [resolveServiceMeta]);
 
   const pushStatus = (message, type = 'info') => {
@@ -549,9 +600,32 @@ const QuotationPage = () => {
       error: '',
     });
   }, []);
+  const openExtendDialog = useCallback((quotation) => {
+    const defaultWeeks = Math.min(8, Math.max(1, Number(quotation?.validityWeeks) || 2));
+    setExtendDialog({
+      open: true,
+      quotation,
+      weeks: defaultWeeks,
+    });
+  }, []);
+  const closeExtendDialog = useCallback(() => {
+    setExtendDialog({
+      open: false,
+      quotation: null,
+      weeks: 2,
+    });
+  }, []);
   const closeActionOverlay = useCallback(() => {
     setActionOverlay((prev) => ({ ...prev, open: false }));
   }, []);
+  const closeQuotationPreview = useCallback(() => {
+    if (quotationPreviewUrl) {
+      URL.revokeObjectURL(quotationPreviewUrl);
+    }
+    setQuotationPreviewUrl('');
+    setQuotationPreviewFilePath('');
+    setIsQuotationPreviewOpen(false);
+  }, [quotationPreviewUrl]);
   const focusQuotationDateControls = useCallback(() => {
     const target = validityFieldRef.current || quotationDateFieldRef.current;
     if (!target) return;
@@ -598,6 +672,7 @@ const QuotationPage = () => {
     setQuotationDate(new Date().toISOString().slice(0, 10));
     setValidityWeeks(2);
     setQuotationDescription('');
+    setCloneAwareness(null);
     setClientMode('manual');
     setExistingClient(null);
     setSelectedDependents([]);
@@ -720,29 +795,51 @@ const QuotationPage = () => {
     setSelectedDependents((prev) => prev.filter((item) => item.id !== id));
   };
 
-  const stripUndefined = (obj) =>
-    Object.fromEntries(Object.entries(obj || {}).filter(([, v]) => v !== undefined && v !== null));
+  const stripEmptyWriteValues = (value) => {
+    if (value === undefined || value === null) return undefined;
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      return trimmed ? trimmed : undefined;
+    }
+    if (Array.isArray(value)) {
+      const cleaned = value
+        .map((item) => stripEmptyWriteValues(item))
+        .filter((item) => item !== undefined);
+      return cleaned.length ? cleaned : undefined;
+    }
+    if (typeof value === 'object') {
+      const cleanedObject = Object.entries(value).reduce((acc, [key, nestedValue]) => {
+        const cleanedValue = stripEmptyWriteValues(nestedValue);
+        if (cleanedValue !== undefined) acc[key] = cleanedValue;
+        return acc;
+      }, {});
+      return Object.keys(cleanedObject).length ? cleanedObject : undefined;
+    }
+    return value;
+  };
 
   const buildQuotationPayload = (overrides = {}) => {
     const filledMobileContacts = manualClient.mobileContacts.filter((contact) => String(contact.value || '').trim());
     const filledEmailContacts = manualClient.emailContacts.filter((contact) => String(contact.value || '').trim());
+    const filledContactPersons = (manualClient.contactPersons || []).filter((contact) => String(contact.value || '').trim());
     const primaryMobileContact = filledMobileContacts[0] || manualClient.mobileContacts[0] || createManualMobileContact();
     const primaryEmailContact = filledEmailContacts[0] || manualClient.emailContacts[0] || createManualEmailContact();
+    const serializedContactPersons = filledContactPersons.map((contact) => String(contact.value || '').trim()).filter(Boolean).join(' | ');
     const clientSnapshotRaw = clientMode === 'existing'
       ? {
-          id: existingClient?.id || '',
-          name: existingClient?.fullName || existingClient?.tradeName || '',
-          tradeName: existingClient?.tradeName || '',
-          email: existingClient?.primaryEmail || '',
-          type: existingClient?.type || '',
+          id: existingClient?.id || undefined,
+          name: existingClient?.fullName || existingClient?.tradeName || undefined,
+          tradeName: existingClient?.tradeName || undefined,
+          email: existingClient?.primaryEmail || undefined,
+          type: existingClient?.type || undefined,
         }
       : {
-          id: '',
           name: manualClient.legalName,
-          brandName: manualClient.brandName,
-          contactPersonName: manualClient.contactPersonName,
-          email: primaryEmailContact.value || '',
-          mobile: primaryMobileContact.value || '',
+          brandName: manualClient.brandName || undefined,
+          contactPersonName: serializedContactPersons || undefined,
+          contactPersons: filledContactPersons.map((contact) => String(contact.value || '').trim()).filter(Boolean),
+          email: primaryEmailContact.value || undefined,
+          mobile: primaryMobileContact.value || undefined,
           mobileCountryIso2: primaryMobileContact.countryIso2 || DEFAULT_COUNTRY_PHONE_ISO2,
           mobileDialCode: findCountryPhoneOption(primaryMobileContact.countryIso2 || DEFAULT_COUNTRY_PHONE_ISO2)?.dialCode || '',
           mobileContacts: filledMobileContacts.map((contact) => ({
@@ -755,13 +852,13 @@ const QuotationPage = () => {
             value: contact.value,
             emailEnabled: contact.emailEnabled !== false,
           })),
-          emirate: manualClient.emirate,
-          address: manualClient.address,
-          type: manualClient.clientType,
+          emirate: manualClient.emirate || undefined,
+          address: manualClient.address || undefined,
+          type: manualClient.clientType || undefined,
         };
-    const clientSnapshot = stripUndefined(clientSnapshotRaw);
+    const clientSnapshot = stripEmptyWriteValues(clientSnapshotRaw);
 
-    return {
+    const payload = {
       displayRef: reference,
       quoteDate: quotationDate,
       description: normalizeLibraryDescription(quotationDescription),
@@ -770,7 +867,7 @@ const QuotationPage = () => {
       termsAndConditions: resolvedQuotationTerms,
       termsTemplateLines: serializeQuotationTermTemplates(quotationTerms),
       clientMode,
-      clientId: clientMode === 'existing' ? (existingClient?.id || null) : null,
+      clientId: clientMode === 'existing' ? (existingClient?.id || undefined) : undefined,
       dependentIds: selectedDependents.map((item) => item.id),
       dependentNames: selectedDependents.map((item) => item.fullName || item.tradeName || item.displayClientId || ''),
       clientSnapshot,
@@ -788,13 +885,12 @@ const QuotationPage = () => {
       discountAmount,
       totalAmount,
       status: 'generated',
-      sourceQuotationId: null,
-      cancellationReason: null,
-      acceptedAt: null,
       createdBy: user?.uid || '',
       createdAt: new Date().toISOString(),
       ...overrides,
     };
+
+    return stripEmptyWriteValues(payload) || {};
   };
 
   const validateComposer = useCallback(() => {
@@ -846,8 +942,33 @@ const QuotationPage = () => {
       total: item.lineTotal,
     })),
   });
+  const base64ToPdfBlob = useCallback((base64) => {
+    const binary = window.atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index += 1) {
+      bytes[index] = binary.charCodeAt(index);
+    }
+    return new Blob([bytes], { type: 'application/pdf' });
+  }, []);
+  const printQuotationPreview = useCallback(() => {
+    const frame = quotationPreviewFrameRef.current;
+    const printWindow = frame?.contentWindow;
+    if (printWindow && typeof printWindow.print === 'function') {
+      printWindow.focus();
+      printWindow.print();
+      return;
+    }
+    window.print();
+  }, []);
 
   const executeSaveQuotation = async () => {
+    setActionOverlay({
+      open: true,
+      kind: 'process',
+      title: 'Generating Quotation',
+      subtitle: 'Saving quotation and synchronizing records.',
+      status: 'Finalizing quotation...',
+    });
     setIsSaving(true);
     try {
       // Generate the real document reference only at final submission.
@@ -891,6 +1012,7 @@ const QuotationPage = () => {
         pushStatus(res.error || 'Failed to save quotation.', 'error');
       }
     } finally {
+      closeActionOverlay();
       setIsSaving(false);
     }
   };
@@ -963,6 +1085,15 @@ const QuotationPage = () => {
       } else {
         const rawMobileContacts = Array.isArray(snapshot.mobileContacts) ? snapshot.mobileContacts : [];
         const rawEmailContacts = Array.isArray(snapshot.emailContacts) ? snapshot.emailContacts : [];
+        const parsedContactPersons = Array.isArray(snapshot.contactPersons) && snapshot.contactPersons.length
+          ? snapshot.contactPersons
+            .map((entry) => (typeof entry === 'string' ? entry : entry?.value))
+            .map((value) => String(value || '').trim())
+            .filter(Boolean)
+          : String(snapshot.contactPersonName || '')
+            .split('|')
+            .map((value) => String(value || '').trim())
+            .filter(Boolean);
         setClientMode('manual');
         setExistingClient(null);
         setManualClient(syncManualClientContacts({
@@ -970,6 +1101,11 @@ const QuotationPage = () => {
           legalName: snapshot.name || '',
           brandName: snapshot.brandName || '',
           contactPersonName: snapshot.contactPersonName || '',
+          contactPersons: parsedContactPersons.length
+            ? parsedContactPersons.map((value) => createManualContactPerson({ value }))
+            : [createManualContactPerson({
+              value: snapshot.contactPersonName || '',
+            })],
           primaryMobile: snapshot.mobile || '',
           primaryMobileCountry: snapshot.mobileCountryIso2 || DEFAULT_COUNTRY_PHONE_ISO2,
           primaryEmail: snapshot.email || '',
@@ -1027,7 +1163,11 @@ const QuotationPage = () => {
       setOpenDescriptionRows({});
       setStatus('');
       setActiveView('create');
-      pushStatus(`Clone loaded as draft (${nextRef}) in create form. No quotation is generated yet.`, 'success');
+      setCloneAwareness({
+        sourceRef: quotation.displayRef || '',
+        sourceClientName: snapshot.name || snapshot.tradeName || '',
+      });
+      pushStatus(`Clone loaded as draft (${nextRef}). Verify client details before generating, especially for a different client.`, 'success');
     } finally {
       closeActionOverlay();
       actionLockRef.current = false;
@@ -1038,7 +1178,7 @@ const QuotationPage = () => {
     if (!quotation || actionLockRef.current || actionOverlay.open || isSaving) return;
     openConfirm({
       title: 'Clone As Draft?',
-      message: `Load ${quotation.displayRef} into create form as a draft?\n\nNo quotation will be created until you click Generate.`,
+      message: `Load ${quotation.displayRef} into create form as a draft?\n\nNo quotation will be created until you click Generate.\n\nImportant: Verify client details before generating if this is for a different client.`,
       confirmText: 'Load Draft',
       cancelText: 'Cancel',
       onConfirm: async () => {
@@ -1049,7 +1189,10 @@ const QuotationPage = () => {
     });
   };
 
-  const executeExtendQuotation = async (quotation) => {
+  const executeExtendQuotation = async (quotation, extensionWeeks = 2) => {
+    const resolvedWeeks = Math.min(8, Math.max(1, Number(extensionWeeks) || 2));
+    const nextQuoteDate = new Date().toISOString().slice(0, 10);
+    const nextExpiryDate = addWeeks(nextQuoteDate, resolvedWeeks);
     const nextRef = await generateDisplayDocumentRef(tenantId, 'quotation');
     const nextId = toSafeDocId(nextRef, 'quotation');
     const expireRes = await updateExistingQuotation(quotation.id, { status: 'expired' });
@@ -1061,21 +1204,24 @@ const QuotationPage = () => {
       ...quotation,
       displayRef: nextRef,
       sourceQuotationId: quotation.id,
-      quoteDate: new Date().toISOString().slice(0, 10),
-      expiryDate: addWeeks(new Date().toISOString().slice(0, 10), quotation.validityWeeks || 2),
+      quoteDate: nextQuoteDate,
+      validityWeeks: resolvedWeeks,
+      expiryDate: nextExpiryDate,
       termsAndConditions: resolveStoredQuotationTerms(
         quotation.termsTemplateLines,
-        addWeeks(new Date().toISOString().slice(0, 10), quotation.validityWeeks || 2),
+        nextExpiryDate,
       ) || quotation.termsAndConditions || '',
       createdAt: new Date().toISOString(),
-      updatedAt: null,
       status: 'generated',
-      cancellationReason: null,
-      acceptedAt: null,
       createdBy: user?.uid || quotation.createdBy || '',
     };
     const createRes = await upsertTenantQuotation(tenantId, nextId, nextPayload);
-    pushStatus(createRes.ok ? `Quotation extended as ${nextRef}.` : (createRes.error || 'Failed to create the extended quotation.'), createRes.ok ? 'success' : 'error');
+    pushStatus(
+      createRes.ok
+        ? `Quotation extended as ${nextRef} (${resolvedWeeks} week${resolvedWeeks > 1 ? 's' : ''} validity).`
+        : (createRes.error || 'Failed to create the extended quotation.'),
+      createRes.ok ? 'success' : 'error',
+    );
     if (createRes.ok) {
       await loadData();
       setSelectedQuotationId(nextId);
@@ -1084,17 +1230,19 @@ const QuotationPage = () => {
 
   const handleExtend = (quotation) => {
     if (!quotation) return;
-    openConfirm({
-      title: 'Extend Quotation?',
-      message: `Create a new extended quotation from ${quotation.displayRef} and mark the current one as expired?`,
-      confirmText: 'Extend',
-      cancelText: 'Cancel',
-      onConfirm: async () => {
-        closeConfirm();
-        await executeExtendQuotation(quotation);
-      },
-      onCancel: closeConfirm,
-    });
+    if (!canExtendQuotation) {
+      pushStatus('You do not have permission to extend quotations.', 'error');
+      return;
+    }
+    openExtendDialog(quotation);
+  };
+
+  const confirmExtendQuotation = async () => {
+    const quotation = extendDialog.quotation;
+    if (!quotation) return;
+    const resolvedWeeks = Math.min(8, Math.max(1, Number(extendDialog.weeks) || 2));
+    closeExtendDialog();
+    await executeExtendQuotation(quotation, resolvedWeeks);
   };
 
   const confirmCancelQuotation = async () => {
@@ -1105,8 +1253,8 @@ const QuotationPage = () => {
       setCancelReasonDialog((prev) => ({ ...prev, error: 'Cancellation reason is required.' }));
       return;
     }
-    if (normalizedReason.length < 30) {
-      setCancelReasonDialog((prev) => ({ ...prev, error: 'Cancellation reason must be at least 30 characters.' }));
+    if (normalizedReason.length < 10) {
+      setCancelReasonDialog((prev) => ({ ...prev, error: 'Cancellation reason must be at least 10 characters.' }));
       return;
     }
     closeCancelReasonDialog();
@@ -1121,6 +1269,16 @@ const QuotationPage = () => {
 
   const handleCancel = (quotation) => {
     if (!quotation) return;
+    if (!canCancelQuotation) {
+      pushStatus('You do not have permission to cancel quotations.', 'error');
+      return;
+    }
+    const normalizedStatus = normalizeQuotationStatus(quotation.status);
+    const linkedProforma = quotation.proformaDisplayRef || quotation.proformaId || quotation.convertedToProformaId;
+    if (normalizedStatus === 'converted' || linkedProforma) {
+      pushStatus('Converted quotation cannot be canceled.', 'error');
+      return;
+    }
     openCancelReasonDialog(quotation);
   };
 
@@ -1180,17 +1338,199 @@ const QuotationPage = () => {
       status: 'Rendering PDF...',
     });
     try {
+      const filename = `${quotation.displayRef || 'quotation'}.pdf`;
       const pdfRes = await generateTenantPdf({
         tenantId,
         documentType: 'quotation',
         data: buildPdfData(quotation),
-        save: true,
+        save: false,
+        returnBase64: true,
+        filename,
       });
-      pushStatus(pdfRes.ok ? `PDF generated for ${quotation.displayRef}.` : (pdfRes.error || 'Failed to generate PDF.'), pdfRes.ok ? 'success' : 'error');
+      if (!pdfRes.ok || !pdfRes.base64) {
+        pushStatus(pdfRes.error || 'Failed to generate PDF.', 'error');
+        return;
+      }
+
+      if (window.electron?.documents?.savePdfBase64) {
+        const saveRes = await window.electron.documents.savePdfBase64({
+          base64: pdfRes.base64,
+          tenantId,
+          documentType: 'quotation',
+          fileName: filename,
+        });
+        if (!saveRes?.ok) {
+          pushStatus(saveRes?.error || 'Failed to save quotation PDF.', 'error');
+          return;
+        }
+        setQuotationPreviewUrl('');
+        setQuotationPreviewFilePath(saveRes.filePath || '');
+        setIsQuotationPreviewOpen(true);
+        pushStatus(`PDF saved to ACIS Attachments: ${saveRes.fileName || filename}.`, 'success');
+        openConfirm({
+          title: 'PDF Saved',
+          message: `${quotation.displayRef} was saved inside ACIS Attachments. Do you want a copy in Downloads?`,
+          confirmText: 'Copy',
+          cancelText: 'Close',
+          onConfirm: async () => {
+            const copyRes = await window.electron.documents.copyToDownloads({
+              filePath: saveRes.filePath,
+              fileName: saveRes.fileName || filename,
+            });
+            pushStatus(
+              copyRes?.ok ? `Copied ${copyRes.fileName || filename} to Downloads.` : (copyRes?.error || 'Failed to copy PDF to Downloads.'),
+              copyRes?.ok ? 'success' : 'error',
+            );
+            closeConfirm();
+          },
+          onCancel: closeConfirm,
+        });
+        return;
+      }
+
+      const blobUrl = URL.createObjectURL(base64ToPdfBlob(pdfRes.base64));
+      const anchor = document.createElement('a');
+      anchor.href = blobUrl;
+      anchor.download = filename;
+      anchor.rel = 'noopener';
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      pushStatus(`PDF downloaded for ${quotation.displayRef}.`, 'success');
+      openConfirm({
+        title: 'Download Complete',
+        message: `${quotation.displayRef} downloaded. Do you want to open it now?`,
+        confirmText: 'Open',
+        cancelText: 'Close',
+        onConfirm: () => {
+          const popup = window.open(blobUrl, '_blank', 'noopener,noreferrer');
+          if (!popup) {
+            pushStatus('Popup blocked. Allow popups to open the downloaded PDF.', 'error');
+          }
+          closeConfirm();
+          window.setTimeout(() => URL.revokeObjectURL(blobUrl), 15000);
+        },
+        onCancel: () => {
+          URL.revokeObjectURL(blobUrl);
+          closeConfirm();
+        },
+      });
     } finally {
       closeActionOverlay();
       actionLockRef.current = false;
     }
+  };
+
+  const executePreviewPdf = async (quotation) => {
+    if (!quotation || actionLockRef.current) return;
+    actionLockRef.current = true;
+    setActionOverlay({
+      open: true,
+      kind: 'pdf',
+      title: 'Preparing Quotation Preview',
+      subtitle: 'Generating the latest quotation for in-app view.',
+      status: 'Preparing preview...',
+    });
+    try {
+      const pdfRes = await generateTenantPdf({
+        tenantId,
+        documentType: 'quotation',
+        data: buildPdfData(quotation),
+        save: false,
+        returnBase64: true,
+        filename: `${quotation.displayRef || 'quotation'}.pdf`,
+      });
+      if (!pdfRes.ok || !pdfRes.base64) {
+        pushStatus(pdfRes.error || 'Failed to generate preview PDF.', 'error');
+        return;
+      }
+      if (quotationPreviewUrl) {
+        URL.revokeObjectURL(quotationPreviewUrl);
+      }
+      const previewUrl = URL.createObjectURL(base64ToPdfBlob(pdfRes.base64));
+      setQuotationPreviewFilePath('');
+      setQuotationPreviewUrl(previewUrl);
+      setIsQuotationPreviewOpen(true);
+    } finally {
+      closeActionOverlay();
+      actionLockRef.current = false;
+    }
+  };
+
+  const handlePreviewPdf = (quotation) => {
+    if (!quotation || actionLockRef.current || actionOverlay.open || isSaving) return;
+    void executePreviewPdf(quotation);
+  };
+
+  const executePrintPdf = async (quotation) => {
+    if (!quotation || actionLockRef.current) return;
+    actionLockRef.current = true;
+    setActionOverlay({
+      open: true,
+      kind: 'process',
+      title: 'Printing Quotation',
+      subtitle: 'Generating PDF and sending it to printer.',
+      status: 'Preparing print...',
+    });
+    try {
+      const pdfRes = await generateTenantPdf({
+        tenantId,
+        documentType: 'quotation',
+        data: buildPdfData(quotation),
+        save: false,
+        returnBase64: true,
+        filename: `${quotation.displayRef || 'quotation'}.pdf`,
+      });
+      if (!pdfRes.ok || !pdfRes.base64) {
+        pushStatus(pdfRes.error || 'Failed to prepare quotation for print.', 'error');
+        return;
+      }
+
+      const hasElectronNativePrint = Boolean(window.electron?.documents?.printPdfBase64);
+      if (hasElectronNativePrint) {
+        const nativePrintRes = await window.electron.documents.printPdfBase64({
+          base64: pdfRes.base64,
+          jobName: `Quotation ${quotation.displayRef || ''}`.trim(),
+        });
+        if (nativePrintRes?.ok) {
+          pushStatus(`Quotation ${quotation.displayRef} sent to printer.`, 'success');
+          return;
+        }
+        pushStatus(nativePrintRes?.error || 'Print request failed.', 'error');
+        return;
+      }
+
+      const blobUrl = URL.createObjectURL(base64ToPdfBlob(pdfRes.base64));
+      const frame = document.createElement('iframe');
+      frame.style.position = 'fixed';
+      frame.style.right = '0';
+      frame.style.bottom = '0';
+      frame.style.width = '0';
+      frame.style.height = '0';
+      frame.style.border = '0';
+      frame.src = blobUrl;
+      document.body.appendChild(frame);
+
+      frame.onload = () => {
+        frame.contentWindow?.focus();
+        frame.contentWindow?.print();
+        window.setTimeout(() => {
+          URL.revokeObjectURL(blobUrl);
+          if (document.body.contains(frame)) {
+            document.body.removeChild(frame);
+          }
+        }, 1200);
+      };
+      pushStatus(`Quotation ${quotation.displayRef} sent to browser print dialog.`, 'success');
+    } finally {
+      closeActionOverlay();
+      actionLockRef.current = false;
+    }
+  };
+
+  const handlePrintPdf = (quotation) => {
+    if (!quotation || actionLockRef.current || actionOverlay.open || isSaving) return;
+    void executePrintPdf(quotation);
   };
 
   const handleDownloadPdf = (quotation) => {
@@ -1298,6 +1638,17 @@ const QuotationPage = () => {
 
         {activeView === 'create' ? (
           <div className="space-y-6">
+            {cloneAwareness ? (
+              <div className="rounded-2xl border border-[color:color-mix(in_srgb,var(--c-warning)_40%,var(--c-border))] bg-[color:color-mix(in_srgb,var(--c-warning)_12%,var(--c-surface))] px-4 py-3">
+                <p className="text-xs font-black uppercase tracking-wider text-[var(--c-warning)]">Clone Awareness</p>
+                <p className="mt-1 text-sm font-semibold text-[var(--c-text)]">
+                  This draft was cloned from {cloneAwareness.sourceRef || 'an existing quotation'}.
+                </p>
+                <p className="mt-1 text-xs font-semibold text-[var(--c-muted)]">
+                  Client details were copied from the source quotation{cloneAwareness.sourceClientName ? ` (${cloneAwareness.sourceClientName})` : ''}. Please verify or correct client information before generating.
+                </p>
+              </div>
+            ) : null}
             <div className="rounded-2xl border border-[var(--c-border)] bg-[var(--c-surface)] p-4 shadow-sm">
               <div className="grid gap-4 md:grid-cols-[200px_minmax(0,1fr)_220px]">
                 <label className="text-xs font-bold uppercase tracking-wider text-[var(--c-muted)]">Quotation Date<input ref={quotationDateFieldRef} type="date" className={inputClass} style={{ colorScheme: 'light' }} value={quotationDate} onChange={(e) => setQuotationDate(e.target.value)} /></label>
@@ -1309,40 +1660,32 @@ const QuotationPage = () => {
               <div className="space-y-2">
                 <p className="text-xs font-bold uppercase tracking-wider text-[var(--c-muted)]">Client Source</p>
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <button
-                    type="button"
+                  <SignatureCard
+                    as="button"
                     onClick={() => {
                       setClientMode('manual');
                       setExistingClient(null);
                       setSelectedDependents([]);
                     }}
-                    className={`flex items-center gap-3 rounded-xl border px-3 py-3 text-left transition ${clientMode === 'manual' ? activeChoiceCardClass : 'border-[var(--c-border)] bg-[var(--c-panel)]'}`}
-                  >
-                    <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${clientMode === 'manual' ? activeChoiceIconClass : 'bg-[var(--c-surface)] text-[var(--c-accent)]'}`}>
-                      <UserPlus strokeWidth={1.5} className="h-5 w-5" />
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block text-sm font-black text-[var(--c-text)]">New Client</span>
-                      <span className="block text-[10px] font-bold uppercase text-[var(--c-muted)]">Enter details manually</span>
-                    </span>
-                  </button>
-                  <button
-                    type="button"
+                    isActive={clientMode === 'manual'}
+                    title="New Client"
+                    subtitle="Enter details manually"
+                    icon={UserPlus}
+                    className="w-full"
+                  />
+                  <SignatureCard
+                    as="button"
                     onClick={() => {
                       setClientMode('existing');
                       setExistingClient(null);
                       setSelectedDependents([]);
                     }}
-                    className={`flex items-center gap-3 rounded-xl border px-3 py-3 text-left transition ${clientMode === 'existing' ? activeChoiceCardClass : 'border-[var(--c-border)] bg-[var(--c-panel)]'}`}
-                  >
-                    <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${clientMode === 'existing' ? activeChoiceIconClass : 'bg-[var(--c-surface)] text-[var(--c-accent)]'}`}>
-                      <Users strokeWidth={1.5} className="h-5 w-5" />
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block text-sm font-black text-[var(--c-text)]">Existing Client</span>
-                      <span className="block text-[10px] font-bold uppercase text-[var(--c-muted)]">Select from saved list</span>
-                    </span>
-                  </button>
+                    isActive={clientMode === 'existing'}
+                    title="Existing Client"
+                    subtitle="Select from saved list"
+                    icon={Users}
+                    className="w-full"
+                  />
                 </div>
               </div>
 
@@ -1400,28 +1743,24 @@ const QuotationPage = () => {
                   <div className="space-y-2 md:col-span-2">
                     <p className="text-xs font-bold uppercase tracking-wider text-[var(--c-muted)]">Client Type</p>
                     <div className="grid gap-3 sm:grid-cols-2">
-                      <button
-                        type="button"
+                      <SignatureCard
+                        as="button"
                         onClick={() => setManualClient((prev) => ({ ...prev, clientType: 'company' }))}
-                        className={`flex items-center gap-3 rounded-xl border px-3 py-3 text-left transition ${manualClient.clientType === 'company' ? activeChoiceCardClass : 'border-[var(--c-border)] bg-[var(--c-panel)]'}`}
-                      >
-                        <img src={companyTypeIcon} alt="Company" className="h-10 w-10 rounded-xl object-cover" />
-                        <div>
-                          <p className="text-sm font-black text-[var(--c-text)]">Company</p>
-                          <p className="text-[10px] font-bold uppercase text-[var(--c-muted)]">Default quotation client</p>
-                        </div>
-                      </button>
-                      <button
-                        type="button"
+                        isActive={manualClient.clientType === 'company'}
+                        title="Company"
+                        subtitle="Default quotation client"
+                        image={companyTypeIcon}
+                        className="w-full"
+                      />
+                      <SignatureCard
+                        as="button"
                         onClick={() => setManualClient((prev) => ({ ...prev, clientType: 'individual' }))}
-                        className={`flex items-center gap-3 rounded-xl border px-3 py-3 text-left transition ${manualClient.clientType === 'individual' ? activeChoiceCardClass : 'border-[var(--c-border)] bg-[var(--c-panel)]'}`}
-                      >
-                        <img src={individualTypeIcon} alt="Individual" className="h-10 w-10 rounded-xl object-cover" />
-                        <div>
-                          <p className="text-sm font-black text-[var(--c-text)]">Individual</p>
-                          <p className="text-[10px] font-bold uppercase text-[var(--c-muted)]">Switch naming to person flow</p>
-                        </div>
-                      </button>
+                        isActive={manualClient.clientType === 'individual'}
+                        title="Individual"
+                        subtitle="Switch naming to person flow"
+                        image={individualTypeIcon}
+                        className="w-full"
+                      />
                     </div>
                   </div>
                   <label className="text-xs font-bold uppercase tracking-wider text-[var(--c-muted)]">
@@ -1431,6 +1770,9 @@ const QuotationPage = () => {
                       value={manualClient.legalName}
                       onValueChange={(value) => updateManualClient((prev) => ({ ...prev, legalName: value }))}
                       forceUppercase
+                      placeholder={manualClient.clientType === 'individual'
+                        ? 'Full person name'
+                        : 'Use registered company legal name as per trade license'}
                       className="mt-1 w-full"
                       inputClassName="text-sm font-bold"
                     />
@@ -1449,17 +1791,13 @@ const QuotationPage = () => {
                     </label>
                   ) : null}
                   {manualClient.clientType === 'company' ? (
-                    <label className="text-xs font-bold uppercase tracking-wider text-[var(--c-muted)]">
-                      Primary Contact Person (Optional)
-                      <InputActionField
-                        name="manual-contact-person-name"
-                        value={manualClient.contactPersonName}
-                        onValueChange={(value) => updateManualClient((prev) => ({ ...prev, contactPersonName: value }))}
-                        forceUppercase
-                        className="mt-1 w-full"
-                        inputClassName="text-sm font-bold"
+                    <div>
+                      <ContactPersonsField
+                        contacts={manualClient.contactPersons}
+                        onChange={(contacts) => updateManualClient((prev) => ({ ...prev, contactPersons: contacts }))}
+                        maxContacts={3}
                       />
-                    </label>
+                    </div>
                   ) : null}
                   <div className="space-y-2">
                     <MobileContactsField
@@ -1519,6 +1857,7 @@ const QuotationPage = () => {
                   value={quotationDescription}
                   onChange={(e) => setQuotationDescription(e.target.value)}
                   onBlur={() => setQuotationDescription((prev) => normalizeLibraryDescription(prev))}
+                  placeholder="Describe the quotation purpose, required services, and any client-specific context."
                 />
               </label>
             </div>
@@ -1687,9 +2026,12 @@ const QuotationPage = () => {
                             <span className="rounded-md bg-[var(--c-surface)] px-1.5 py-0.5 text-[10px] font-black tracking-wider text-[var(--c-muted)]">
                               {String(index + 1).padStart(2, '0')}
                             </span>
-                            <ApplicationIdentityRow
+                            <ApplicationSignatureLine
                               name={resolveItemName(item)}
                               iconUrl={resolveItemIconUrl(item)}
+                              hideQuantity
+                              hideAmount
+                              withCard={false}
                               className="min-w-0 flex-1"
                             />
                           </div>
@@ -2057,29 +2399,39 @@ const QuotationPage = () => {
                     <p className="mb-3 text-sm font-black text-[var(--c-text)]">Applications</p>
                     <div className="space-y-2">
                       {(selectedQuotation.items || []).map((item, index) => (
-                        <div key={`${selectedQuotation.id}-${index}`} className="flex items-center justify-between gap-3 rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] px-4 py-3">
-                          <ApplicationIdentityRow
-                            name={resolveItemName(item)}
-                            subtitle={`Qty ${item.qty}`}
-                            iconUrl={resolveItemIconUrl(item)}
-                            className="min-w-0 flex-1"
-                          />
-                          <div className="shrink-0 text-sm font-black text-[var(--c-text)]">
-                            <CurrencyValue value={item.lineTotal || 0} iconSize="h-3 w-3" />
-                          </div>
-                        </div>
+                        <ApplicationSignatureLine
+                          key={`${selectedQuotation.id}-${index}`}
+                          name={resolveItemName(item)}
+                          iconUrl={resolveItemIconUrl(item)}
+                          qty={item.qty}
+                          amount={item.lineTotal || 0}
+                        />
                       ))}
                     </div>
                   </div>
                   {String(selectedQuotation.termsAndConditions || '').trim() ? <div className="rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)] p-4"><p className="mb-3 text-sm font-black text-[var(--c-text)]">Terms and Conditions</p><div className="space-y-2">{String(selectedQuotation.termsAndConditions || '').split(/\r?\n/).filter(Boolean).map((term, index) => <p key={`${selectedQuotation.id}-term-${index}`} className="text-sm font-bold text-[var(--c-text)]">{term}</p>)}</div></div> : null}
                   {selectedQuotation.cancellationReason ? <div className="rounded-2xl border border-rose-300 bg-rose-50 p-4 text-sm font-bold text-rose-700">Cancellation reason: {selectedQuotation.cancellationReason}</div> : null}
-                  <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     <DocumentActionButton
                       icon={FileText}
                       iconUrl={actionIconUrls.downloadPdf}
                       label="Download"
                       disabled={isActionBusy}
                       onClick={() => void handleDownloadPdf(selectedQuotation)}
+                    />
+                    <DocumentActionButton
+                      icon={Eye}
+                      iconUrl={actionIconUrls.viewPdf}
+                      label="View"
+                      disabled={isActionBusy}
+                      onClick={() => void handlePreviewPdf(selectedQuotation)}
+                    />
+                    <DocumentActionButton
+                      icon={Printer}
+                      iconUrl={actionIconUrls.printPdf}
+                      label="Print"
+                      disabled={isActionBusy}
+                      onClick={() => void handlePrintPdf(selectedQuotation)}
                     />
                     <DocumentActionButton
                       icon={Mail}
@@ -2099,25 +2451,29 @@ const QuotationPage = () => {
                       icon={RefreshCcw}
                       iconUrl={actionIconUrls.extend}
                       label="Extend"
-                      disabled={isActionBusy}
+                      disabled={isActionBusy || !canExtendQuotation}
                       onClick={() => void handleExtend(selectedQuotation)}
                     />
-                    <DocumentActionButton
-                      icon={CheckCircle2}
-                      iconUrl={actionIconUrls.accept}
-                      label="Accept"
-                      tone="success"
-                      disabled={isActionBusy || String(selectedQuotation.status || '').toLowerCase() === 'converted'}
-                      onClick={() => void handleAccept(selectedQuotation)}
-                    />
-                    <DocumentActionButton
-                      icon={Ban}
-                      iconUrl={actionIconUrls.cancel}
-                      label="Cancel"
-                      tone="danger"
-                      disabled={isActionBusy}
-                      onClick={() => void handleCancel(selectedQuotation)}
-                    />
+                    {!isSelectedQuotationConverted ? (
+                      <DocumentActionButton
+                        icon={CheckCircle2}
+                        iconUrl={actionIconUrls.accept}
+                        label="Accept"
+                        tone="success"
+                        disabled={isActionBusy || selectedQuotationStatus === 'canceled'}
+                        onClick={() => void handleAccept(selectedQuotation)}
+                      />
+                    ) : null}
+                    {!isSelectedQuotationConverted ? (
+                      <DocumentActionButton
+                        icon={Ban}
+                        iconUrl={actionIconUrls.cancel}
+                        label="Cancel"
+                        tone="danger"
+                        disabled={isActionBusy || selectedQuotationStatus === 'canceled' || !canCancelQuotation}
+                        onClick={() => void handleCancel(selectedQuotation)}
+                      />
+                    ) : null}
                   </div>
                 </div>
               ) : <div className="rounded-2xl border border-dashed border-[var(--c-border)] bg-[var(--c-panel)] p-6 text-center text-xs font-bold uppercase tracking-widest text-[var(--c-muted)]">Select a quotation to review it.</div>}
@@ -2136,6 +2492,106 @@ const QuotationPage = () => {
         onConfirm={confirmDialog.onConfirm}
         onCancel={confirmDialog.onCancel || closeConfirm}
       />
+      {isQuotationPreviewOpen && quotationPreviewFilePath ? (
+        <SecureViewer
+          localFilePath={quotationPreviewFilePath}
+          title="Quotation PDF Preview"
+          showFilePath={false}
+          onClose={closeQuotationPreview}
+        />
+      ) : null}
+      {isQuotationPreviewOpen && !quotationPreviewFilePath ? (
+        <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"
+            onClick={closeQuotationPreview}
+          />
+          <div className="relative flex h-[min(88vh,900px)] w-[min(96vw,1100px)] flex-col overflow-hidden rounded-2xl border border-[var(--c-border)] bg-[var(--c-surface)] shadow-2xl">
+            <div className="flex items-center justify-between border-b border-[var(--c-border)] px-4 py-3">
+              <div>
+                <p className="text-base font-black text-[var(--c-text)]">Quotation PDF Preview</p>
+                <p className="text-xs font-semibold text-[var(--c-muted)]">Generated from current quotation snapshot.</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={printQuotationPreview}
+                  className="rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] px-3 py-2 text-xs font-black uppercase tracking-wider text-[var(--c-text)] transition hover:border-[var(--c-accent)] hover:text-[var(--c-accent)]"
+                >
+                  Print
+                </button>
+                <button
+                  type="button"
+                  onClick={closeQuotationPreview}
+                  className="rounded-xl bg-[var(--c-accent)] px-3 py-2 text-xs font-black uppercase tracking-wider text-white shadow-lg transition hover:opacity-90"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 bg-[var(--c-panel)]">
+              {quotationPreviewUrl ? (
+                <iframe
+                  ref={quotationPreviewFrameRef}
+                  title="Quotation PDF Preview"
+                  src={quotationPreviewUrl}
+                  className="h-full w-full"
+                />
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {extendDialog.open ? (
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+            onClick={closeExtendDialog}
+          />
+          <div className="relative w-full max-w-xl rounded-2xl border border-[var(--c-border)] bg-[var(--c-surface)] p-5 shadow-2xl">
+            <p className="text-base font-black text-[var(--c-text)]">Extend Quotation</p>
+            <p className="mt-1 text-sm font-semibold text-[var(--c-muted)]">
+              Select validity for the new quotation from {extendDialog.quotation?.displayRef || 'this quotation'}.
+            </p>
+            <p className="mt-1 text-xs font-semibold text-[var(--c-muted)]">
+              The current quotation will become inactive with expired status after extension.
+            </p>
+            <label className="mt-4 block text-xs font-bold uppercase tracking-wider text-[var(--c-muted)]">
+              Extension Duration
+              <select
+                className={selectClass}
+                value={extendDialog.weeks}
+                onChange={(event) => setExtendDialog((prev) => ({
+                  ...prev,
+                  weeks: Number(event.target.value),
+                }))}
+              >
+                {[1, 2, 3, 4, 5, 6, 7, 8].map((week) => (
+                  <option key={week} value={week}>
+                    {week} Week{week > 1 ? 's' : ''}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="mt-4 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={closeExtendDialog}
+                className="rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] px-4 py-2 text-xs font-black uppercase tracking-wider text-[var(--c-muted)] transition hover:border-[var(--c-text)] hover:text-[var(--c-text)]"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={() => void confirmExtendQuotation()}
+                className="rounded-xl bg-[var(--c-accent)] px-4 py-2 text-xs font-black uppercase tracking-wider text-white shadow-lg transition hover:opacity-90"
+              >
+                Extend
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
       {cancelReasonDialog.open ? (
         <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4">
           <div
@@ -2145,7 +2601,7 @@ const QuotationPage = () => {
           <div className="relative w-full max-w-xl rounded-2xl border border-[var(--c-border)] bg-[var(--c-surface)] p-5 shadow-2xl">
             <p className="text-base font-black text-[var(--c-text)]">Cancel Quotation</p>
             <p className="mt-1 text-sm font-semibold text-[var(--c-muted)]">
-              Enter cancellation reason (minimum 30 characters)
+              Enter cancellation reason
             </p>
             <textarea
               rows={4}
@@ -2194,17 +2650,6 @@ const QuotationPage = () => {
         user={user}
         onClose={handleQuickClientClose}
         onCreated={handleQuickClientCreated}
-      />
-      <ProgressVideoOverlay
-        open={isSaving}
-        dismissible={false}
-        minimal
-        frameless
-        videoSrc="/Video/DocumentGeneration.mp4"
-        frameWidthClass="max-w-[360px]"
-        backdropClassName="bg-white/92 backdrop-blur-sm"
-        title="Quotation Generating"
-        subtitle=""
       />
     </PageShell>
   );

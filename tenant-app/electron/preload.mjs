@@ -30,6 +30,8 @@ contextBridge.exposeInMainWorld(
     },
     documents: {
         printPdfBase64: (payload) => ipcRenderer.invoke('document-print-pdf', payload),
+        savePdfBase64: (payload) => ipcRenderer.invoke('document-save-pdf-base64', payload),
+        copyToDownloads: (payload) => ipcRenderer.invoke('document-copy-to-downloads', payload),
     },
     pdf: {
         resolveSovereignUrl: (localFilePath) => ipcRenderer.invoke('acis-pdf-resolve', { localFilePath }),

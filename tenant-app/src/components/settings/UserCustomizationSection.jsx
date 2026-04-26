@@ -9,12 +9,11 @@ import {
   toggleTenantUserFreeze,
 } from '../../lib/tenantUsers';
 import SettingCard from './SettingCard';
-
-const normalizeRoleLabel = (role) => {
-  const normalized = String(role || '').trim().toLowerCase();
-  if (normalized === 'superadmin' || normalized === 'super admin') return 'Owner';
-  return role || 'Staff';
-};
+import InputActionField from '../common/InputActionField';
+import EmailContactsField from '../common/EmailContactsField';
+import MobileContactsField from '../common/MobileContactsField';
+import { createMobileContact } from '../../lib/mobileContactUtils';
+import { getRoleBadgeClassName, getRoleChipLabel, normalizeRoleLabel } from '../../lib/userRolePresentation';
 
 const inputClass =
   'mt-1 w-full rounded-xl border border-(--c-border) bg-(--c-panel) px-3 py-2.5 text-sm text-(--c-text) outline-none transition focus:border-(--c-accent) focus:ring-2 focus:ring-(--c-ring)';
@@ -47,8 +46,8 @@ const UserCustomizationSection = () => {
   const { user: currentUser } = useAuth();
   const [form, setForm] = useState({
     displayName: '',
-    email: '',
-    mobile: '',
+    emailContacts: [{ id: 'primary-email', value: '' }],
+    mobileContacts: [createMobileContact()],
     role: '',
   });
   const [users, setUsers] = useState(() => getTenantUsers(tenantId));
@@ -70,10 +69,12 @@ const UserCustomizationSection = () => {
   };
 
   const onSave = () => {
+    const primaryEmail = String(form.emailContacts?.[0]?.value || '').trim().toLowerCase();
+    const primaryMobile = String(form.mobileContacts?.[0]?.value || '').trim();
     const payload = {
       displayName: toProperCase(form.displayName),
-      email: toLower(form.email),
-      mobile: toDigits(form.mobile).slice(0, 9),
+      email: toLower(primaryEmail),
+      mobile: toDigits(primaryMobile).slice(0, 9),
       role: form.role,
     };
 
@@ -119,8 +120,8 @@ const UserCustomizationSection = () => {
     setUsers(next);
     setForm({
       displayName: '',
-      email: '',
-      mobile: '',
+      emailContacts: [{ id: 'primary-email', value: '' }],
+      mobileContacts: [createMobileContact()],
       role: '',
     });
     setSaveMessage('User created with Invited status. On first successful login, status becomes Active.');
@@ -156,11 +157,12 @@ const UserCustomizationSection = () => {
       <div className="grid gap-3 sm:grid-cols-2">
         <label className={labelClass}>
           Display Name *
-          <input
-            className={inputClass}
+          <InputActionField
             value={form.displayName}
-            onChange={(event) => updateField('displayName', event.target.value)}
+            onValueChange={(value) => updateField('displayName', value)}
             placeholder="Display Name"
+            showPasteButton
+            className="mt-1"
           />
           <p className="mt-1 text-[11px] text-(--c-muted)">
             This name appears on transactions created by this user.
@@ -178,42 +180,42 @@ const UserCustomizationSection = () => {
             <option value="">Select role</option>
             {roleOptions.map((role) => (
               <option key={role} value={role}>
-                {role}
+                {getRoleChipLabel(role)}
               </option>
             ))}
           </select>
+          {form.role ? (
+            <div className="mt-2">
+              <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] ${getRoleBadgeClassName(normalizeRoleLabel(form.role))}`}>
+                {normalizeRoleLabel(form.role)}
+              </span>
+            </div>
+          ) : null}
           {errors.role ? <p className={errorTextClass}>{errors.role}</p> : null}
         </label>
 
-        <label className={`${labelClass} sm:col-span-2`}>
-          Email Address *
-          <input
-            className={inputClass}
-            value={form.email}
-            onChange={(event) => updateField('email', event.target.value.toLowerCase())}
-            placeholder="email@domain.com"
+        <div className="sm:col-span-2">
+          <EmailContactsField
+            label="Email Address *"
+            contacts={form.emailContacts}
+            onChange={(contacts) => updateField('emailContacts', contacts.slice(0, 1))}
+            maxContacts={1}
           />
           <p className="mt-1 text-[11px] text-(--c-muted)">
             Invite-safe access is tied to this email. User must log in with this exact email.
           </p>
           {errors.email ? <p className={errorTextClass}>{errors.email}</p> : null}
-        </label>
+        </div>
 
-        <label className={labelClass}>
-          Mobile Number
-          <div className="mt-1 flex items-center rounded-xl border border-(--c-border) bg-(--c-panel) px-3">
-            <span className="pr-2 text-sm text-(--c-muted)">+971</span>
-            <input
-              className="w-full bg-transparent py-2.5 text-sm text-(--c-text) outline-none"
-              value={form.mobile}
-              onChange={(event) => updateField('mobile', toDigits(event.target.value).slice(0, 9))}
-              inputMode="numeric"
-              maxLength={9}
-              placeholder="5xxxxxxxx"
-            />
-          </div>
+        <div className={labelClass}>
+          <MobileContactsField
+            label="Mobile Number"
+            contacts={form.mobileContacts}
+            onChange={(contacts) => updateField('mobileContacts', contacts.slice(0, 1))}
+            maxContacts={1}
+          />
           {errors.mobile ? <p className={errorTextClass}>{errors.mobile}</p> : null}
-        </label>
+        </div>
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -253,9 +255,12 @@ const UserCustomizationSection = () => {
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold text-(--c-text)">{member.displayName}</p>
                       <p className="truncate text-xs text-(--c-muted)">{member.email}</p>
-                      <p className="mt-1 text-xs text-(--c-muted)">
-                        Role: <span className={isSuperAdmin ? 'font-bold text-(--c-accent)' : ''}>{normalizeRoleLabel(member.role)}</span> • Status: {member.status}
-                      </p>
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] ${getRoleBadgeClassName(normalizeRoleLabel(member.role))}`}>
+                          {normalizeRoleLabel(member.role)}
+                        </span>
+                        <span className="text-xs text-(--c-muted)">Status: {member.status}</span>
+                      </div>
                     </div>
                     {!isSuperAdmin && (
                       <div className="flex items-center gap-2">

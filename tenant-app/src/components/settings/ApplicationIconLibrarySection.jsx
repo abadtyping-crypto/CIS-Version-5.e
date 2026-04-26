@@ -152,6 +152,14 @@ const ApplicationIconLibrarySection = () => {
     setIconCropPixels(null);
     setIconZoom(1);
     setIconRotation(0);
+    if (!String(iconName || '').trim()) {
+      const suggestedName = sanitizeIconName(file.name.replace(/\.[^.]+$/, ''));
+      const promptedName = window.prompt('Enter icon name', suggestedName || '');
+      if (promptedName !== null) {
+        setIconName(promptedName);
+      }
+    }
+    setStatus('Image selected. Confirm the icon name and click Save.');
   };
 
   const handleStartEdit = (row) => {
@@ -441,15 +449,29 @@ const ApplicationIconLibrarySection = () => {
                   />
                 </label>
 
-                <label className="text-sm text-[var(--c-muted)]">
-                  Icon Image {isEditing ? '(optional for rename only)' : '*'}
+                <div className="text-sm text-[var(--c-muted)]">
+                  <span>Icon Image {isEditing ? '(optional for rename only)' : '*'}</span>
                   <input
                     type="file"
+                    id="settings-icon-library-file-input"
                     accept="image/png,image/jpeg,image/webp,image/svg+xml"
                     onChange={handleFileChange}
-                    className={inputClass}
+                    className="hidden"
                   />
-                </label>
+                  <div className="mt-1 flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => document.getElementById('settings-icon-library-file-input')?.click()}
+                      className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-[var(--c-border)] bg-[var(--c-surface)] px-4 text-sm font-bold text-[var(--c-text)] transition hover:border-[var(--c-accent)] hover:text-[var(--c-accent)]"
+                    >
+                      <span className="text-base leading-none">+</span>
+                      Browse
+                    </button>
+                    <span className="text-xs text-[var(--c-muted)]">
+                      {iconFile ? iconFile.name : 'Choose image from local files'}
+                    </span>
+                  </div>
+                </div>
               </div>
 
               {iconRawUrl ? (
@@ -546,9 +568,9 @@ const ApplicationIconLibrarySection = () => {
                     {filterLocalRows.map((row) => (
                       <article key={row.iconId} className="rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
                         <div className="flex items-center gap-3">
-                          <div className={`flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg p-1 border border-[var(--c-border)]/30 ${isDesktop ? 'bg-white' : 'bg-[var(--c-panel)]'}`}>
+                          <div className={`flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[var(--c-border)]/30 ${isDesktop ? 'bg-white' : 'bg-[var(--c-panel)]'}`}>
                             {row.iconUrl ? (
-                              <img src={row.iconUrl} alt="Icon preview" className="h-full w-full object-contain" />
+                              <img src={row.iconUrl} alt="Icon preview" className="h-full w-full object-cover" />
                             ) : (
                               <span className="text-[10px] font-semibold text-[var(--c-muted)]">No Icon</span>
                             )}
@@ -589,9 +611,9 @@ const ApplicationIconLibrarySection = () => {
                       return (
                           <article key={row.iconId} className="rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
                             <div className="flex items-center gap-3">
-                              <div className={`flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg p-1 border border-[var(--c-border)]/30 ${isDesktop ? 'bg-white' : 'bg-[var(--c-panel)]'}`}>
+                              <div className={`flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[var(--c-border)]/30 ${isDesktop ? 'bg-white' : 'bg-[var(--c-panel)]'}`}>
                                 {row.iconUrl ? (
-                                  <img src={row.iconUrl} alt="Icon preview" className="h-full w-full object-contain" />
+                                  <img src={row.iconUrl} alt="Icon preview" className="h-full w-full object-cover" />
                                 ) : (
                                   <span className="text-[10px] font-semibold text-[var(--c-muted)]">No Icon</span>
                                 )}

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Check, ChevronDown, Plus, ClipboardPaste } from 'lucide-react';
 import 'react-phone-input-2/lib/style.css';
+import { WhatsAppColorIcon } from '../icons/AppIcons';
 import {
   COUNTRY_PHONE_OPTIONS,
   DEFAULT_COUNTRY_PHONE_ISO2,
@@ -27,6 +28,13 @@ const CountryPhoneField = ({
   placeholder = 'Enter mobile number',
   errorMessage = '',
   onAppend, // Optional: if provided, shows a Plus button inside the field
+  showPasteButton = true,
+  showPasteWhenEmpty = true,
+  showWhatsAppToggle = false,
+  whatsAppEnabled = true,
+  onWhatsAppToggle,
+  whatsAppToggleAriaLabel = 'Toggle WhatsApp',
+  whatsAppToggleDisabled = false,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -139,11 +147,13 @@ const CountryPhoneField = ({
   const setCleanedValue = (val) => {
     onValueChange?.(cleanPhoneValue(val));
   };
+  const hasValue = String(value || '').trim().length > 0;
+  const shouldShowPaste = showPasteButton && (!showPasteWhenEmpty || !hasValue);
 
   return (
     <div ref={rootRef} className="relative mt-1">
       <div
-        className={`compact-field flex h-10 items-center overflow-hidden rounded-2xl border bg-[var(--c-panel)] text-[var(--c-text)] shadow-sm transition ${
+        className={`compact-field flex h-14 items-center overflow-hidden rounded-2xl border bg-[var(--c-panel)] text-[var(--c-text)] shadow-sm transition ${
           errorMessage
             ? 'border-red-400/70 focus-within:border-red-400 focus-within:ring-4 focus-within:ring-red-400/10'
             : 'border-[var(--c-border)] focus-within:border-[var(--c-accent)] focus-within:ring-4 focus-within:ring-[var(--c-accent)]/5'
@@ -183,26 +193,44 @@ const CountryPhoneField = ({
           placeholder={placeholder}
           className="h-full min-w-0 flex-1 bg-transparent px-4 text-sm font-semibold text-[var(--c-text)] outline-none placeholder:text-[var(--c-muted)]"
         />
-        <button
-          type="button"
-          onClick={async () => {
-            try {
-              const text = await navigator.clipboard.readText();
-              if (text) setCleanedValue(text);
-            } catch (err) {
-              console.warn('Clipboard read denied', err);
-            }
-          }}
-          className="flex h-10 w-10 shrink-0 items-center justify-center text-[var(--c-muted)] hover:text-[var(--c-accent)] transition-colors"
-          title="Paste from clipboard"
-        >
-          <ClipboardPaste strokeWidth={1.5} className="h-4 w-4" />
-        </button>
+        {shouldShowPaste ? (
+          <button
+            type="button"
+            onClick={async () => {
+              try {
+                const text = await navigator.clipboard.readText();
+                if (text) setCleanedValue(text);
+              } catch (err) {
+                console.warn('Clipboard read denied', err);
+              }
+            }}
+            className="flex h-14 w-10 shrink-0 items-center justify-center border-l border-[var(--c-border)] text-[var(--c-muted)] transition-colors hover:text-[var(--c-accent)]"
+            title="Paste from clipboard"
+          >
+            <ClipboardPaste strokeWidth={1.5} className="h-4 w-4" />
+          </button>
+        ) : null}
+        {showWhatsAppToggle ? (
+          <button
+            type="button"
+            disabled={whatsAppToggleDisabled}
+            onClick={() => onWhatsAppToggle?.(!whatsAppEnabled)}
+            className={`flex h-14 w-11 shrink-0 items-center justify-center border-l border-[var(--c-border)] transition ${
+              whatsAppEnabled
+                ? 'bg-emerald-500/10'
+                : 'bg-transparent'
+            } ${whatsAppToggleDisabled ? 'cursor-not-allowed opacity-50' : 'hover:bg-emerald-500/10'}`}
+            aria-label={whatsAppToggleAriaLabel}
+            title={whatsAppEnabled ? 'WhatsApp enabled' : 'WhatsApp disabled'}
+          >
+            <WhatsAppColorIcon className={whatsAppEnabled ? 'h-6 w-6' : 'h-6 w-6 opacity-45 grayscale'} />
+          </button>
+        ) : null}
         {onAppend ? (
           <button
             type="button"
             onClick={onAppend}
-            className="flex h-10 w-10 shrink-0 items-center justify-center border-l border-[var(--c-border)] bg-[var(--c-panel)] text-[var(--c-muted)] transition hover:bg-[color:color-mix(in_srgb,var(--c-accent)_10%,var(--c-panel))] hover:text-[var(--c-accent)]"
+            className="flex h-14 w-10 shrink-0 items-center justify-center border-l border-[var(--c-border)] bg-[var(--c-panel)] text-[var(--c-muted)] transition hover:bg-[color:color-mix(in_srgb,var(--c-accent)_10%,var(--c-panel))] hover:text-[var(--c-accent)]"
             aria-label="Add additional number"
           >
             <Plus strokeWidth={1.5} className="h-4 w-4" />

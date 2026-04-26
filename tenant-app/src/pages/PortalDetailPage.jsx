@@ -10,7 +10,6 @@ import PortalTransactionSelector from '../components/common/PortalTransactionSel
 import ProgressVideoOverlay from '../components/common/ProgressVideoOverlay';
 import ActionProgressOverlay from '../components/common/ActionProgressOverlay';
 import { useAuth } from '../context/useAuth';
-import { useTheme } from '../context/useTheme';
 import {
   createPortalBalanceAdjustmentRequest,
   executeInternalTransfer,
@@ -137,7 +136,6 @@ const toFieldLabel = (key) => {
 const PortalDetailPage = () => {
   const { tenantId, portalId } = useParams();
   const { user } = useAuth();
-  const { resolvedTheme } = useTheme();
   const navigate = useNavigate();
   const [portal, setPortal] = useState(null);
   const [form, setForm] = useState({
@@ -584,16 +582,7 @@ const PortalDetailPage = () => {
     const pdfRes = await generateTenantPdf({
       tenantId,
       documentType: 'portalStatement',
-      data: {
-        txId: data.txId,
-        date: statementRange.end,
-        amount: data.closingBalance,
-        recipientName: portal?.name || portalId,
-        description: `Portal statement ${statementRange.start} to ${statementRange.end}`,
-        items: data.items,
-        statementRows: data.statementRows,
-        portalLogoUrl: portal?.logoUrl || portal?.iconUrl || '',
-      },
+      data: buildPortalStatementPdfPayload(data),
       save: false,
       returnBase64: true,
       filename: `portalStatement_${portalId}_${statementRange.start}_${statementRange.end}.pdf`,
@@ -801,22 +790,28 @@ const PortalDetailPage = () => {
     return { txId, items, statementRows, closingBalance };
   };
 
+  const buildPortalStatementPdfPayload = (data) => ({
+    txId: data.txId,
+    date: statementRange.end,
+    amount: data.closingBalance,
+    recipientName: portal?.name || portalId,
+    portalName: portal?.name || portalId,
+    portalId,
+    portalType: portal?.type || '',
+    portalMethod: Array.isArray(portal?.methods) ? portal.methods.join(', ') : '',
+    description: `Portal statement ${statementRange.start} to ${statementRange.end}`,
+    items: data.items,
+    statementRows: data.statementRows,
+    portalLogoUrl: portal?.logoUrl || portal?.iconUrl || '',
+  });
+
   const handleDownloadStatementPdf = async () => {
     setIsStatementGenerating(true);
     const data = buildStatementPdfData();
     const pdfRes = await generateTenantPdf({
       tenantId,
       documentType: 'portalStatement',
-      data: {
-        txId: data.txId,
-        date: statementRange.end,
-        amount: data.closingBalance,
-        recipientName: portal?.name || portalId,
-        description: `Portal statement ${statementRange.start} to ${statementRange.end}`,
-        items: data.items,
-        statementRows: data.statementRows,
-        portalLogoUrl: portal?.logoUrl || portal?.iconUrl || '',
-      },
+      data: buildPortalStatementPdfPayload(data),
       save: true,
       returnBase64: false,
       filename: `portalStatement_${portalId}_${statementRange.start}_${statementRange.end}.pdf`,
@@ -851,16 +846,7 @@ const PortalDetailPage = () => {
     const pdfRes = await generateTenantPdf({
       tenantId,
       documentType: 'portalStatement',
-      data: {
-        txId: data.txId,
-        date: statementRange.end,
-        amount: data.closingBalance,
-        recipientName: portal?.name || portalId,
-        description: `Portal statement ${statementRange.start} to ${statementRange.end}`,
-        items: data.items,
-        statementRows: data.statementRows,
-        portalLogoUrl: portal?.logoUrl || portal?.iconUrl || '',
-      },
+      data: buildPortalStatementPdfPayload(data),
       save: false,
       returnBase64: true,
       filename: `portalStatement_${portalId}_${statementRange.start}_${statementRange.end}.pdf`,
@@ -892,16 +878,7 @@ const PortalDetailPage = () => {
     const pdfRes = await generateTenantPdf({
       tenantId,
       documentType: 'portalStatement',
-      data: {
-        txId: data.txId,
-        date: statementRange.end,
-        amount: data.closingBalance,
-        recipientName: portal?.name || portalId,
-        description: `Portal statement ${statementRange.start} to ${statementRange.end}`,
-        items: data.items,
-        statementRows: data.statementRows,
-        portalLogoUrl: portal?.logoUrl || portal?.iconUrl || '',
-      },
+      data: buildPortalStatementPdfPayload(data),
       save: false,
       returnBase64: true,
       filename: `portalStatement_${portalId}_${statementRange.start}_${statementRange.end}.pdf`,

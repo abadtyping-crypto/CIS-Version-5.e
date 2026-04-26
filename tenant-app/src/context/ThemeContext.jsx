@@ -13,6 +13,7 @@ import {
 const THEME_STORAGE_KEY_LEGACY = 'acis_application_theme';
 const THEME_STORAGE_KEY_DESKTOP = 'acis_application_theme_desktop';
 const THEME_STORAGE_KEY_MOBILE = 'acis_application_theme_mobile';
+const THEME_BOOTSTRAP_KEY = 'acis_theme_bootstrap_v1';
 const SYSTEM_THEME_QUERY = '(prefers-color-scheme: dark)';
 
 const getThemeScope = () => {
@@ -112,6 +113,54 @@ const DESKTOP_APPEARANCE_THEME_MAP = {
       textOnAccent: '#2A0912', gradientEnabled: true,
       glassBg: 'linear-gradient(150deg, rgba(67,26,38,0.72), rgba(33,9,16,0.56))',
       glassBorder: 'rgba(255,188,201,0.18)', glassShadow: '0 18px 48px -30px rgba(244,63,94,0.32)',
+    },
+  },
+  sandstone: {
+    light: {
+      bg: '#F9F4EC', surface: '#FFFFFF', panel: '#F2E8DA', border: '#D9C8AF', text: '#3E2F21',
+      muted: '#72604E', primary: '#B7793F', secondary: '#C49A6C', tertiary: '#D6B88A',
+      textOnAccent: '#FFFFFF', gradientEnabled: true,
+      glassBg: 'linear-gradient(150deg, rgba(255,255,255,0.86), rgba(242,232,218,0.7) 48%, rgba(228,210,182,0.46) 100%)',
+      glassBorder: 'rgba(183,121,63,0.28)', glassShadow: '0 26px 60px -34px rgba(146,96,48,0.28), 0 14px 26px -20px rgba(109,76,43,0.16)',
+    },
+    dark: {
+      bg: '#1D1712', surface: '#29211B', panel: '#352B23', border: '#5A4A3C', text: '#F7EFE5',
+      muted: '#D5C3AF', primary: '#D1A574', secondary: '#B98B58', tertiary: '#E0BE93',
+      textOnAccent: '#2A1E14', gradientEnabled: true,
+      glassBg: 'linear-gradient(150deg, rgba(53,43,35,0.74), rgba(29,23,18,0.58))',
+      glassBorder: 'rgba(226,196,163,0.18)', glassShadow: '0 18px 48px -30px rgba(197,150,98,0.28)',
+    },
+  },
+  slate: {
+    light: {
+      bg: '#EEF3F8', surface: '#FFFFFF', panel: '#E3EBF3', border: '#C3D2E2', text: '#1F3348',
+      muted: '#597088', primary: '#3A6EA5', secondary: '#4D86C5', tertiary: '#77A9D9',
+      textOnAccent: '#FFFFFF', gradientEnabled: true,
+      glassBg: 'linear-gradient(150deg, rgba(255,255,255,0.85), rgba(227,235,243,0.69) 48%, rgba(199,215,232,0.45) 100%)',
+      glassBorder: 'rgba(90,130,176,0.28)', glassShadow: '0 26px 60px -34px rgba(58,110,165,0.28), 0 14px 26px -20px rgba(56,84,119,0.16)',
+    },
+    dark: {
+      bg: '#0E1824', surface: '#162334', panel: '#1F3146', border: '#35506A', text: '#EAF2FB',
+      muted: '#A8BDD3', primary: '#6EA1D4', secondary: '#4D86C5', tertiary: '#8CB9E2',
+      textOnAccent: '#0E2337', gradientEnabled: true,
+      glassBg: 'linear-gradient(150deg, rgba(31,49,70,0.74), rgba(14,24,36,0.58))',
+      glassBorder: 'rgba(172,201,232,0.16)', glassShadow: '0 18px 48px -30px rgba(78,131,187,0.24)',
+    },
+  },
+  forest: {
+    light: {
+      bg: '#EDF7F1', surface: '#FFFFFF', panel: '#DFF0E6', border: '#B9D8C6', text: '#163728',
+      muted: '#4D7462', primary: '#2F7A55', secondary: '#3B9668', tertiary: '#63B487',
+      textOnAccent: '#FFFFFF', gradientEnabled: true,
+      glassBg: 'linear-gradient(150deg, rgba(255,255,255,0.86), rgba(223,240,230,0.69) 48%, rgba(188,224,201,0.45) 100%)',
+      glassBorder: 'rgba(62,130,89,0.28)', glassShadow: '0 26px 60px -34px rgba(47,122,85,0.28), 0 14px 26px -20px rgba(40,90,68,0.16)',
+    },
+    dark: {
+      bg: '#0D1B14', surface: '#12261D', panel: '#193428', border: '#2F5743', text: '#E9F8F0',
+      muted: '#A5CDB9', primary: '#5CB489', secondary: '#3B9668', tertiary: '#7BC9A1',
+      textOnAccent: '#0E2D21', gradientEnabled: true,
+      glassBg: 'linear-gradient(150deg, rgba(25,52,40,0.74), rgba(13,27,20,0.58))',
+      glassBorder: 'rgba(157,214,184,0.16)', glassShadow: '0 18px 48px -30px rgba(78,162,117,0.24)',
     },
   },
 };
@@ -217,6 +266,38 @@ export const ThemeProvider = ({ children }) => {
 
     localStorage.setItem(getStorageKeyForScope(scope), theme);
     localStorage.setItem(THEME_STORAGE_KEY_LEGACY, theme);
+    const vars = {
+      '--c-bg': finalConfig.bg,
+      '--c-surface': finalConfig.surface,
+      '--c-panel': finalConfig.panel,
+      '--c-border': finalConfig.border,
+      '--c-text': finalConfig.text,
+      '--c-muted': finalConfig.muted,
+      '--c-accent': finalConfig.primary,
+      '--c-accent-2': finalConfig.secondary,
+      '--c-accent-3': finalConfig.tertiary,
+      '--c-on-accent': finalConfig.textOnAccent,
+      '--c-ring': hexToRgba(finalConfig.primary, 0.24),
+      '--brand-gradient': finalConfig.gradientEnabled
+        ? `linear-gradient(125deg, ${finalConfig.primary} 0%, ${finalConfig.secondary} 54%, ${finalConfig.tertiary} 100%)`
+        : finalConfig.primary,
+      '--glass-bg': finalConfig.glassBg,
+      '--glass-border': finalConfig.glassBorder,
+      '--glass-shadow': finalConfig.glassShadow,
+      '--glass-blur': finalConfig.glassBlur || '',
+    };
+    localStorage.setItem(
+      THEME_BOOTSTRAP_KEY,
+      JSON.stringify({
+        resolvedTheme,
+        appearance: {
+          fontFamily: appearance.fontFamily,
+          fontScale: appearance.fontScale,
+          glassEnabled: appearance.glassEnabled !== false,
+        },
+        vars,
+      }),
+    );
   }, [scope, theme, resolvedTheme, appearance]);
 
   const updateAppearance = useCallback((patch) => {

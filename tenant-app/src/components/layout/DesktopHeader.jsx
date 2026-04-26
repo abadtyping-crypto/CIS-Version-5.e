@@ -12,12 +12,7 @@ import CreatedByIdentityCard from '../common/CreatedByIdentityCard';
 import { useTenantNotifications } from '../../hooks/useTenantNotifications';
 import { resolveTenantRoute } from '../../lib/tenantRoutes';
 import { useSystemAssets } from '../../lib/systemAssetsCache';
-
-const toRoleLabel = (role) => {
-  const normalized = String(role || '').trim().toLowerCase();
-  if (normalized === 'superadmin' || normalized === 'super admin') return 'Owner';
-  return role || 'Staff';
-};
+import { getRoleBadgeClassName, normalizeRoleLabel } from '../../lib/userRolePresentation';
 
 const toDateLabel = (value) => {
   if (!value) return '';
@@ -118,10 +113,11 @@ const DesktopHeader = ({ tenant, user, onLogout, layoutMode = 'wide', onToggleSi
   const ThemeIcon = theme === 'system' ? Monitor : appliedTheme === 'dark' ? MoonStar : SunMedium;
   const themeLabel = theme === 'system' ? `System (${resolvedTheme})` : appliedTheme === 'dark' ? 'Dark Mode' : 'Light Mode';
   const displayName = String(user?.displayName || '').trim() || 'User';
+  const roleLabel = normalizeRoleLabel(user?.role);
+  const roleBadgeClassName = getRoleBadgeClassName(roleLabel);
   const tenantLogoUrl = tenant?.logoUrl || '/logo.png';
   const { headerLogoUrl } = useTenantBrandingLogos(tenantId, tenantLogoUrl);
   const tenantLabel = tenant?.name || 'Tenant';
-  const showBrandName = tenant?.isBrandNameHeaderEnabled !== false;
 
   const goTo = (path) => navigate(`/t/${tenantId}/${path}`);
 
@@ -199,19 +195,19 @@ const DesktopHeader = ({ tenant, user, onLogout, layoutMode = 'wide', onToggleSi
             className="brand-button no-drag inline-flex min-w-0 flex-1 appearance-none items-stretch gap-0 overflow-hidden rounded-2xl border border-[var(--c-border)] bg-[color:color-mix(in_srgb,var(--c-surface)_84%,transparent)] p-0 text-left text-[var(--c-text)] no-underline outline-none shadow-sm transition hover:border-[var(--c-ring)] hover:bg-[var(--c-panel)] focus-visible:ring-2 focus-visible:ring-[var(--c-ring)]"
             style={{ textDecoration: 'none' }}
           >
-            <div className="relative h-14 w-16 shrink-0 overflow-hidden bg-[var(--c-panel)]">
-              <img
-                src={headerLogoUrl}
-                alt={tenantLabel}
-                className="absolute inset-0 h-full w-full object-cover"
-              />
-            </div>
+            {headerLogoUrl ? (
+              <div className="relative h-14 w-16 shrink-0 overflow-hidden bg-[var(--c-panel)]">
+                <img
+                  src={headerLogoUrl}
+                  alt={tenantLabel}
+                  className="absolute inset-0 h-full w-full object-cover"
+                />
+              </div>
+            ) : null}
 
             {(layoutMode === 'standard' || layoutMode === 'wide') && (
               <div className="flex min-w-0 flex-1 items-center px-4">
-                {showBrandName ? (
-                  <p className="truncate text-[1rem] font-semibold leading-tight text-[var(--c-text)]">{tenant.name}</p>
-                ) : null}
+                <p className="truncate text-[1rem] font-semibold leading-tight text-[var(--c-text)]">{tenant.name}</p>
               </div>
             )}
           </button>
@@ -443,7 +439,12 @@ const DesktopHeader = ({ tenant, user, onLogout, layoutMode = 'wide', onToggleSi
               />
             </div>
             <span className="hidden min-w-0 items-center px-4 text-left xl:flex">
-              <span className="block truncate text-sm font-semibold text-[var(--c-text)]">{displayName} | {toRoleLabel(user.role)}</span>
+              <span className="flex min-w-0 flex-col py-1">
+                <span className="truncate text-sm font-semibold leading-tight text-[var(--c-text)]">{displayName}</span>
+                <span className={`mt-1 inline-flex w-fit items-center rounded-full border px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.08em] ${roleBadgeClassName}`}>
+                  {roleLabel}
+                </span>
+              </span>
             </span>
           </button>
 

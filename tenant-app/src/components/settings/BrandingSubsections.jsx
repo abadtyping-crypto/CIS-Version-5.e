@@ -87,7 +87,7 @@
 
           <div className="flex flex-col gap-1">
             <label className={labelClass}>
-              Brand Name (Short) {form.isBrandNameHeaderEnabled === true && <span className="text-rose-500">*</span>}
+              Brand Name (Short)
             </label>
             <InputActionField
               value={form.brandName}
@@ -96,53 +96,7 @@
               placeholder="BRAND NAME"
               className="mt-1 font-bold text-sm min-h-[56px]"
             />
-            <div className="mt-2 flex items-center justify-between px-1">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-(--c-muted)">Show Header</span>
-              <ToggleSwitch
-                checked={form.isBrandNameHeaderEnabled === true}
-                onChange={(v) => updateField('isBrandNameHeaderEnabled', v)}
-              />
-            </div>
             {errors.brandName ? <p className="mt-1 text-xs text-rose-600 font-bold">{errors.brandName}</p> : null}
-          </div>
-        </div>
-
-        <div className="auto-fit-span-full">
-          <div className="flex items-center gap-3 rounded-2xl bg-(--c-panel) border border-(--c-border) p-4 transition hover:bg-(--c-surface)">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-(--c-accent)/10 text-(--c-accent)">
-              <MapPin strokeWidth={1.5} className="h-6 w-6" />
-            </div>
-            <div className="flex-1">
-              <p className="text-xs font-bold uppercase tracking-widest text-(--c-text)">Branding Address Source</p>
-              <p className="text-[10px] text-(--c-muted)">Choose if PDFs use the tenant profile address or a custom branding address.</p>
-              <label className="mt-3 flex items-center gap-3 cursor-pointer group">
-                <input
-                  type="checkbox"
-                  checked={form.sameAsHeadOffice !== false}
-                  onChange={(e) => {
-                    const checked = e.target.checked;
-                    updateField('sameAsHeadOffice', checked);
-                    updateField('addressSource', checked ? 'tenant' : 'custom');
-                  }}
-                  className="h-4 w-4 rounded accent-[var(--c-accent)]"
-                />
-                <span className={`text-[11px] font-bold uppercase tracking-wider transition ${form.sameAsHeadOffice !== false ? 'text-(--c-accent)' : 'text-(--c-text) group-hover:text-(--c-accent)'}`}>
-                  {form.sameAsHeadOffice !== false ? 'Syncing Address from Head Office' : 'Brand-Specific Custom Address'}
-                </span>
-              </label>
-            </div>
-            <select
-              value={form.sameAsHeadOffice !== false ? 'tenant' : (form.addressSource || 'custom')}
-              onChange={(e) => {
-                const nextValue = e.target.value;
-                updateField('addressSource', nextValue);
-                updateField('sameAsHeadOffice', nextValue !== 'custom');
-              }}
-              className="rounded-xl bg-(--c-surface) border border-(--c-border) px-4 py-2 text-xs font-bold text-(--c-text) outline-none focus:ring-2 focus:ring-(--c-accent)/20 transition"
-            >
-              <option value="tenant">Tenant Profile (Global)</option>
-              <option value="custom">Brand Specific (Local)</option>
-            </select>
           </div>
         </div>
 
@@ -197,10 +151,7 @@
                 <AddressField
                   label="Branch / Brand Address"
                   value={form.addresses[0] || ''}
-                  onValueChange={(v) => {
-                    updateArrayField('addresses', 0, v);
-                    if (form.sameAsHeadOffice) updateField('sameAsHeadOffice', false);
-                  }}
+                  onValueChange={(v) => updateArrayField('addresses', 0, v)}
                   placeholder="Enter branch address..."
                   fieldClassName="h-[72px]"
                 />
@@ -215,10 +166,7 @@
           <div className="mt-1">
             <EmirateSelect
               value={form.emirate}
-              onChange={(val) => {
-                updateField('emirate', val);
-                if (form.sameAsHeadOffice) updateField('sameAsHeadOffice', false);
-              }}
+              onChange={(val) => updateField('emirate', val)}
               placeholder="Select Emirate"
             />
           </div>
@@ -229,10 +177,7 @@
           <input
             className={inputClass}
             value={form.poBoxNumber}
-            onChange={(event) => {
-              handlePoBoxChange(event.target.value);
-              if (form.sameAsHeadOffice) updateField('sameAsHeadOffice', false);
-            }}
+            onChange={(event) => handlePoBoxChange(event.target.value)}
             inputMode="numeric"
             maxLength={8}
             placeholder="Digits only"
@@ -578,11 +523,11 @@
                 onChange={(v) => updateField('isLogoLibraryEnabled', v)}
               />
             </div>
-            {form.isLogoLibraryEnabled === true && visibleLogoSlots.length < 2 && visibleLogoSlots[0]?.url && (
+            {form.isLogoLibraryEnabled === true && visibleLogoSlots.length < 10 && visibleLogoSlots[visibleLogoSlots.length - 1]?.url && (
               <button
                 onClick={onAddLogoSlot}
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-(--c-accent)/10 text-(--c-accent) transition hover:bg-(--c-accent)/20"
-                title="Enable second logo slot"
+                className="flex h-9 w-9 items-center justify-center rounded-full border border-(--c-accent)/20 bg-(--c-accent)/10 text-(--c-accent) transition hover:bg-(--c-accent)/20"
+                title="Add next logo slot"
               >
                 <Plus strokeWidth={1.5} className="h-5 w-5" />
               </button>
@@ -598,14 +543,15 @@
               </div>
             </div>
 
-          <div className="grid max-h-[240px] grid-cols-[repeat(auto-fit,minmax(8.5rem,1fr))] gap-2 overflow-y-auto pr-1">
+          <div className="grid max-h-[280px] grid-cols-[repeat(auto-fit,minmax(15rem,1fr))] gap-2 overflow-y-auto pr-1">
             {visibleLogoSlots.map((slot, index) => {
               const previousSlot = index > 0 ? visibleLogoSlots[index - 1] : null;
               const canUploadThisSlot = index === 0 || Boolean(previousSlot?.url);
 
               return (
-                <div key={slot.slotId} className="group relative overflow-hidden rounded-lg border border-(--c-border) bg-(--c-surface) p-2 shadow-sm transition hover:shadow-md">
-                  <div className="mb-2 flex h-16 items-center justify-center rounded-md border border-(--c-border)/50 bg-(--c-panel) font-bold text-(--c-muted) shadow-inner">
+                <div key={slot.slotId} className="group relative overflow-hidden rounded-2xl border border-(--c-border) bg-(--c-surface) shadow-sm transition hover:shadow-md">
+                  <div className="flex min-h-[7rem]">
+                  <div className="relative flex aspect-square w-28 shrink-0 items-center justify-center overflow-hidden bg-(--c-panel) font-bold text-(--c-muted)">
                     {logoUploading[slot.slotId] ? (
                       <div className="flex flex-col items-center gap-2">
                         <div className="h-5 w-5 animate-spin rounded-full border-2 border-(--c-accent) border-t-transparent" />
@@ -613,8 +559,8 @@
                       </div>
                     ) : slot.url ? (
                       <div className="relative h-full w-full">
-                        <img src={slot.url} alt={slot.name} className="h-full w-full object-contain p-1" />
-                        <div className="absolute right-1 top-1">
+                        <img src={slot.url} alt={slot.name} className="h-full w-full object-cover" />
+                        <div className="absolute right-2 top-2">
                           <button
                             type="button"
                             onClick={() => setActiveLogoSlotId(slot.slotId)}
@@ -639,9 +585,9 @@
                     )}
                   </div>
 
-                  <div className="space-y-1.5">
+                  <div className="flex min-w-0 flex-1 flex-col justify-center space-y-2 p-3">
                     <input
-                      className="w-full bg-transparent text-[10px] font-bold uppercase tracking-widest text-(--c-text) outline-none placeholder:text-(--c-muted)/30"
+                      className="w-full rounded-xl border border-(--c-border) bg-(--c-panel) px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-(--c-text) outline-none placeholder:text-(--c-muted)/40 focus:border-(--c-accent) focus:ring-2 focus:ring-(--c-accent)/10"
                       value={slot.name}
                       onChange={(e) => updateLogoSlot(slot.slotId, { name: e.target.value })}
                       placeholder="LOGO NAME"
@@ -654,16 +600,16 @@
                           openLogoEditor(slot.slotId);
                         }}
                         disabled={!canUploadThisSlot}
-                        title={!canUploadThisSlot ? 'Complete the previous slot first.' : (slot.url ? 'Change logo' : 'Upload logo')}
-                        className="flex-1 rounded-md border border-(--c-border) bg-(--c-panel) py-1 text-[10px] font-bold uppercase tracking-tighter text-(--c-text) transition hover:bg-(--c-accent) hover:text-white hover:border-(--c-accent) shadow-sm disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-(--c-panel) disabled:hover:text-(--c-text) disabled:hover:border-(--c-border)"
+                        title={!canUploadThisSlot ? 'Complete the previous slot first.' : (slot.url ? 'Change logo' : 'Name this logo, then browse media')}
+                        className="flex-1 rounded-xl border border-(--c-border) bg-(--c-panel) py-1.5 text-[10px] font-bold uppercase tracking-tighter text-(--c-text) transition hover:bg-(--c-accent) hover:text-white hover:border-(--c-accent) shadow-sm disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-(--c-panel) disabled:hover:text-(--c-text) disabled:hover:border-(--c-border)"
                       >
-                        {slot.url ? 'Change' : 'Upload'}
+                        {slot.url ? 'Change' : 'Browse'}
                       </button>
                       {slot.url && (
                         <button
                           type="button"
                           onClick={() => removeLogoSlot(slot.slotId)}
-                          className="flex h-7 w-7 items-center justify-center rounded-md bg-rose-500/10 text-rose-500 transition hover:bg-rose-500 hover:text-white"
+                          className="flex h-8 w-8 items-center justify-center rounded-xl bg-rose-500/10 text-rose-500 transition hover:bg-rose-500 hover:text-white"
                         >
                           <Trash2 strokeWidth={1.5} className="h-3.5 w-3.5" />
                         </button>
@@ -673,8 +619,9 @@
                       <p className="text-[10px] font-semibold text-amber-500">Upload previous slot first.</p>
                     ) : null}
                   </div>
+                  </div>
                   {(logoErrors[slot.slotId] || errors[`logoName_${slot.slotId}`]) && (
-                    <p className="mt-2 text-[10px] font-bold text-rose-500 uppercase leading-none">
+                    <p className="border-t border-rose-500/20 bg-rose-500/10 px-3 py-2 text-[10px] font-bold uppercase leading-none text-rose-500">
                       {logoErrors[slot.slotId] || errors[`logoName_${slot.slotId}`]}
                     </p>
                   )}
@@ -700,7 +647,6 @@
     assignedOptions,
     setLogoUsage
   }) => {
-    const usedSlotIds = new Set(Object.values(logoUsage || {}).filter(Boolean));
     return (
       <section className="space-y-4">
         <div className="flex items-center gap-2 border-b border-(--c-border) pb-2 text-(--c-accent)">
@@ -710,7 +656,7 @@
 
         <div className="rounded-xl border border-(--c-border) bg-(--c-panel) p-4">
           <div className="mb-4">
-            <p className="text-xs text-(--c-muted)">Assign your library logos to specific application features.</p>
+            <p className="text-xs text-(--c-muted)">Assign your uploaded logos to the main app surfaces only.</p>
           </div>
 
           <div className="auto-fit-grid-compact">
@@ -730,51 +676,40 @@
                     }
                     return assignedOptions.map((opt) => {
                       const isSelected = opt.slotId === currentSlot;
-                      const isUsedElsewhere = !isSelected && usedSlotIds.has(opt.slotId);
                       return (
                         <button
                           key={opt.slotId}
                           type="button"
-                          disabled={isUsedElsewhere}
                           onClick={() => {
                             if (isSelected) {
-                              // Deselect
                               setLogoUsage((prev) => ({ ...prev, [func.key]: '' }));
                             } else {
-                              // Select and deselect elsewhere if needed (already handled by rule)
-                              setLogoUsage((prev) => {
-                                const next = { ...prev };
-                                Object.keys(next).forEach((k) => {
-                                  if (next[k] === opt.slotId) next[k] = '';
-                                });
-                                next[func.key] = opt.slotId;
-                                return next;
-                              });
+                              setLogoUsage((prev) => ({ ...prev, [func.key]: opt.slotId }));
                             }
                           }}
-                          className={`flex items-center gap-3 rounded-xl border p-2 transition-all ${
+                          className={`flex min-h-16 items-stretch overflow-hidden rounded-xl border p-0 text-left transition-all ${
                             isSelected
                               ? 'border-(--c-accent) bg-(--c-accent)/5 ring-1 ring-(--c-accent)'
-                              : isUsedElsewhere
-                              ? 'opacity-30 grayscale cursor-not-allowed border-transparent bg-(--c-panel)'
                               : 'border-(--c-border) bg-(--c-panel) hover:border-(--c-accent)/50'
                           }`}
                         >
-                          <div className="h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border border-(--c-border)/50 bg-white p-1">
+                          <div className="flex w-16 shrink-0 items-center justify-center overflow-hidden bg-(--c-panel)">
                             {opt.url ? (
-                              <img src={opt.url} alt={opt.name} className="h-full w-full object-contain" />
+                              <img src={opt.url} alt={opt.name} className="h-full w-full object-cover" />
                             ) : (
-                              <div className="h-full w-full bg-slate-100 rounded-sm" />
+                              <div className="h-full w-full bg-slate-100" />
                             )}
                           </div>
-                          <div className="flex-1 text-left">
-                            <p className={`text-[10px] font-bold uppercase tracking-tight ${isSelected ? 'text-(--c-accent)' : 'text-(--c-text)'}`}>
-                              {opt.name || `Logo Slot ${opt.slotId.split('_')[1]}`}
-                            </p>
-                            {isSelected && <p className="text-[8px] font-bold text-(--c-accent) uppercase tracking-tighter">Assigned</p>}
+                          <div className="flex min-w-0 flex-1 items-center px-3 py-2">
+                            <div className="min-w-0 flex-1">
+                              <p className={`text-[10px] font-bold uppercase tracking-tight ${isSelected ? 'text-(--c-accent)' : 'text-(--c-text)'}`}>
+                                {opt.name || `Logo Slot ${opt.slotId.split('_')[1]}`}
+                              </p>
+                              {isSelected && <p className="text-[8px] font-bold text-(--c-accent) uppercase tracking-tighter">Assigned</p>}
+                            </div>
                           </div>
                           {isSelected && (
-                            <div className="flex h-5 w-5 items-center justify-center rounded-full bg-(--c-accent) text-white scale-75">
+                            <div className="mr-3 mt-3 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-(--c-accent) text-white">
                               <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={4}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                               </svg>
@@ -786,7 +721,7 @@
                   })()}
                 </div>
                 <p className="border-t border-(--c-border)/50 pt-2 text-[9px] font-bold leading-tight text-(--c-muted) uppercase tracking-tighter">
-                  One logo slot per output capability.
+                  Click the assigned logo again to disable this surface.
                 </p>
               </div>
             ))}

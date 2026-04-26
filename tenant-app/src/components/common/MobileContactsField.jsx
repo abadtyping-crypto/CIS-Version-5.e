@@ -110,12 +110,21 @@ const MobileContactsField = ({
                   name={`mobile-contact-${index + 1}`}
                   placeholder={contact.countryIso2 === DEFAULT_COUNTRY_PHONE_ISO2 ? 'XX XXX XXXX' : 'XXXX'}
                   errorMessage={errors[contact.id] || ''}
+                  showPasteWhenEmpty
+                  showWhatsAppToggle
+                  whatsAppEnabled={contact.whatsAppEnabled !== false}
+                  onWhatsAppToggle={(enabled) => {
+                    updateContact(contact.id, (current) => ({
+                      ...current,
+                      whatsAppEnabled: enabled !== false,
+                    }));
+                  }}
                   // Appears INSIDE the tab at the end
                   onAppend={canAddMoreOnThisRow ? appendContact : undefined}
                 />
               </div>
 
-              {/* ACTION BUTTONS (Remove only to reduce clutter) */}
+              {/* ACTION BUTTONS */}
               {safeContacts.length > 1 ? (
                 <div className="flex shrink-0 items-center">
                   <button

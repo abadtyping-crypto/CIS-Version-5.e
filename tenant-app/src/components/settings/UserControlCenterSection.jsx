@@ -55,7 +55,7 @@ const UserControlCenterSection = () => {
     portalManagement: ['createPortal', 'notifyCreatePortal', 'directBalanceAdjust', 'notifyDirectBalanceAdjust', 'loanManagement', 'notifyLoanManagement', 'internalTransfer', 'notifyInternalTransfer'],
     dailyTransactions: ['recordDailyTransaction', 'softDeleteTransaction', 'notifySoftDeleteTransaction', 'hardDeleteTransaction'],
     proformaInvoices: [],
-    quotations: [],
+    quotations: ['extendQuotation', 'cancelQuotation'],
     receivePayments: [],
     invoiceManagement: [],
     operationExpenses: [],

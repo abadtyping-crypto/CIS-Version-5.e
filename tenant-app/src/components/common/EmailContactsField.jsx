@@ -32,10 +32,15 @@ const ensureEmailContacts = (contacts) => {
 
 const SingleEmailInput = ({ id, value, onChange, onAppend, placeholder, errorMessage }) => {
   const [dropdownStyle, setDropdownStyle] = useState(null);
+  const [suppressSuggestions, setSuppressSuggestions] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const rootRef = useRef(null);
   const dropdownRef = useRef(null);
 
-  const closeDropdown = useCallback(() => {}, []); // isOpen is derived — closing happens automatically when filteredDomains clears
+  const closeDropdown = useCallback(() => {
+    setSuppressSuggestions(true);
+    setHighlightedIndex(-1);
+  }, []);
 
   const { prefix, domainQuery, shouldShowSuggestions } = useMemo(() => {
     // Determine if @ has been pressed, triggering suggestions
@@ -80,7 +85,27 @@ const SingleEmailInput = ({ id, value, onChange, onAppend, placeholder, errorMes
     });
   }, []);
 
-  const isOpen = filteredDomains.length > 0 && shouldShowSuggestions;
+  const isOpen = !suppressSuggestions && filteredDomains.length > 0 && shouldShowSuggestions;
+
+  useEffect(() => {
+    if (!isOpen) {
+      setHighlightedIndex(-1);
+      return;
+    }
+    setHighlightedIndex((prev) => {
+      if (prev < 0) return -1;
+      if (prev >= filteredDomains.length) return filteredDomains.length - 1;
+      return prev;
+    });
+  }, [isOpen, filteredDomains.length]);
+
+  const applySuggestionAtIndex = useCallback((index) => {
+    const suggestion = filteredDomains[index];
+    if (!suggestion) return;
+    const fullEmailProposal = `${prefix}@${suggestion.domain}`;
+    onChange(fullEmailProposal);
+    closeDropdown();
+  }, [closeDropdown, filteredDomains, onChange, prefix]);
 
   useEffect(() => {
     const handlePointerDown = (event) => {
@@ -133,8 +158,32 @@ const SingleEmailInput = ({ id, value, onChange, onAppend, placeholder, errorMes
           autoCapitalize="none"
           placeholder={placeholder}
           value={value}
-          onFocus={() => { /* isOpen is derived from filteredDomains — no manual set needed */ }}
-          onChange={(e) => onChange(e.target.value.toLowerCase().replace(/\s/g, ''))} // strictly enforce lowercase and no spaces globally
+          onFocus={() => setSuppressSuggestions(false)}
+          onChange={(e) => {
+            setSuppressSuggestions(false);
+            setHighlightedIndex(-1);
+            onChange(e.target.value.toLowerCase().replace(/\s/g, ''));
+          }} // strictly enforce lowercase and no spaces globally
+          onKeyDown={(e) => {
+            if (!isOpen || filteredDomains.length === 0) return;
+
+            if (e.key === 'ArrowDown') {
+              e.preventDefault();
+              setHighlightedIndex((prev) => (prev < 0 ? 0 : (prev + 1) % filteredDomains.length));
+              return;
+            }
+
+            if (e.key === 'ArrowUp') {
+              e.preventDefault();
+              setHighlightedIndex((prev) => (prev < 0 ? filteredDomains.length - 1 : (prev - 1 + filteredDomains.length) % filteredDomains.length));
+              return;
+            }
+
+            if (e.key === 'Enter' && highlightedIndex >= 0) {
+              e.preventDefault();
+              applySuggestionAtIndex(highlightedIndex);
+            }
+          }}
           className="h-full min-w-0 flex-1 bg-transparent px-4 text-sm font-semibold text-[var(--c-text)] outline-none placeholder:text-[var(--c-muted)] placeholder:font-medium"
         />
 
@@ -185,8 +234,9 @@ const SingleEmailInput = ({ id, value, onChange, onAppend, placeholder, errorMes
             Suggested Domains
           </div>
           <div className="overflow-y-auto py-1" style={{ maxHeight: '180px' }}>
-            {filteredDomains.map((domainObj) => {
+            {filteredDomains.map((domainObj, index) => {
               const fullEmailProposal = `${prefix}@${domainObj.domain}`;
+              const isHighlighted = index === highlightedIndex;
               return (
                 <button
                   key={domainObj.domain}
@@ -195,7 +245,12 @@ const SingleEmailInput = ({ id, value, onChange, onAppend, placeholder, errorMes
                     onChange(fullEmailProposal);
                     closeDropdown();
                   }}
-                  className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition text-[var(--c-text)] hover:bg-[color:color-mix(in_srgb,var(--c-surface)_38%,var(--c-panel)_62%)]"
+                  onMouseEnter={() => setHighlightedIndex(index)}
+                  className={`flex w-full items-center gap-3 px-4 py-2.5 text-left transition text-[var(--c-text)] ${
+                    isHighlighted
+                      ? 'bg-[color:color-mix(in_srgb,var(--c-surface)_38%,var(--c-panel)_62%)]'
+                      : 'hover:bg-[color:color-mix(in_srgb,var(--c-surface)_38%,var(--c-panel)_62%)]'
+                  }`}
                 >
                   <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[var(--c-surface)] border border-[color:color-mix(in_srgb,var(--c-border)_40%,transparent)]">
                     {BRAND_ICONS[domainObj.name] || <Mail strokeWidth={1.5} className="h-4 w-4 text-[var(--c-muted)]" />}

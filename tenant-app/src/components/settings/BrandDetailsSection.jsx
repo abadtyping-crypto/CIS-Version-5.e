@@ -4,6 +4,7 @@ import { Facebook, Instagram, Twitter, Linkedin, Building2 } from 'lucide-react'
 import { deleteField } from 'firebase/firestore';
 import SettingCard from './SettingCard';
 import ConfirmDialog from '../common/ConfirmDialog';
+import FocusErrorOverlay from '../common/FocusErrorOverlay';
 import { getTenantSettingDoc, upsertTenantNotification, upsertTenantSettingDoc } from '../../lib/backendStore';
 import { createSyncEvent } from '../../lib/syncEvents';
 import { useTenant } from '../../context/useTenant';
@@ -42,11 +43,6 @@ const SOCIAL_PLATFORMS = [
 ];
 
 const LOGO_FUNCTIONS = [
-  { key: 'quotation', label: 'PDF Quotation' },
-  { key: 'proforma', label: 'PDF Proforma' },
-  { key: 'paymentReceipt', label: 'PDF Payment Receipt' },
-  { key: 'statement', label: 'PDF Portal Statement' },
-  { key: 'invoice', label: 'PDF Invoice' },
   { key: 'header', label: 'Header' },
   { key: 'login', label: 'Login' },
 ];
@@ -133,8 +129,6 @@ const BrandDetailsSection = () => {
     brandName: '',
     isBrandNameHeaderEnabled: true,
     isBankDetailsEnabled: false,
-    addressSource: 'tenant',
-    sameAsHeadOffice: true,
     landlines: [''],
     mobiles: [''],
     mobileContacts: [createMobileContact()],
@@ -163,6 +157,7 @@ const BrandDetailsSection = () => {
 
   const [errors, setErrors] = useState({});
   const [saveMessage, setSaveMessage] = useState('');
+  const [focusError, setFocusError] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, slotId: '' });
   const [saveConfirm, setSaveConfirm] = useState(false);
 
@@ -227,10 +222,8 @@ const BrandDetailsSection = () => {
         ...prev,
         companyName: toUpper(data.companyName || ''),
         brandName: toUpper(data.brandName || ''),
-        isBrandNameHeaderEnabled: data.isBrandNameHeaderEnabled !== false,
+        isBrandNameHeaderEnabled: true,
         isBankDetailsEnabled: data.isBankDetailsEnabled === true || normalizedBankDetails.some(hasAnyBankValue),
-        addressSource: String(data.addressSource || 'tenant'),
-        sameAsHeadOffice: String(data.addressSource || 'tenant') !== 'custom',
         landlines: Array.isArray(data.landlines) && data.landlines.length
           ? data.landlines.map(normalizePhone)
           : [normalizePhone(data.landline1 || '')].filter(Boolean).concat(data.landline2 ? [normalizePhone(data.landline2)] : []),
@@ -293,11 +286,13 @@ const BrandDetailsSection = () => {
           : slot;
       });
       setLogoLibrary(normalizedLibrary);
-      const incomingUsage = data.logoUsage && typeof data.logoUsage === 'object' ? data.logoUsage : {};
+      const hasStoredLogoUsage = data.logoUsage && typeof data.logoUsage === 'object';
+      const incomingUsage = hasStoredLogoUsage ? data.logoUsage : {};
       const allowedSlots = new Set(defaultLogoLibrary.map((slot) => slot.slotId));
       const sanitizedUsage = LOGO_FUNCTIONS.reduce((acc, item) => {
-        const candidate = String(incomingUsage[item.key] || defaultLogoUsage[item.key] || 'logo_1');
-        acc[item.key] = allowedSlots.has(candidate) ? candidate : 'logo_1';
+        const fallbackSlotId = hasStoredLogoUsage ? '' : defaultLogoUsage[item.key] || 'logo_1';
+        const candidate = String(incomingUsage[item.key] || fallbackSlotId);
+        acc[item.key] = allowedSlots.has(candidate) ? candidate : '';
         return acc;
       }, {});
       setLogoUsage(sanitizedUsage);
@@ -455,14 +450,34 @@ const BrandDetailsSection = () => {
     setLogoLibrary((prev) =>
       prev.map((slot) => (slot.slotId === slotId ? { ...slot, ...patch } : slot)),
     );
+    if ('name' in patch && String(patch.name || '').trim()) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next[`logoName_${slotId}`];
+        return next;
+      });
+    }
   };
 
   const onAddLogoSlot = () => {
-    setVisibleSlotsCount(2);
+    setVisibleSlotsCount((prev) => Math.min(MAX_LOGO_SLOTS, prev + 1));
   };
 
   const openLogoEditor = (slotId) => {
     const slot = logoLibrary.find((item) => item.slotId === slotId);
+    if (!String(slot?.name || '').trim()) {
+      setErrors((prev) => ({
+        ...prev,
+        [`logoName_${slotId}`]: 'Please add the logo name before browsing.',
+      }));
+      setFocusError({
+        type: 'error',
+        title: 'Please add the logo name first.',
+        message: 'Name this logo slot before selecting media. This keeps the logo library organized before the upload starts.',
+        detail: 'Enter the logo name in the Logo Library card, then click Browse again.',
+      });
+      return;
+    }
     setActiveLogoEditorSlotId(slotId);
     setLogoSourceUrl(slot?.url || '');
     setLogoZoom(1);
@@ -584,13 +599,12 @@ const BrandDetailsSection = () => {
     const normalized = {
       companyName: toUpper(form.companyName),
       brandName: toUpper(form.brandName),
-      isBrandNameHeaderEnabled: form.isBrandNameHeaderEnabled !== false,
+      isBrandNameHeaderEnabled: true,
       isBankDetailsEnabled: form.isBankDetailsEnabled === true,
       landlines: form.landlines.map(normalizePhone).filter(Boolean),
       mobiles: getFilledMobileContacts(form.mobileContacts).map((contact) => normalizePhone(contact.value)).filter(Boolean),
       mobileContacts: serializeMobileContacts(form.mobileContacts),
       addresses: form.addresses.map(toProperCase).filter(Boolean).slice(0, 1),
-      addressSource: form.sameAsHeadOffice ? 'tenant' : 'custom',
       emirate: form.emirate || '',
       poBoxNumber: normalizePoBox(form.poBoxNumber),
       poBoxEmirate: normalizePoBox(form.poBoxNumber) ? form.poBoxEmirate || '' : '',
@@ -628,7 +642,6 @@ const BrandDetailsSection = () => {
     if (normalized.mobiles.length) payload.mobiles = normalized.mobiles;
     if (normalized.mobileContacts.length) payload.mobileContacts = normalized.mobileContacts;
     if (normalized.addresses.length) payload.addresses = normalized.addresses;
-    if (normalized.addressSource) payload.addressSource = normalized.addressSource;
     if (normalized.emirate) payload.emirate = normalized.emirate;
     if (normalized.poBoxNumber) payload.poBoxNumber = normalized.poBoxNumber;
     if (normalized.poBoxNumber && normalized.poBoxEmirate) payload.poBoxEmirate = normalized.poBoxEmirate;
@@ -701,10 +714,6 @@ const BrandDetailsSection = () => {
       nextErrors.companyName = 'Company Official Name is mandatory.';
     }
 
-    if (normalized.isBrandNameHeaderEnabled && !normalized.brandName) {
-      nextErrors.brandName = 'Brand Name is mandatory when "Show Header" is enabled.';
-    }
-
     if (!normalized.mobiles.length) {
       nextErrors.phones = 'At least one mobile number is mandatory.';
     }
@@ -744,13 +753,23 @@ const BrandDetailsSection = () => {
     });
     normalized.logoLibrary.forEach((slot) => {
       if (slot.url && !slot.name.trim()) {
-        nextErrors[`logoName_${slot.slotId}`] = 'Logo name is mandatory for uploaded assets.';
+        nextErrors[`logoName_${slot.slotId}`] = 'Please add the logo name.';
       }
     });
 
     setErrors(nextErrors);
 
     if (Object.keys(nextErrors).length) {
+      const logoNameError = Object.entries(nextErrors).find(([key]) => key.startsWith('logoName_'));
+      const firstError = logoNameError || Object.entries(nextErrors)[0];
+      setFocusError({
+        type: 'error',
+        title: logoNameError ? 'Please add the logo name.' : 'Brand Settings need attention.',
+        message: firstError?.[1] || 'Fix validation errors before saving.',
+        detail: logoNameError
+          ? 'An uploaded logo cannot be saved without a name. Check the Logo Library section and name the highlighted logo.'
+          : 'The page has highlighted the field that needs correction.',
+      });
       setSaveMessage('Fix validation errors before saving.');
       return;
     }
@@ -767,8 +786,6 @@ const BrandDetailsSection = () => {
         ? normalizeMobileContacts(normalized.mobileContacts)
         : [createMobileContact()],
       addresses: normalized.addresses.length ? normalized.addresses.slice(0, 1) : [''],
-      addressSource: normalized.addressSource,
-      sameAsHeadOffice: normalized.addressSource !== 'custom',
       emails: normalized.emails.length
         ? normalized.emails.map(v => ({ id: Math.random().toString(36).slice(2, 11), value: v }))
         : [{ id: 'default', value: '' }],
@@ -850,7 +867,7 @@ const BrandDetailsSection = () => {
         description="Company identity and statutory settings with strict save-time normalization."
         icon={Building2}
       >
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+        <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1.08fr)_minmax(20rem,0.92fr)]">
           <div className="space-y-8">
             <CompanyInfoSection
             form={form}
@@ -889,7 +906,7 @@ const BrandDetailsSection = () => {
           />
           </div>
 
-          <div className="space-y-8 sticky top-4">
+          <div className="space-y-8 xl:sticky xl:top-4">
             <LogoLibrarySection
             form={form}
             errors={errors}
@@ -961,6 +978,16 @@ const BrandDetailsSection = () => {
         cancelText="Keep Asset"
         onConfirm={() => executeRemoveLogo(deleteConfirm.slotId)}
         onCancel={() => setDeleteConfirm({ isOpen: false, slotId: '' })}
+      />
+
+      <FocusErrorOverlay
+        open={Boolean(focusError)}
+        type={focusError?.type || 'error'}
+        title={focusError?.title}
+        message={focusError?.message}
+        detail={focusError?.detail}
+        actionLabel="Review now"
+        onClose={() => setFocusError(null)}
       />
     </>
   );

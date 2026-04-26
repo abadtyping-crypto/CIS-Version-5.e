@@ -59,19 +59,22 @@ export const fetchAllGlobalApplications = async () => {
             iconMap[item.id] = { id: item.id, ...item.data() };
         });
 
-        const rows = appsSnap.docs.map((item) => {
-            const data = item.data() || {};
-            const resolvedIconId = String(data.iconId || data.globalIconId || data.linkedIconId || '').trim();
-            const resolvedIcon = iconMap[resolvedIconId] || null;
-            return {
-                id: item.id,
-                ...data,
-                iconId: resolvedIconId,
-                globalIconId: resolvedIconId,
-                iconName: resolvedIcon?.iconName || String(data.iconName || ''),
-                iconUrl: resolvedIcon?.iconUrl || '',
-            };
-        });
+        const rows = appsSnap.docs
+            .map((item) => {
+                const data = item.data() || {};
+                const resolvedIconId = String(data.iconId || data.globalIconId || data.linkedIconId || '').trim();
+                const resolvedIcon = iconMap[resolvedIconId] || null;
+                return {
+                    id: item.id,
+                    ...data,
+                    iconId: resolvedIconId,
+                    globalIconId: resolvedIconId,
+                    iconName: resolvedIcon?.iconName || String(data.iconName || ''),
+                    iconUrl: resolvedIcon?.iconUrl || '',
+                };
+            })
+            // Strict rule: Universal application must be icon-bound. No icon => blocked.
+            .filter((row) => String(row.iconId || '').trim() && String(row.iconUrl || '').trim());
         return { ok: true, rows };
     } catch (error) {
         const message = toSafeError(error);
@@ -118,6 +121,8 @@ export const fetchMergedServiceTemplates = async (tenantId) => {
 
                 const resolvedIconId = String(row.globalIconId || globalApp.iconId || globalApp.globalIconId || globalApp.linkedIconId || '').trim();
                 const globalIcon = iconsMap[resolvedIconId] || {};
+                const resolvedIconUrl = String(globalIcon.iconUrl || '').trim();
+                if (!resolvedIconId || !resolvedIconUrl) continue; // Strict rule: block universal app when icon is missing.
                 const preferredId = toSafeDocId(String(globalApp.appName || globalApp.name || row.name || row.id || ''), 'svc_tpl');
                 const mergedRow = {
                     ...row,
@@ -126,7 +131,7 @@ export const fetchMergedServiceTemplates = async (tenantId) => {
                     name: globalApp.appName, // mapped alias to display on tenant UI
                     iconId: resolvedIconId || String(row.iconId || '').trim(),
                     globalIconId: resolvedIconId,
-                    iconUrl: globalIcon.iconUrl,
+                    iconUrl: resolvedIconUrl,
                     iconName: globalIcon.iconName,
                     // Tenant-owned only: do not inherit description from global app library.
                     description: row.description || '',

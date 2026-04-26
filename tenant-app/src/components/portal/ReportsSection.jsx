@@ -43,7 +43,8 @@ const ReportsSection = ({ isOpen, onToggle, refreshKey }) => {
 
         setStatus({ message: 'Generating PDF...', type: 'info' });
 
-        const portalName = portals.find(p => p.id === form.portalId)?.name || 'Portal';
+        const selectedPortal = portals.find(p => p.id === form.portalId);
+        const portalName = selectedPortal?.name || 'Portal';
         const totalAmount = res.rows.reduce((sum, tx) => sum + (tx.amount || 0), 0);
 
         const pdfRes = await generateTenantPdf({
@@ -53,6 +54,11 @@ const ReportsSection = ({ isOpen, onToggle, refreshKey }) => {
                 txId: `ST-${Date.now()}`,
                 date: new Date().toLocaleDateString(),
                 recipientName: portalName,
+                portalName,
+                portalId: form.portalId,
+                portalType: selectedPortal?.type || '',
+                portalMethod: Array.isArray(selectedPortal?.methods) ? selectedPortal.methods.join(', ') : '',
+                portalLogoUrl: selectedPortal?.logoUrl || selectedPortal?.iconUrl || '',
                 amount: totalAmount,
                 description: `Statement for ${portalName}${form.startDate ? ` from ${form.startDate}` : ''}${form.endDate ? ` to ${form.endDate}` : ''}`,
                 items: res.rows.map(tx => ({

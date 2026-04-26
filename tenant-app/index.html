@@ -6,6 +6,37 @@
   <link rel="icon" type="image/png" href="/favicon.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="apple-touch-icon" href="/pwa-192x192.png" />
+  <script>
+    (function () {
+      try {
+        var raw = window.localStorage.getItem('acis_theme_bootstrap_v1');
+        if (!raw) return;
+        var payload = JSON.parse(raw);
+        if (!payload || typeof payload !== 'object') return;
+        var root = document.documentElement;
+        var vars = payload.vars && typeof payload.vars === 'object' ? payload.vars : {};
+        Object.keys(vars).forEach(function (key) {
+          var value = vars[key];
+          if (typeof value === 'string' && value.trim()) {
+            root.style.setProperty(key, value);
+          }
+        });
+        if (payload.resolvedTheme === 'light' || payload.resolvedTheme === 'dark') {
+          root.dataset.theme = payload.resolvedTheme;
+        }
+        var appearance = payload.appearance && typeof payload.appearance === 'object' ? payload.appearance : {};
+        if (typeof appearance.fontFamily === 'string' && appearance.fontFamily.trim()) {
+          root.dataset.fontFamily = appearance.fontFamily;
+        }
+        if (typeof appearance.fontScale === 'string' && appearance.fontScale.trim()) {
+          root.dataset.fontScale = appearance.fontScale;
+        }
+        root.dataset.glass = appearance.glassEnabled === false ? 'off' : 'on';
+      } catch (error) {
+        // Ignore bootstrap hydration errors.
+      }
+    })();
+  </script>
   <title>ACIS Ajman Default Template</title>
 </head>
 

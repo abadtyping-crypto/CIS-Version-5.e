@@ -1,15 +1,30 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { PORTAL_STATEMENT_DISCLAIMER_TEXT, resolvePdfTemplateForRenderer, PDF_DEFAULT_TEMPLATE } from './pdfTemplateRenderer';
+import {
+  DEFAULT_QUOTATION_TERMS,
+  PORTAL_STATEMENT_DISCLAIMER_TEXT,
+  resolvePdfTemplateForRenderer,
+  normalizePdfTemplatePayload,
+  PDF_DEFAULT_TEMPLATE,
+} from './pdfTemplateRenderer';
 import { fetchTenantPdfTemplates, getTenantSettingDoc } from './backendStore';
 
-const resolveTemplateTerms = (template, data) => {
+const resolveTemplateTerms = (template, data, documentType) => {
   const quotationSpecificTerms = String(data?.termsAndConditions || '').trim();
   if (quotationSpecificTerms) return quotationSpecificTerms;
-  const rawTerms = String(template?.termsAndConditions || '').trim();
+  const rawTerms = String(
+    template?.termsAndConditions
+    || (documentType === 'quotation' ? DEFAULT_QUOTATION_TERMS : '')
+  ).trim();
   if (!rawTerms) return '';
   const expiryDate = String(data?.expiryDate || '').trim() || 'the selected expiry date';
   return rawTerms.replaceAll('{{expiryDate}}', expiryDate);
+};
+
+const resolvePortalStatementDisclaimer = (template, data) => {
+  const portalName = String(data?.portalName || data?.recipientName || 'this portal').trim();
+  const raw = String(template?.internalStatementDisclaimer || PORTAL_STATEMENT_DISCLAIMER_TEXT).trim();
+  return raw.replaceAll('{{portalName}}', portalName || 'this portal');
 };
 
 const toNumber = (value, fallback = 0) => {
@@ -111,10 +126,10 @@ const drawDirhamAmount = (
       doc.addImage(iconBase64, 'PNG', x, iconY, iconSize, iconSize);
       textX = x + iconSize + 3;
     } catch {
-      text = `Dhs ${numStr}`;
+      text = `AED ${numStr}`;
     }
   } else {
-    text = `Dhs ${numStr}`;
+    text = `AED ${numStr}`;
   }
 
   doc.text(text, textX, y);
@@ -197,6 +212,63 @@ const computeDocTotal = (normalizedItems, fallbackAmount = 0) => {
   return toNumber(fallbackAmount, 0);
 };
 
+const imageToPngDataUrl = (source) => new Promise((resolve, reject) => {
+  const image = new Image();
+  image.crossOrigin = 'anonymous';
+  image.onload = () => {
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, image.naturalWidth || image.width || 1);
+      canvas.height = Math.max(1, image.naturalHeight || image.height || 1);
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        reject(new Error('Unable to prepare image canvas.'));
+        return;
+      }
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL('image/png'));
+    } catch (error) {
+      reject(error);
+    }
+  };
+  image.onerror = () => reject(new Error('Unable to load PDF image.'));
+  image.src = source;
+});
+
+const resolvePdfImageSource = async (source) => {
+  const value = String(source || '').trim();
+  if (!value) return '';
+  if (value.startsWith('data:')) {
+    if (value.startsWith('data:image/png') || value.startsWith('data:image/jpeg') || value.startsWith('data:image/jpg')) {
+      return value;
+    }
+    try {
+      return await imageToPngDataUrl(value);
+    } catch {
+      return value;
+    }
+  }
+  try {
+    const response = await fetch(value, { cache: 'no-store' });
+    if (!response.ok) return value;
+    const blob = await response.blob();
+    if (!String(blob.type || '').startsWith('image/')) return value;
+    const objectUrl = URL.createObjectURL(blob);
+    try {
+      return await imageToPngDataUrl(objectUrl);
+    } finally {
+      URL.revokeObjectURL(objectUrl);
+    }
+  } catch {
+    try {
+      return await imageToPngDataUrl(value);
+    } catch {
+      return value;
+    }
+  }
+};
+
 const addImageWithFallbackFormat = (doc, source, x, y, w, h) => {
   if (!source) return false;
   const formats = ['PNG', 'JPEG', 'WEBP'];
@@ -211,6 +283,149 @@ const addImageWithFallbackFormat = (doc, source, x, y, w, h) => {
   return false;
 };
 
+const resolvePdfFont = (fontStyle) => {
+  const safe = String(fontStyle || '').toLowerCase();
+  if (safe === 'times') return { family: 'times', style: 'normal' };
+  if (safe === 'courier') return { family: 'courier', style: 'normal' };
+  if (safe === 'helvetica-bold') return { family: 'helvetica', style: 'bold' };
+  return { family: 'helvetica', style: 'normal' };
+};
+
+const normalizeLogoLibrary = (branding) => {
+  const library = Array.isArray(branding?.logoLibrary) ? branding.logoLibrary : [];
+  const normalized = library
+    .map((slot, index) => ({
+      slotId: String(slot?.slotId || slot?.id || `logo_${index + 1}`).trim(),
+      url: String(slot?.url || slot?.logoUrl || slot?.src || '').trim(),
+    }))
+    .filter((slot) => slot.slotId && slot.url);
+  const fallbackLogoUrl = String(
+    branding?.activeLogoUrl
+    || branding?.logoUrl
+    || branding?.iconUrl
+    || branding?.brandLogoUrl
+    || branding?.companyLogoUrl
+    || ''
+  ).trim();
+  if (fallbackLogoUrl && !normalized.some((slot) => slot.url === fallbackLogoUrl)) {
+    normalized.unshift({ slotId: 'brandingFallbackLogo', url: fallbackLogoUrl });
+  }
+  return normalized;
+};
+
+const normalizeEmailContacts = (branding) => {
+  const source = Array.isArray(branding?.emailContacts) && branding.emailContacts.length
+    ? branding.emailContacts
+    : (Array.isArray(branding?.emails) ? branding.emails.map((value) => ({ value })) : []);
+  return source
+    .map((item, index) => ({
+      key: `email:${index}`,
+      legacyKey: index === 0 ? 'showPrimaryEmail' : `showEmail${index + 1}`,
+      value: String(item?.value || item?.email || item || '').trim().toLowerCase(),
+    }))
+    .filter((item) => item.value);
+};
+
+const normalizeMobileContacts = (branding) => {
+  const source = Array.isArray(branding?.mobileContacts) && branding.mobileContacts.length
+    ? branding.mobileContacts
+    : (Array.isArray(branding?.mobiles) ? branding.mobiles.map((value) => ({ value })) : []);
+  return source
+    .map((item, index) => ({
+      key: `mobile:${index}`,
+      legacyKey: index === 0 ? 'showPrimaryMobile' : `showMobile${index + 1}`,
+      value: String(item?.value || item?.phone || item || '').trim(),
+      whatsAppEnabled: item?.whatsAppEnabled === true,
+    }))
+    .filter((item) => item.value);
+};
+
+const normalizeBrandAddresses = (branding) => {
+  const addressSource = Array.isArray(branding?.addresses) && branding.addresses.length
+    ? branding.addresses
+    : [
+      branding?.primaryAddress,
+      branding?.secondaryAddress,
+      branding?.officeAddress,
+      branding?.address,
+      branding?.branchAddress,
+    ].filter(Boolean);
+  const addresses = addressSource
+    .map((value, index) => ({
+      key: `address:${index}`,
+      value: String(value || '').trim(),
+    }))
+    .filter((item) => item.value);
+  const poBoxNumber = String(branding?.poBoxNumber || '').trim();
+  const poBoxEmirate = String(branding?.poBoxEmirate || '').trim();
+  const poBox = poBoxNumber
+    ? { key: 'poBox', value: `PO Box ${poBoxNumber}${poBoxEmirate ? `, ${poBoxEmirate}` : ''}` }
+    : null;
+
+  return { addresses, poBox };
+};
+
+const visibilityAllows = (map, key, legacyKey) => {
+  if (!map || typeof map !== 'object') return true;
+  if (map[key] === false) return false;
+  if (legacyKey && map[legacyKey] === false) return false;
+  return true;
+};
+
+const resolveMasterTemplate = (baseTemplate, masterTemplate, overrideTemplate, customizationDisabled) => {
+  if (overrideTemplate) {
+    return normalizePdfTemplatePayload({ ...PDF_DEFAULT_TEMPLATE, ...overrideTemplate });
+  }
+  if (customizationDisabled) {
+    return normalizePdfTemplatePayload(PDF_DEFAULT_TEMPLATE);
+  }
+  return normalizePdfTemplatePayload({
+    ...PDF_DEFAULT_TEMPLATE,
+    ...(baseTemplate || {}),
+    ...(masterTemplate || {}),
+  });
+};
+
+const PDF_DOCUMENT_LABELS = {
+  invoice: 'Invoice',
+  quotation: 'Quotation',
+  claim: 'Claim',
+  acknowledgement: 'Acknowledgment',
+  payment: 'Payment',
+  clientStatement: 'Client Statement',
+  portalStatement: 'Portal Statement',
+  portalStatementQuotation: 'Portal Statement Quotation',
+  paymentReceipt: 'Payment Receipt',
+  nextInvoice: 'Invoice',
+  performerInvoice: 'Proforma Invoice',
+  statement: 'Client Statement',
+};
+
+const PDF_DOCUMENT_DEFAULT_FOOTERS = {
+  invoice: 'This invoice is system generated and subject to recorded service and payment details.',
+  quotation: 'This quotation is valid only for the stated period and is subject to government fee changes where applicable.',
+  claim: 'This claim is issued for verification and settlement review.',
+  acknowledgement: 'This acknowledgement confirms receipt of the recorded request or payment information.',
+  payment: 'This payment record is generated from tenant payment entries.',
+  clientStatement: 'This client statement is generated from recorded client ledger activity.',
+  portalStatement: PORTAL_STATEMENT_DISCLAIMER_TEXT,
+  portalStatementQuotation: 'This portal statement quotation is for portal reconciliation review only.',
+  paymentReceipt: 'This payment receipt is generated from tenant payment entries.',
+  nextInvoice: 'This invoice is system generated and subject to recorded service and payment details.',
+  performerInvoice: 'This proforma invoice is issued for approval before final invoicing.',
+  statement: 'This client statement is generated from recorded client ledger activity.',
+};
+
+const resolveDocumentTitle = (documentType, template) => {
+  const pageConfig = template?.documentConfigs?.[documentType];
+  return String(pageConfig?.titleText || template?.titleText || PDF_DOCUMENT_LABELS[documentType] || documentType || 'DOCUMENT').trim();
+};
+
+const resolveDocumentFooter = (documentType, template) => {
+  const pageConfig = template?.documentConfigs?.[documentType];
+  return String(pageConfig?.systemFooter || PDF_DOCUMENT_DEFAULT_FOOTERS[documentType] || template?.footerText || '').trim();
+};
+
 /**
  * Professional Portal Statement Generation utility.
  */
@@ -219,7 +434,6 @@ const generatePremiumPortalStatement = async ({
   save,
   returnBase64,
   template,
-  branding,
   dirhamIconBase64,
   finalFilename
 }) => {
@@ -240,27 +454,36 @@ const generatePremiumPortalStatement = async ({
     // 2. Header Info
     let cursorY = margins.top + 10;
     const rows = Array.isArray(data?.statementRows) ? data.statementRows : [];
+    const portalDisplayName = String(data?.portalName || data?.recipientName || 'Portal Activity').trim();
+    const portalLogoEnabled = template?.portalLogoEnabled !== false;
+    const portalLogoUrl = portalLogoEnabled
+      ? String(data?.portalLogoUrl || data?.portalIconUrl || '').trim()
+      : '';
+    const portalLogoSource = await resolvePdfImageSource(portalLogoUrl);
+    const brandingName = portalDisplayName;
+    const leftHeaderTextX = portalLogoUrl ? margins.left + 54 : margins.left;
+    doc.setFillColor(241, 245, 249);
+    doc.roundedRect(margins.left, cursorY - 10, contentWidth / 2 - 20, 75, 4, 4, 'F');
     
     // Left: Statement Title & Branding
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(26);
     doc.setTextColor(...accentRgb);
-    doc.text('STATEMENT', margins.left, cursorY + 20);
+    doc.text('STATEMENT', leftHeaderTextX, cursorY + 20);
 
-    const brandingName = String(branding?.legalName || branding?.brandName || 'Portal Activity').trim();
     doc.setFontSize(11);
     doc.setTextColor(15, 23, 42);
     doc.setFont('helvetica', 'bold');
-    doc.text(brandingName, margins.left, cursorY + 38);
+    doc.text(brandingName, leftHeaderTextX, cursorY + 38);
 
     doc.setFontSize(10);
     doc.setTextColor(100, 116, 139);
     doc.setFont('helvetica', 'normal');
-    const portalNameLines = doc.splitTextToSize(`Prepared for: ${String(data?.recipientName || 'Client')}`, contentWidth / 2 - 20);
-    doc.text(portalNameLines, margins.left, cursorY + 52);
+    const portalNameLines = doc.splitTextToSize(`Prepared for: ${String(data?.recipientName || 'Client')}`, contentWidth / 2 - (portalLogoUrl ? 74 : 20));
+    doc.text(portalNameLines, leftHeaderTextX, cursorY + 52);
 
     // Right: Tenant Details (Print Safe)
-    const tenantLegalName = String(branding?.legalName || 'Sovereign Service').trim();
+    const tenantLegalName = portalDisplayName;
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(15, 23, 42);
@@ -270,10 +493,9 @@ const generatePremiumPortalStatement = async ({
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(100, 116, 139);
     const tenantContactLines = [
-      branding?.officeAddress,
-      branding?.emirate ? `${branding.emirate}, ${branding.country || 'UAE'}` : '',
-      branding?.emailContacts?.[0]?.value ? `Email: ${branding.emailContacts[0].value}` : '',
-      branding?.mobileContacts?.[0]?.value ? `Tel: ${branding.mobileContacts[0].value}` : ''
+      data?.portalType ? `Portal Type: ${data.portalType}` : '',
+      data?.portalId ? `Portal ID: ${data.portalId}` : '',
+      data?.portalMethod ? `Method: ${data.portalMethod}` : '',
     ].filter((s) => String(s || '').trim());
     
     let contactY = cursorY + 36;
@@ -282,13 +504,9 @@ const generatePremiumPortalStatement = async ({
       contactY += 11;
     });
 
-    // mica styling cues in header
-    doc.setFillColor(241, 245, 249);
-    doc.roundedRect(margins.left, cursorY - 10, contentWidth / 2 - 20, 75, 4, 4, 'F');
     // Draw Logo if available
-    const logoUrl = branding?.logoUrl || branding?.iconUrl || '';
-    if (logoUrl) {
-      addImageWithFallbackFormat(doc, logoUrl, margins.left + 5, cursorY - 5, 40, 40);
+    if (portalLogoSource) {
+      addImageWithFallbackFormat(doc, portalLogoSource, margins.left + 5, cursorY - 5, 40, 40);
     }
 
 
@@ -366,7 +584,7 @@ const generatePremiumPortalStatement = async ({
       const valWidth = doc.getTextWidth(valText);
       const iconSz = 7;
       const padding = 2;
-      const totalW = dirhamIconBase64 ? (iconSz + padding + valWidth) : (doc.getTextWidth('Dhs ') + valWidth);
+      const totalW = dirhamIconBase64 ? (iconSz + padding + valWidth) : (doc.getTextWidth('AED ') + valWidth);
       const startX = cx + (cardWidth - totalW) / 2;
       
       drawDirhamAmount(doc, dirhamIconBase64, c.value, startX, cursorY + 45, {
@@ -487,7 +705,7 @@ const generatePremiumPortalStatement = async ({
     cursorY = doc.lastAutoTable.finalY + 30;
 
     // 6. Footer Disclaimer & Sign-off
-    const disclaimerText = PORTAL_STATEMENT_DISCLAIMER_TEXT || "CONFIDENTIALITY NOTICE: This statement is highly confidential. If you are not the intended recipient, any disclosure, copying, distribution or any action taken or omitted to be taken in reliance on it, is strictly prohibited and may be unlawful.";
+    const disclaimerText = resolvePortalStatementDisclaimer(template, data);
     
     if (cursorY + 60 > pageHeight - margins.bottom) {
       doc.addPage();
@@ -546,15 +764,20 @@ export const generateTenantPdf = async ({
   save = true,
   returnBase64 = false,
   filename,
+  templateOverride = null,
 }) => {
+
   try {
     const dirhamIconBase64 = await loadDirhamIconBase64();
     const templatesRes = await fetchTenantPdfTemplates(tenantId);
     if (!templatesRes.ok) throw new Error('Failed to fetch templates.');
 
-    const { template } = resolvePdfTemplateForRenderer({
+    const { template: rendererTemplate } = resolvePdfTemplateForRenderer({
       documentType,
-      templateDoc: templatesRes.byType[documentType],
+      templateDoc: templatesRes.byType[documentType]
+        || templatesRes.byType[documentType === 'invoice' ? 'nextInvoice' : documentType]
+        || templatesRes.byType[documentType === 'payment' ? 'paymentReceipt' : documentType]
+        || templatesRes.byType[documentType === 'clientStatement' ? 'statement' : documentType],
     });
 
     const prefRes = await getTenantSettingDoc(tenantId, 'preferenceSettings');
@@ -562,6 +785,8 @@ export const generateTenantPdf = async ({
 
     const brandRes = await getTenantSettingDoc(tenantId, 'branding');
     const branding = brandRes.ok && brandRes.data ? brandRes.data : {};
+    const masterRes = await getTenantSettingDoc(tenantId, 'pdfTemplate_default');
+    const masterTemplate = masterRes.ok && masterRes.data ? masterRes.data : null;
 
     let finalFilename = filename;
     if (!finalFilename) {
@@ -575,12 +800,12 @@ export const generateTenantPdf = async ({
       }
     }
 
-    const sourceTemplate = customizationDisabled ? PDF_DEFAULT_TEMPLATE : template;
+    const template = resolveMasterTemplate(rendererTemplate, masterTemplate, templateOverride, customizationDisabled);
 
     const {
       showCompanyName = true,
       showCompanyAddress = true,
-      showBankDetails = false,
+      showBankDetails = true,
       showContactInfo = true,
       bankAccountsVisibility = [true],
       contactVisibilityMap = {},
@@ -588,55 +813,72 @@ export const generateTenantPdf = async ({
       portalLogoEnabled = true,
       portalTableEnabled = true,
       portalTableLayout = 'horizontal',
-    } = sourceTemplate;
+    } = template;
 
     const isPortalStatement = documentType === 'portalStatement';
+    const isStatementLike = ['statement', 'clientStatement', 'portalStatementQuotation'].includes(documentType);
 
     if (isPortalStatement) {
       return await generatePremiumPortalStatement({
         data,
         save,
         returnBase64,
-        template: sourceTemplate,
-        branding,
+        template,
         dirhamIconBase64,
         finalFilename,
       });
     }
 
-    const logoLibrary = Array.isArray(branding.logoLibrary) ? branding.logoLibrary : [];
+    const logoLibrary = normalizeLogoLibrary(branding);
     const logoUsage = branding.logoUsage || {};
 
     const headerLogoSlot = logoLibrary.find((slot) => slot.slotId === logoUsage.header);
     const footerLogoSlot = logoLibrary.find((slot) => slot.slotId === logoUsage.footer);
     const docLogoSlot = logoLibrary.find((slot) => slot.slotId === logoUsage[documentType]);
     const templateLogoSlot = logoLibrary.find((slot) => slot.slotId === String(template.logoSlotId || '').trim());
+    const watermarkLogoSlot = logoLibrary.find((slot) => slot.slotId === String(template.watermarkLogoSlotId || '').trim());
 
-    const headerImageUrl = headerLogoSlot?.url || '';
+    const headerImageUrl = '';
     const footerImageUrl = footerLogoSlot?.url || '';
     const docLogoUrl =
       templateLogoSlot?.url
       || docLogoSlot?.url
       || headerLogoSlot?.url
       || String(template.logoUrl || '').trim()
+      || String(branding.activeLogoUrl || '').trim()
+      || String(branding.logoUrl || '').trim()
+      || String(branding.iconUrl || '').trim()
+      || String(branding.brandLogoUrl || '').trim()
+      || String(branding.companyLogoUrl || '').trim()
       || '';
+    const watermarkLogoUrl = watermarkLogoSlot?.url || docLogoUrl;
     const portalLogoUrl = String(data?.portalLogoUrl || '').trim();
     const effectiveDocLogoUrl =
       isPortalStatement && portalLogoEnabled && portalLogoUrl
         ? portalLogoUrl
         : docLogoUrl;
+    const [
+      effectiveDocLogoSource,
+      watermarkLogoSource,
+      footerImageSource,
+    ] = await Promise.all([
+      resolvePdfImageSource(effectiveDocLogoUrl),
+      resolvePdfImageSource(watermarkLogoUrl),
+      resolvePdfImageSource(footerImageUrl),
+    ]);
 
-    const format = String(template.paperSize || 'A4').toUpperCase() === 'A4' ? 'a4' : 'letter';
     const doc = new jsPDF({
-      orientation: template.orientation,
+      orientation: 'portrait',
       unit: 'pt',
-      format,
+      format: 'a4',
     });
 
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
-    const margins = template.margins;
+    const margins = template.margins || PDF_DEFAULT_TEMPLATE.margins;
     const contentWidth = pageWidth - margins.left - margins.right;
+    const runtimeFont = resolvePdfFont(template.fontStyle);
+    doc.setFont(runtimeFont.family, runtimeFont.style);
 
     const normalizedItems = normalizeItems(data?.items, data?.description, data?.amount);
     const computedTotal = isPortalStatement
@@ -648,62 +890,127 @@ export const generateTenantPdf = async ({
     const dateLabel = String(data?.date || new Date().toLocaleDateString());
     const subtitle = String(data?.description || '').trim();
 
-    const brandingCompanyName = String(branding.legalName || branding.brandName || '').trim();
-    const brandingAddresses = [
-      branding?.officeAddress,
-      branding?.emirate,
-      branding?.country,
-    ].filter((s) => String(s || '').trim()).map(s => String(s).trim());
+    const brandingCompanyName = String(branding.companyName || branding.legalName || branding.brandName || '').trim();
+    const { addresses: scannedAddresses, poBox } = normalizeBrandAddresses(branding);
+    const visibleAddressLines = [
+      ...scannedAddresses
+        .filter((item) => visibilityAllows(contactVisibilityMap, item.key))
+        .map((item) => item.value),
+      ...(poBox && visibilityAllows(contactVisibilityMap, poBox.key) ? [poBox.value] : []),
+    ];
 
     const brandingBankAccounts = Array.isArray(branding?.bankDetails) ? branding.bankDetails : [];
     const visibleBanks = brandingBankAccounts
-      .filter((_, idx) => bankAccountsVisibility[idx])
+      .filter((_, idx) => bankAccountsVisibility[idx] !== false)
       .map(readBrandingBankLines);
 
     const brandingContactLines = [];
     if (showContactInfo) {
-      const emailContacts = Array.isArray(branding?.emailContacts) ? branding.emailContacts : [];
-      const mobileContacts = Array.isArray(branding?.mobileContacts) ? branding.mobileContacts : [];
+      const emailContacts = normalizeEmailContacts(branding);
+      const mobileContacts = normalizeMobileContacts(branding);
+      const landlineContacts = Array.isArray(branding?.landlines) && branding.landlines.length
+        ? branding.landlines
+        : [branding?.landline].filter(Boolean);
 
-      emailContacts.forEach((c, idx) => {
-        const key = idx === 0 ? 'showPrimaryEmail' : `showEmail${idx + 1}`;
-        if (contactVisibilityMap[key] !== false && c.value) {
-          brandingContactLines.push(`Email: ${c.value}`);
+      emailContacts.forEach((contact) => {
+        if (visibilityAllows(contactVisibilityMap, contact.key, contact.legacyKey)) {
+          brandingContactLines.push(`Email: ${contact.value}`);
         }
       });
 
-      mobileContacts.forEach((c, idx) => {
-        const key = idx === 0 ? 'showPrimaryMobile' : `showMobile${idx + 1}`;
-        if (contactVisibilityMap[key] !== false && c.value) {
-          const prefix = c.whatsAppEnabled ? '[WA] ' : '';
-          brandingContactLines.push(`${prefix}Mobile: ${c.value}`);
+      mobileContacts.forEach((contact) => {
+        if (visibilityAllows(contactVisibilityMap, contact.key, contact.legacyKey)) {
+          const prefix = contact.whatsAppEnabled ? '[WA] ' : '';
+          brandingContactLines.push(`${prefix}Mobile: ${contact.value}`);
         }
       });
 
-      if (branding?.landline && contactVisibilityMap.showLandline !== false) {
-        brandingContactLines.push(`Landline: ${branding.landline}`);
-      }
+      landlineContacts.forEach((lineValue, idx) => {
+        const normalizedLine = String(lineValue || '').trim();
+        if (!normalizedLine) return;
+        const key = idx === 0 ? 'showLandline' : `showLandline${idx + 1}`;
+        if (contactVisibilityMap[key] !== false) {
+          brandingContactLines.push(`Landline: ${normalizedLine}`);
+        }
+      });
     }
 
-    doc.setFillColor(...applyColor(template.backgroundColor, '#ffffff'));
+    doc.setFillColor(255, 255, 255);
     doc.rect(0, 0, pageWidth, pageHeight, 'F');
 
-    if (template.backgroundType === 'gradient') {
-      const start = applyColor(template.gradientStart, '#fff6e8');
-      const end = applyColor(template.gradientEnd, '#f7d8a8');
-      const steps = 60;
-      const rectHeight = pageHeight / steps;
-      for (let i = 0; i < steps; i += 1) {
-        const ratio = i / (steps - 1);
-        const r = Math.round(start[0] + (end[0] - start[0]) * ratio);
-        const g = Math.round(start[1] + (end[1] - start[1]) * ratio);
-        const b = Math.round(start[2] + (end[2] - start[2]) * ratio);
-        doc.setFillColor(r, g, b);
-        doc.rect(0, i * rectHeight, pageWidth, rectHeight + 1, 'F');
+    const enableWatermark = template.enableWatermark === true;
+    const watermarkOpacity = Math.min(0.35, Math.max(0.03, toNumber(template.watermarkOpacity, 0.08)));
+    const watermarkScale = Math.min(1.3, Math.max(0.3, toNumber(template.watermarkScale, 0.7)));
+    const watermarkPosition = String(template.watermarkPosition || 'center');
+    const watermarkCenter = (() => {
+      if (watermarkPosition === 'top') return { x: pageWidth / 2, y: pageHeight * 0.28 };
+      if (watermarkPosition === 'bottom') return { x: pageWidth / 2, y: pageHeight * 0.72 };
+      return { x: pageWidth / 2, y: pageHeight / 2 };
+    })();
+
+    if (enableWatermark) {
+      try {
+        doc.saveGraphicsState();
+        doc.setGState(new doc.GState({ opacity: watermarkOpacity }));
+        if (template.watermarkType === 'text') {
+          const watermarkText = String(template.watermarkText || brandingCompanyName || 'ACIS').trim();
+          if (watermarkText) {
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(54 * watermarkScale);
+            doc.setTextColor(15, 23, 42);
+            doc.text(watermarkText.toUpperCase(), watermarkCenter.x, watermarkCenter.y, {
+              align: 'center',
+              angle: watermarkPosition === 'diagonal' ? -35 : 0,
+            });
+          }
+        } else if (watermarkLogoSource) {
+          const wWidth = 220 * watermarkScale;
+          const wHeight = 220 * watermarkScale;
+          const wX = watermarkCenter.x - (wWidth / 2);
+          const wY = watermarkCenter.y - (wHeight / 2);
+          addImageWithFallbackFormat(doc, watermarkLogoSource, wX, wY, wWidth, wHeight);
+        }
+        doc.restoreGraphicsState();
+      } catch (e) {
+        console.warn('Watermark failed:', e);
+        try {
+          doc.restoreGraphicsState();
+        } catch {
+          // no-op
+        }
       }
     }
 
-    const headerHeight = 100;
+    const brandingLines = [];
+    if (showCompanyName && brandingCompanyName) brandingLines.push(brandingCompanyName);
+    if (showCompanyAddress && visibleAddressLines.length) brandingLines.push(...visibleAddressLines);
+    if (showContactInfo && brandingContactLines.length) brandingLines.push(...brandingContactLines);
+
+    const hasLogo = Boolean(effectiveDocLogoSource);
+    const logoIsCenter = template.logoPosition === 'center';
+    const logoIsRight = template.logoPosition === 'right';
+    const logoIsBottom = template.logoPosition === 'bottom';
+    const titleText = resolveDocumentTitle(documentType, template).toUpperCase();
+    const headerAccentRgb = applyColor(template.headerAccentColor || template.headerBackground, '#0f172a');
+    const headerLooksWhite = headerAccentRgb.every((channel) => channel > 245);
+    const safeHeaderAccentRgb = headerLooksWhite ? applyColor(PDF_DEFAULT_TEMPLATE.headerAccentColor, '#0f172a') : headerAccentRgb;
+
+    const bodyFont = resolvePdfFont(template.fontStyle);
+    const wrappedBrandingLines = [];
+    doc.setFont(bodyFont.family, bodyFont.style);
+    brandingLines.forEach((line, idx) => {
+      doc.setFontSize(idx === 0 && showCompanyName && brandingCompanyName ? 11 : 8.5);
+      const wrapped = doc.splitTextToSize(String(line), contentWidth - 20);
+      wrappedBrandingLines.push({ lines: wrapped, isTitle: idx === 0 && showCompanyName && brandingCompanyName });
+    });
+
+    const brandingStartY = hasLogo && logoIsCenter ? 104 : 88;
+    const brandingHeight = wrappedBrandingLines.reduce((total, row) => total + (row.lines.length * (row.isTitle ? 12 : 10)), 0);
+    const headerHeight = Math.min(
+      pageHeight - 220,
+      Math.max(116, brandingStartY + brandingHeight + 18),
+    );
+
     const headerRendered = addImageWithFallbackFormat(
       doc,
       headerImageUrl,
@@ -713,39 +1020,58 @@ export const generateTenantPdf = async ({
       headerHeight - 16,
     );
 
-    if (headerRendered && isPortalStatement && portalLogoEnabled && effectiveDocLogoUrl) {
-      const badgeSize = 48;
-      const badgePadding = 4;
-      const badgeX = margins.left;
-      const badgeY = 20;
-      doc.setFillColor(255, 255, 255);
-      doc.roundedRect(badgeX - badgePadding, badgeY - badgePadding, badgeSize + (badgePadding * 2), badgeSize + (badgePadding * 2), 8, 8, 'F');
-      addImageWithFallbackFormat(doc, effectiveDocLogoUrl, badgeX, badgeY, badgeSize, badgeSize);
+    if (!headerRendered) {
+      doc.setFillColor(...safeHeaderAccentRgb);
+      doc.rect(0, 0, pageWidth, headerHeight, 'F');
     }
 
     if (!headerRendered) {
-      doc.setFillColor(...applyColor(template.headerBackground, '#0f172a'));
-      doc.rect(0, 0, pageWidth, headerHeight, 'F');
-
-      if (effectiveDocLogoUrl) {
-        addImageWithFallbackFormat(doc, effectiveDocLogoUrl, margins.left, 20, 60, 60);
+      if (hasLogo && !logoIsBottom) {
+        let logoX = margins.left;
+        if (logoIsCenter) logoX = (pageWidth - 60) / 2;
+        if (logoIsRight) logoX = pageWidth - margins.right - 60;
+        doc.setFillColor(255, 255, 255);
+        doc.roundedRect(logoX - 6, 14, 72, 72, 8, 8, 'F');
+        addImageWithFallbackFormat(doc, effectiveDocLogoSource, logoX, 20, 60, 60);
       }
+
+      let currentBrandingY = brandingStartY;
+      doc.setTextColor(255, 255, 255);
+      wrappedBrandingLines.forEach((row) => {
+        doc.setFont(bodyFont.family, row.isTitle ? 'bold' : bodyFont.style);
+        doc.setFontSize(row.isTitle ? 11 : 8.5);
+        doc.text(row.lines, margins.left, currentBrandingY);
+        currentBrandingY += row.lines.length * (row.isTitle ? 12 : 10);
+      });
 
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(22);
-      doc.setFont('helvetica', 'bold');
-      doc.text(String(template.titleText || documentType || 'DOCUMENT').toUpperCase(), pageWidth - margins.right, 42, { align: 'right' });
+      doc.setFont(bodyFont.family, 'bold');
+      
+      const titleAlign = logoIsRight ? 'left' : 'right';
+      const titleX = logoIsRight ? margins.left : pageWidth - margins.right;
+      const titleLines = doc.splitTextToSize(titleText, contentWidth * 0.42);
+      doc.text(titleLines, titleX, 42, { align: titleAlign });
 
       const headerText = String(template.headerText || '').trim();
       if (headerText) {
         doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
+        doc.setFont(bodyFont.family, bodyFont.style);
         const lines = doc.splitTextToSize(headerText, 240);
-        doc.text(lines, pageWidth - margins.right, 62, { align: 'right' });
+        doc.text(lines, titleX, 66, { align: titleAlign });
       }
     }
 
-    let cursorY = headerHeight + margins.top;
+    let cursorY = headerHeight + Math.max(24, margins.top);
+
+    const ensurePageSpace = (requiredHeight = 80) => {
+      const bottomLimit = pageHeight - Math.max(80, margins.bottom + 46);
+      if (cursorY + requiredHeight <= bottomLimit) return;
+      doc.addPage();
+      doc.setFillColor(255, 255, 255);
+      doc.rect(0, 0, pageWidth, pageHeight, 'F');
+      cursorY = Math.max(42, margins.top);
+    };
 
     doc.setTextColor(20, 23, 28);
     doc.setFont('helvetica', 'bold');
@@ -756,17 +1082,19 @@ export const generateTenantPdf = async ({
     const renderRecipientBlock = (y) => {
       let currentY = y;
       doc.setFontSize(15);
-      doc.setFont('helvetica', 'bold');
+      doc.setFont(bodyFont.family, 'bold');
       const label = 'Recipient: ';
       const align = billingAddressPosition === 'right' ? 'right' : 'left';
       const x = align === 'right' ? pageWidth - margins.right : margins.left;
-      doc.text(`${label}${recipientName}`, x, currentY, { align });
+      const recipientLines = doc.splitTextToSize(`${label}${recipientName}`, contentWidth * 0.56);
+      doc.text(recipientLines, x, currentY, { align });
+      currentY += Math.max(0, (recipientLines.length - 1) * 15);
 
       if (subtitle) {
         currentY += 16;
-        doc.setFont('helvetica', 'normal');
+        doc.setFont(bodyFont.family, bodyFont.style);
         doc.setFontSize(10);
-        const subtitleLines = doc.splitTextToSize(subtitle, contentWidth);
+        const subtitleLines = doc.splitTextToSize(subtitle, contentWidth * 0.72);
         doc.text(subtitleLines, x, currentY, { align });
         return currentY + Math.max(14, subtitleLines.length * 10);
       }
@@ -782,16 +1110,18 @@ export const generateTenantPdf = async ({
 
     cursorY += 10;
 
-    const shouldRenderTable = !isPortalStatement || portalTableEnabled !== false;
+    const isStatementDocument = isStatementLike;
+    const shouldRenderTable = template.tableEnabled !== false && (!isPortalStatement || portalTableEnabled !== false);
     if (shouldRenderTable) {
       const currencyCellText = (value) => {
-        if (isPortalStatement) return formatAmount(value, { trimTrailingZeros: true });
+        if (dirhamIconBase64) return formatAmount(value, { trimTrailingZeros: isStatementDocument || isPortalStatement });
+        if (isStatementDocument || isPortalStatement) return formatCurrencyText(value, { trimTrailingZeros: true });
         return formatCurrencyText(value);
       };
-      const enableCurrencyCellIcon = Boolean(dirhamIconBase64) && isPortalStatement;
-      const useVerticalPortalTable = isPortalStatement && portalTableLayout === 'vertical';
+      const enableCurrencyCellIcon = Boolean(dirhamIconBase64);
+      const useVerticalPortalTable = (isStatementDocument || isPortalStatement) && portalTableLayout === 'vertical';
       const isCompactLayout = String(template.bodyLayout || 'standard') === 'compact';
-      const useStatementRows = isPortalStatement && statementRows.length > 0;
+      const useStatementRows = (isStatementDocument || isPortalStatement) && statementRows.length > 0;
       const tableBody = useStatementRows
         ? (useVerticalPortalTable
           ? statementRows.flatMap((row, idx) => ([
@@ -833,6 +1163,7 @@ export const generateTenantPdf = async ({
         theme: 'grid',
         margin: { left: margins.left, right: margins.right },
         styles: {
+          font: bodyFont.family,
           fontSize: isCompactLayout ? 9 : 10,
           lineColor: [223, 226, 230],
           lineWidth: 0.6,
@@ -842,7 +1173,7 @@ export const generateTenantPdf = async ({
           textColor: [40, 40, 40],
         },
         headStyles: {
-          fillColor: applyColor(template.accentColor, '#e67e22'),
+          fillColor: applyColor(template.tableAccentColor || template.accentColor, '#e67e22'),
           textColor: [255, 255, 255],
           fontStyle: 'bold',
         },
@@ -948,7 +1279,7 @@ export const generateTenantPdf = async ({
       const labelText = `${label}: `;
       const labelWidth = doc.getTextWidth(labelText);
       const valueText = formatAmount(amount, { trimTrailingZeros: isPortalStatement });
-      const iconWidth = dirhamIconBase64 ? 14 : doc.getTextWidth('Dhs ');
+      const iconWidth = dirhamIconBase64 ? 14 : doc.getTextWidth('AED ');
       const startX = pageWidth - margins.right - (labelWidth + iconWidth + doc.getTextWidth(valueText));
       if (color) doc.setTextColor(...color);
       doc.text(labelText, startX, y);
@@ -959,19 +1290,20 @@ export const generateTenantPdf = async ({
       return y;
     };
 
-    doc.setFont('helvetica', 'bold');
+    ensurePageSpace(showQuoteDiscount ? 86 : 48);
+    doc.setFont(bodyFont.family, 'bold');
     doc.setFontSize(14);
     if (showQuoteDiscount) {
-      doc.setTextColor(...applyColor(template.accentColor, '#e67e22'));
-      drawTotalLine('Total Amount', quoteSubtotal, cursorY, applyColor(template.accentColor, '#e67e22'));
+      doc.setTextColor(...applyColor(template.bottomAccentColor || template.accentColor, '#e67e22'));
+      drawTotalLine('Total Amount', quoteSubtotal, cursorY, applyColor(template.bottomAccentColor || template.accentColor, '#e67e22'));
       cursorY += 18;
       doc.setTextColor(120, 120, 120);
       drawTotalLine('Discount', -quoteDiscount, cursorY, [120, 120, 120]);
       cursorY += 18;
     }
-    doc.setTextColor(...applyColor(template.accentColor, '#e67e22'));
+    doc.setTextColor(...applyColor(template.bottomAccentColor || template.accentColor, '#e67e22'));
     const totalLabel = showQuoteDiscount ? 'Balance' : 'Grand Total';
-    drawTotalLine(totalLabel, computedTotal, cursorY, applyColor(template.accentColor, '#e67e22'));
+    drawTotalLine(totalLabel, computedTotal, cursorY, applyColor(template.bottomAccentColor || template.accentColor, '#e67e22'));
 
     if (billingAddressPosition === 'bottom') {
       cursorY += 30;
@@ -979,57 +1311,52 @@ export const generateTenantPdf = async ({
       cursorY = renderRecipientBlock(cursorY);
     }
 
-    const resolvedTerms = documentType === 'quotation' ? resolveTemplateTerms(template, data) : '';
+    const resolvedTerms = template.enableTerms !== false ? resolveTemplateTerms(template, data, documentType) : '';
     if (resolvedTerms) {
       cursorY += 26;
-      doc.setFont('helvetica', 'bold');
+      ensurePageSpace(80);
+      doc.setFont(bodyFont.family, 'bold');
       doc.setFontSize(11);
       doc.setTextColor(36, 38, 42);
       doc.text('Terms and Conditions', margins.left, cursorY);
 
       cursorY += 16;
-      doc.setFont('helvetica', 'normal');
+      doc.setFont(bodyFont.family, bodyFont.style);
       doc.setFontSize(9);
       const lines = doc.splitTextToSize(resolvedTerms, contentWidth);
+      ensurePageSpace(Math.min(180, lines.length * 10 + 24));
       doc.text(lines, margins.left, cursorY);
       cursorY += lines.length * 10;
     }
 
     const footerInfoRows = [];
-    if (showCompanyName && brandingCompanyName) {
-      footerInfoRows.push({ label: 'Company', value: brandingCompanyName });
-    }
-    if (showCompanyAddress && brandingAddresses.length) {
-      footerInfoRows.push({ label: 'Address', value: brandingAddresses.join(' | ') });
-    }
     if (showBankDetails && visibleBanks.length) {
       visibleBanks.forEach((bankLines, idx) => {
         footerInfoRows.push({ label: `Bank ${visibleBanks.length > 1 ? idx + 1 : ''}`, value: bankLines.join(' | ') });
       });
     }
-    if (showContactInfo && brandingContactLines.length) {
-      footerInfoRows.push({ label: 'Contact', value: brandingContactLines.join(' | ') });
-    }
 
     if (footerInfoRows.length) {
       cursorY += 18;
+      ensurePageSpace(70);
       doc.setDrawColor(224, 227, 232);
       doc.line(margins.left, cursorY, pageWidth - margins.right, cursorY);
       cursorY += 14;
-      doc.setFont('helvetica', 'normal');
+      doc.setFont(bodyFont.family, bodyFont.style);
       doc.setFontSize(9);
       doc.setTextColor(70, 74, 82);
 
       footerInfoRows.forEach((row) => {
         const lineText = `${row.label}: ${row.value}`;
         const wrapped = doc.splitTextToSize(lineText, contentWidth);
+        ensurePageSpace(wrapped.length * 10 + 12);
         doc.text(wrapped, margins.left, cursorY);
         cursorY += Math.max(11, wrapped.length * 10);
       });
     }
 
     if (isPortalStatement) {
-      const disclaimerText = PORTAL_STATEMENT_DISCLAIMER_TEXT;
+      const disclaimerText = resolvePortalStatementDisclaimer(template, data);
       cursorY += 16;
       doc.setDrawColor(224, 227, 232);
       doc.line(margins.left, cursorY, pageWidth - margins.right, cursorY);
@@ -1042,10 +1369,32 @@ export const generateTenantPdf = async ({
       cursorY += Math.max(10, disclaimerLines.length * 10);
     }
 
-    const footerY = pageHeight - margins.bottom;
+    const footerY = pageHeight - Math.max(40, margins.bottom);
+    if (cursorY > footerY - 92) {
+      doc.addPage();
+      doc.setFillColor(255, 255, 255);
+      doc.rect(0, 0, pageWidth, pageHeight, 'F');
+      cursorY = Math.max(42, margins.top);
+    }
+
+    if (hasLogo && logoIsBottom) {
+      const bottomLogoWidth = 58;
+      const bottomLogoHeight = 58;
+      addImageWithFallbackFormat(
+        doc,
+        effectiveDocLogoSource,
+        (pageWidth - bottomLogoWidth) / 2,
+        footerY - 76,
+        bottomLogoWidth,
+        bottomLogoHeight,
+      );
+      doc.setDrawColor(...applyColor(template.bottomAccentColor || template.accentColor, '#e67e22'));
+      doc.line(margins.left, footerY - 10, pageWidth - margins.right, footerY - 10);
+    }
+
     const footerRendered = addImageWithFallbackFormat(
       doc,
-      footerImageUrl,
+      footerImageSource,
       margins.left,
       footerY - 38,
       contentWidth,
@@ -1053,16 +1402,16 @@ export const generateTenantPdf = async ({
     );
 
     if (!footerRendered) {
-      doc.setFont('helvetica', 'normal');
+      doc.setFont(bodyFont.family, bodyFont.style);
       doc.setFontSize(9);
       doc.setTextColor(120, 120, 120);
-      const footerLines = doc.splitTextToSize(String(template.footerText || '').trim(), contentWidth);
+      const footerLines = doc.splitTextToSize(resolveDocumentFooter(documentType, template), contentWidth);
       if (footerLines.length) {
         doc.text(footerLines, pageWidth / 2, footerY - 14, { align: 'center' });
       }
       const footerLink = String(template.footerLink || '').trim();
       if (footerLink) {
-        doc.setTextColor(...applyColor(template.accentColor, '#e67e22'));
+        doc.setTextColor(...applyColor(template.bottomAccentColor || template.accentColor, '#e67e22'));
         doc.text(footerLink, pageWidth / 2, footerY, { align: 'center' });
       }
     }

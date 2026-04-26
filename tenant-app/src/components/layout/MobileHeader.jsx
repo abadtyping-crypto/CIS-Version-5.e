@@ -1,8 +1,10 @@
 import { useNavigate, useParams } from 'react-router-dom';
+import { useTenantBrandingLogos } from '../../hooks/useTenantBrandingLogos';
 
 const MobileHeader = ({ tenant, user }) => {
   const { tenantId } = useParams();
   const navigate = useNavigate();
+  const { headerLogoUrl } = useTenantBrandingLogos(tenantId, tenant?.logoUrl || '/logo.png');
 
   const goTo = (path) => navigate(`/t/${tenantId}/${path}`);
 
@@ -15,11 +17,15 @@ const MobileHeader = ({ tenant, user }) => {
           className="mobile-glass-panel mobile-header-3d inline-flex min-w-0 max-w-[calc(100%-4.75rem)] items-center gap-2.5 rounded-2xl border border-[var(--c-border)] px-3 py-2 text-left no-underline outline-none focus-visible:ring-2 focus-visible:ring-[var(--c-ring)]"
           style={{ textDecoration: 'none' }}
         >
-          <img
-            src="/logo.png"
-            alt="ACIS Ajman"
-            className="h-9 w-9 rounded-xl object-cover"
-          />
+          {headerLogoUrl ? (
+            <span className="-my-2 -ml-3 h-14 w-14 shrink-0 overflow-hidden rounded-l-2xl bg-[var(--c-panel)]">
+              <img
+                src={headerLogoUrl}
+                alt={tenant.name}
+                className="h-full w-full object-cover"
+              />
+            </span>
+          ) : null}
           <div className="min-w-0">
             <p className="truncate text-[15px] font-extrabold text-[var(--c-text)]">{tenant.name}</p>
             <p className="truncate text-xs font-medium text-[var(--c-muted)]">Workspace</p>

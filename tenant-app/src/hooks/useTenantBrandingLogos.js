@@ -5,13 +5,16 @@ const resolveLogoSlotUrl = (branding, slotKey, fallbackUrl) => {
   const fallback = String(fallbackUrl || '/logo.png').trim() || '/logo.png';
   if (!branding || typeof branding !== 'object') return fallback;
 
+  const hasLogoUsage = branding.logoUsage && typeof branding.logoUsage === 'object';
   const slotId = String(branding.logoUsage?.[slotKey] || '').trim();
   const logoLibrary = Array.isArray(branding.logoLibrary) ? branding.logoLibrary : [];
-  if (!slotId || logoLibrary.length === 0) return fallback;
+  const activeLogoUrl = String(branding.activeLogoUrl || '').trim();
+  if (!slotId) return hasLogoUsage ? '' : activeLogoUrl || fallback;
+  if (logoLibrary.length === 0) return activeLogoUrl || fallback;
 
   const matchedSlot = logoLibrary.find((slot) => String(slot?.slotId || '').trim() === slotId);
   const slotUrl = String(matchedSlot?.url || '').trim();
-  return slotUrl || fallback;
+  return slotUrl || activeLogoUrl || fallback;
 };
 
 export const useTenantBrandingLogos = (tenantId, fallbackLogoUrl) => {
@@ -34,6 +37,7 @@ export const useTenantBrandingLogos = (tenantId, fallbackLogoUrl) => {
 
   return useMemo(() => ({
     headerLogoUrl: resolveLogoSlotUrl(branding, 'header', fallback),
+    loginLogoUrl: resolveLogoSlotUrl(branding, 'login', fallback),
     footerLogoUrl: resolveLogoSlotUrl(branding, 'footer', fallback),
     brandName: String(branding?.brandName || '').trim(),
     companyName: String(branding?.companyName || '').trim(),

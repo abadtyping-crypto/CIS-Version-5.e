@@ -2,15 +2,19 @@ import React, { useEffect, useState } from 'react';
 import { X, Maximize2, Minimize2, Download, Printer } from 'lucide-react';
 
 /**
- * Sovereign PDF Viewer Component
+ * Secure PDF Viewer Component
  * Uses Electron's internal PDF plugin and a secure acis-pdf:// protocol.
  */
-const SovereignViewer = ({ localFilePath, onClose, title = 'Document Viewer' }) => {
-  const [url, setUrl] = useState('');
+const SecureViewer = ({ localFilePath, dataUrl, onClose, title = 'Document Viewer', showHeader = true, showFilePath = false }) => {
+  const [url, setUrl] = useState(dataUrl || '');
   const [error, setError] = useState('');
   const [isMaximized, setIsMaximized] = useState(false);
+  const effectiveUrl = dataUrl || url;
 
   useEffect(() => {
+    if (dataUrl) {
+      return;
+    }
     if (!localFilePath) return;
 
     window.electron.pdf.resolveSovereignUrl(localFilePath)
@@ -24,12 +28,12 @@ const SovereignViewer = ({ localFilePath, onClose, title = 'Document Viewer' }) 
       .catch(err => {
         setError(String(err?.message || 'Unexpected viewer error.'));
       });
-  }, [localFilePath]);
+  }, [localFilePath, dataUrl]);
 
-  if (!localFilePath) return null;
+  if (!localFilePath && !dataUrl) return null;
 
   const handlePrint = () => {
-    const iframe = document.querySelector('iframe[title="Sovereign PDF Content"]');
+    const iframe = document.querySelector('iframe[title="Secure PDF Content"]');
     if (iframe?.contentWindow) {
       iframe.contentWindow.print();
     } else {
@@ -37,8 +41,18 @@ const SovereignViewer = ({ localFilePath, onClose, title = 'Document Viewer' }) 
     }
   };
 
-  const handleDownload = () => {
-    if (url) window.open(url, '_blank');
+  const handleDownload = async () => {
+    if (localFilePath && window.electron?.documents?.copyToDownloads) {
+      await window.electron.documents.copyToDownloads({ filePath: localFilePath });
+      return;
+    }
+    if (effectiveUrl && dataUrl) {
+      const anchor = document.createElement('a');
+      anchor.href = effectiveUrl;
+      anchor.download = `${title || 'document'}.pdf`;
+      anchor.rel = 'noopener';
+      anchor.click();
+    }
   };
 
   return (
@@ -46,21 +60,24 @@ const SovereignViewer = ({ localFilePath, onClose, title = 'Document Viewer' }) 
       <div className={`relative flex flex-col w-full h-full bg-[#0f172a] border border-white/10 shadow-2xl overflow-hidden transition-all duration-300 ${isMaximized ? 'rounded-0' : 'rounded-3xl'}`}>
         
         {/* Header / TitleBar */}
+        {showHeader ? (
         <div className="flex h-14 items-center justify-between border-b border-white/5 bg-white/5 px-6 backdrop-blur-xl">
           <div className="flex items-center gap-3">
-             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-500/20 text-orange-500">
+             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--c-accent)]/20 text-[var(--c-accent)]">
                <span className="text-xs font-black">PDF</span>
              </div>
              <div className="flex flex-col">
                <h3 className="text-xs font-bold text-white leading-tight">{title}</h3>
-               <p className="text-[10px] text-white/40 font-medium truncate max-w-[200px]">{localFilePath}</p>
+               {showFilePath && localFilePath ? (
+                 <p className="text-[10px] text-white/40 font-medium truncate max-w-[200px]">{localFilePath}</p>
+               ) : null}
              </div>
           </div>
 
           <div className="flex items-center gap-2">
             <button 
               onClick={handlePrint}
-              disabled={!url}
+              disabled={!effectiveUrl}
               className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 text-white/60 transition hover:bg-white/10 hover:text-white disabled:opacity-20"
               title="Print Document"
             >
@@ -68,7 +85,7 @@ const SovereignViewer = ({ localFilePath, onClose, title = 'Document Viewer' }) 
             </button>
             <button 
               onClick={handleDownload}
-              disabled={!url}
+              disabled={!effectiveUrl}
               className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 text-white/60 transition hover:bg-white/10 hover:text-white disabled:opacity-20"
               title="Download PDF"
             >
@@ -89,6 +106,16 @@ const SovereignViewer = ({ localFilePath, onClose, title = 'Document Viewer' }) 
             </button>
           </div>
         </div>
+        ) : (
+          <button
+            type="button"
+            onClick={onClose}
+            className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-xl bg-slate-950/70 text-white transition hover:bg-rose-500"
+            aria-label="Close viewer"
+          >
+            <X strokeWidth={1.5} size={18} />
+          </button>
+        )}
 
         {/* Viewer Area */}
         <div className="relative flex-1 bg-[#1e293b]">
@@ -103,24 +130,25 @@ const SovereignViewer = ({ localFilePath, onClose, title = 'Document Viewer' }) 
                 Dismiss
               </button>
             </div>
-          ) : !url ? (
+          ) : !effectiveUrl ? (
             <div className="flex h-full w-full flex-col items-center justify-center">
-              <div className="h-10 w-10 animate-spin rounded-full border-2 border-orange-500/20 border-t-orange-500" />
-              <p className="mt-4 text-xs font-bold text-white/40">Initializing Sovereign Pipeline...</p>
+              <div className="h-10 w-10 animate-spin rounded-full border-2 border-[var(--c-accent)]/20 border-t-[var(--c-accent)]" />
+              <p className="mt-4 text-xs font-bold text-white/40">Initializing Secure Pipeline...</p>
             </div>
           ) : (
             <iframe 
-              src={url} 
-              className="h-full w-full border-none shadow-inner"
-              title="Sovereign PDF Content"
+              src={effectiveUrl} 
+              className="h-full w-full border-none shadow-inner bg-white"
+              title="Secure PDF Content"
             />
           )}
         </div>
         
         {/* Footer / Info Bar */}
+        {showHeader ? (
         <div className="flex h-12 items-center justify-between border-t border-white/5 bg-white/5 px-6 backdrop-blur-xl">
            <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest">
-             ACIS-SOVEREIGN SECURE ISOLATION ACTIVE
+             ACIS-SECURE ISOLATION ACTIVE
            </p>
            <div className="flex items-center gap-4 text-white/40">
              <div className="flex items-center gap-1">
@@ -129,9 +157,10 @@ const SovereignViewer = ({ localFilePath, onClose, title = 'Document Viewer' }) 
              </div>
            </div>
         </div>
+        ) : null}
       </div>
     </div>
   );
 };
 
-export default SovereignViewer;
+export default SecureViewer;

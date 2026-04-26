@@ -63,6 +63,9 @@ export const DESKTOP_WALLPAPERS = [
   { id: 'ocean', label: 'Ocean' },
   { id: 'sunrise', label: 'Sunrise' },
   { id: 'ember', label: 'Ember' },
+  { id: 'sandstone', label: 'Sandstone' },
+  { id: 'slate', label: 'Slate' },
+  { id: 'forest', label: 'Forest' },
 ];
 
 export const DESKTOP_FONT_FAMILIES = [
