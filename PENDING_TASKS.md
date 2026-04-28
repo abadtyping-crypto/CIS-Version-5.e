@@ -41,3 +41,8 @@ This file tracks issues intentionally left for later so the project can move for
 - Application logo visibility still needs a final project-wide verification.
 - Confirm header/login/PDF/customization pages all resolve the same selected logo source correctly.
 
+## Client / Dependent IdentityCardSelector Rollout
+
+- Continue replacing older raw client/dependent identity text with `IdentityCardSelector` after page-by-page verification.
+- Remaining likely pages/components to review include Dashboard, Quotation, Proforma Invoices, Task Tracking, Transaction Live List, ClientDetailsPageV2, Bulk Employee Import, Receive Payments, and satellite/quick panels.
+- Confirm whether manual/walk-in quotation and proforma client snapshots should use `IdentityCardSelector` in read-only mode or stay as plain text because they may not have a saved client route.

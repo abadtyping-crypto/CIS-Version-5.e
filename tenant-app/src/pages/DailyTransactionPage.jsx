@@ -21,6 +21,7 @@ import CurrencyValue from '../components/common/CurrencyValue';
 import { Plus, FileText, Calendar, AlertTriangle, ChevronUp, ChevronDown, Eye, EyeOff } from 'lucide-react';
 import PortalTransactionSelector from '../components/common/PortalTransactionSelector';
 import InputActionField from '../components/common/InputActionField';
+import IdentityCardSelector from '../components/common/IdentityCardSelector';
 import { ENFORCE_UNIVERSAL_APPLICATION_UID } from '../lib/universalLibraryPolicy';
 import { canUserPerformAction } from '../lib/userControlPreferences';
 import { toSafeDocId } from '../lib/idUtils';
@@ -465,23 +466,12 @@ const DailyTransactionPage = () => {
                                         {isDependentContext ? 'Client (Auto-linked)' : 'Client *'}
                                     </label>
                                     {isClientContext || isDependentContext ? (
-                                        <div className="flex w-full items-center overflow-hidden rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)] shadow-sm">
-                                            <div className="relative flex h-[3.5rem] w-[3.5rem] shrink-0 items-center justify-center border-r border-[var(--c-border)] bg-[var(--c-panel)]">
-                                                <img
-                                                    src="/dependent.png"
-                                                    alt=""
-                                                    className="h-full w-full object-cover"
-                                                />
-                                            </div>
-                                            <div className="min-w-0 flex-1 px-4 py-2">
-                                                <p className="truncate text-sm font-black text-[var(--c-text)]">
-                                                    {selectedParent?.fullName || selectedParent?.tradeName || 'Client'}
-                                                </p>
-                                                <p className="text-[10px] font-bold uppercase text-[var(--c-muted)]">
-                                                    {selectedParent?.displayClientId || selectedParent?.id || '-'}
-                                                </p>
-                                            </div>
-                                        </div>
+                                        <IdentityCardSelector
+                                            entity={selectedParent || {}}
+                                            tenantId={tenantId}
+                                            clientId={selectedParent?.id || urlClientId}
+                                            className="bg-[var(--c-panel)]"
+                                        />
                                     ) : (
                                         <ClientSearchField
                                             onSelect={(c) => {
@@ -537,24 +527,16 @@ const DailyTransactionPage = () => {
                                 )}
 
                                 {isDependentContext && selectedDependent ? (
-                                    <div className="flex w-full items-center overflow-hidden rounded-2xl border border-[var(--c-border)] bg-[var(--c-panel)] shadow-sm font-bold">
-                                        <div className="relative flex h-[3.5rem] w-[3.5rem] shrink-0 items-center justify-center border-r border-[var(--c-border)] bg-[var(--c-panel)]">
-                                            <img
-                                                src="/dependent.png"
-                                                alt=""
-                                                className="h-full w-full object-cover"
-                                            />
-                                        </div>
-                                        <div className="min-w-0 flex-1 px-4 py-2">
-                                            <p className="text-[10px] font-black uppercase tracking-widest text-[var(--c-muted)]">Dependent (Auto-linked)</p>
-                                            <p className="truncate text-sm font-black text-[var(--c-text)]">
-                                                {selectedDependent.fullName || selectedDependent.tradeName || 'Dependent'}
-                                            </p>
-                                            <p className="text-[10px] font-bold uppercase text-[var(--c-muted)]">
-                                                {selectedDependent.displayClientId || selectedDependent.id}
-                                            </p>
-                                        </div>
-                                    </div>
+                                    <IdentityCardSelector
+                                        entity={selectedDependent}
+                                        tenantId={tenantId}
+                                        clientId={selectedParent?.id || urlClientId}
+                                        dependentId={selectedDependent.id || urlDependentId}
+                                        isDependent
+                                        parentClientName={selectedParent?.tradeName || selectedParent?.fullName || ''}
+                                        parentClientId={selectedParent?.displayClientId || selectedParent?.id || ''}
+                                        className="bg-[var(--c-panel)] font-bold"
+                                    />
                                 ) : null}
 
                             </div>

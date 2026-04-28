@@ -493,14 +493,10 @@
   BankDetailsSection.displayName = 'BankDetailsSection';
 
   export const LogoLibrarySection = React.memo(({
-    form,
     errors,
-    updateField,
     visibleLogoSlots,
     logoErrors,
     logoUploading,
-    activeLogoSlotId,
-    setActiveLogoSlotId,
     openLogoEditor,
     removeLogoSlot,
     updateLogoSlot,
@@ -514,16 +510,7 @@
             <span className="text-sm font-bold uppercase tracking-wider text-(--c-text)">Logo Library</span>
           </div>
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-(--c-muted)">
-                {form.isLogoLibraryEnabled === true ? 'Enabled' : 'Disabled'}
-              </span>
-              <ToggleSwitch
-                checked={form.isLogoLibraryEnabled === true}
-                onChange={(v) => updateField('isLogoLibraryEnabled', v)}
-              />
-            </div>
-            {form.isLogoLibraryEnabled === true && visibleLogoSlots.length < 10 && visibleLogoSlots[visibleLogoSlots.length - 1]?.url && (
+            {visibleLogoSlots.length < 10 && visibleLogoSlots[visibleLogoSlots.length - 1]?.url && (
               <button
                 onClick={onAddLogoSlot}
                 className="flex h-9 w-9 items-center justify-center rounded-full border border-(--c-accent)/20 bg-(--c-accent)/10 text-(--c-accent) transition hover:bg-(--c-accent)/20"
@@ -535,13 +522,12 @@
           </div>
         </div>
 
-        {form.isLogoLibraryEnabled === true ? (
-          <div className="rounded-xl border border-(--c-border) bg-(--c-panel) p-3">
-            <div className="mb-2 flex items-center justify-between">
-              <div>
-                <p className="text-xs text-(--c-muted) underline decoration-dotted">Maintain a centralized library of branded logos (Standard size: 512x512px).</p>
-              </div>
+        <div className="rounded-xl border border-(--c-border) bg-(--c-panel) p-3">
+          <div className="mb-2 flex items-center justify-between">
+            <div>
+              <p className="text-xs text-(--c-muted) underline decoration-dotted">Maintain a centralized library of branded logos (Standard size: 512x512px).</p>
             </div>
+          </div>
 
           <div className="grid max-h-[280px] grid-cols-[repeat(auto-fit,minmax(15rem,1fr))] gap-2 overflow-y-auto pr-1">
             {visibleLogoSlots.map((slot, index) => {
@@ -560,22 +546,6 @@
                     ) : slot.url ? (
                       <div className="relative h-full w-full">
                         <img src={slot.url} alt={slot.name} className="h-full w-full object-cover" />
-                        <div className="absolute right-2 top-2">
-                          <button
-                            type="button"
-                            onClick={() => setActiveLogoSlotId(slot.slotId)}
-                            className={`flex h-6 w-6 items-center justify-center rounded-full shadow-lg transition-all ${
-                              activeLogoSlotId === slot.slotId
-                                ? 'bg-emerald-500 text-white'
-                                : 'bg-white/90 text-slate-300 hover:text-slate-400'
-                            }`}
-                            title={activeLogoSlotId === slot.slotId ? 'Active Logo' : 'Set as Active'}
-                          >
-                            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                            </svg>
-                          </button>
-                        </div>
                       </div>
                     ) : (
                       <div className="flex flex-col items-center gap-1 opacity-40">
@@ -630,11 +600,6 @@
             })}
           </div>
         </div>
-        ) : (
-          <div className="rounded-2xl border border-(--c-border) bg-(--c-panel) px-4 py-5 text-sm text-(--c-muted)">
-            Logo Management is hidden until you enable it.
-          </div>
-        )}
       </section>
     );
   });

@@ -8,13 +8,12 @@ const resolveLogoSlotUrl = (branding, slotKey, fallbackUrl) => {
   const hasLogoUsage = branding.logoUsage && typeof branding.logoUsage === 'object';
   const slotId = String(branding.logoUsage?.[slotKey] || '').trim();
   const logoLibrary = Array.isArray(branding.logoLibrary) ? branding.logoLibrary : [];
-  const activeLogoUrl = String(branding.activeLogoUrl || '').trim();
-  if (!slotId) return hasLogoUsage ? '' : activeLogoUrl || fallback;
-  if (logoLibrary.length === 0) return activeLogoUrl || fallback;
+  if (!slotId) return hasLogoUsage ? '' : fallback;
+  if (logoLibrary.length === 0) return fallback;
 
   const matchedSlot = logoLibrary.find((slot) => String(slot?.slotId || '').trim() === slotId);
   const slotUrl = String(matchedSlot?.url || '').trim();
-  return slotUrl || activeLogoUrl || fallback;
+  return slotUrl || fallback;
 };
 
 export const useTenantBrandingLogos = (tenantId, fallbackLogoUrl) => {

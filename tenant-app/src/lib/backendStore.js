@@ -3252,6 +3252,119 @@ export const fetchTenantClients = async (tenantId) => {
   }
 };
 
+const normalizeIdentityLookupId = (value) => String(value || '').trim();
+
+const isReadableIdentityRecord = (data) => data && !data.deletedAt && data.status !== 'archived';
+
+const buildResolvedIdentityPayload = ({ tenantId, entity, parent = null, isDependent = false }) => {
+  const dependentId = isDependent ? String(entity?.id || '').trim() : '';
+  const clientId = isDependent
+    ? String(entity?.parentId || parent?.id || entity?.clientId || '').trim()
+    : String(entity?.id || '').trim();
+
+  return {
+    ok: true,
+    tenantId,
+    entity,
+    parent,
+    isDependent,
+    clientId,
+    dependentId,
+    route: isDependent && clientId && dependentId
+      ? `/t/${tenantId}/client-management/${clientId}/dependents/${dependentId}`
+      : `/t/${tenantId}/client-management/${clientId}`,
+  };
+};
+
+export const resolveTenantIdentity = async (tenantId, identityInput = {}) => {
+  try {
+    const input = typeof identityInput === 'object' && identityInput !== null
+      ? identityInput
+      : { id: identityInput };
+    const requestedClientId = normalizeIdentityLookupId(input.clientId);
+    const requestedDependentId = normalizeIdentityLookupId(input.dependentId);
+    const requestedId = normalizeIdentityLookupId(
+      input.id
+      || input.displayClientId
+      || input.identityId
+      || requestedDependentId
+      || requestedClientId,
+    );
+
+    if (!tenantId || !requestedId) {
+      return { ok: false, error: 'Missing tenantId or identity id.', entity: null, parent: null };
+    }
+
+    if (requestedClientId && requestedDependentId) {
+      const [parentSnap, dependentSnap] = await Promise.all([
+        getDoc(doc(db, 'tenants', tenantId, 'clients', requestedClientId)),
+        getDoc(doc(db, 'tenants', tenantId, 'clients', requestedClientId, 'dependents', requestedDependentId)),
+      ]);
+      const dependentData = dependentSnap.exists() ? { id: dependentSnap.id, ...dependentSnap.data() } : null;
+      const parentData = parentSnap.exists() ? { id: parentSnap.id, ...parentSnap.data() } : null;
+      if (isReadableIdentityRecord(dependentData)) {
+        return buildResolvedIdentityPayload({
+          tenantId,
+          entity: dependentData,
+          parent: isReadableIdentityRecord(parentData) ? parentData : null,
+          isDependent: true,
+        });
+      }
+    }
+
+    const rootRef = doc(db, 'tenants', tenantId, 'clients', requestedId);
+    const rootSnap = await getDoc(rootRef);
+    const rootData = rootSnap.exists() ? { id: rootSnap.id, ...rootSnap.data() } : null;
+    if (isReadableIdentityRecord(rootData) && String(rootData.type || '').toLowerCase() !== 'dependent') {
+      return buildResolvedIdentityPayload({ tenantId, entity: rootData, isDependent: false });
+    }
+
+    const clientsRef = collection(db, 'tenants', tenantId, 'clients');
+    const rootByDisplaySnap = await getDocs(query(clientsRef, where('displayClientId', '==', requestedId), limit(1)));
+    if (!rootByDisplaySnap.empty) {
+      const item = rootByDisplaySnap.docs[0];
+      const data = { id: item.id, ...item.data() };
+      if (isReadableIdentityRecord(data) && String(data.type || '').toLowerCase() !== 'dependent') {
+        return buildResolvedIdentityPayload({ tenantId, entity: data, isDependent: false });
+      }
+    }
+
+    const dependentSnap = await getDocs(query(collectionGroup(db, 'dependents'), where('tenantId', '==', tenantId)));
+    const dependentDoc = dependentSnap.docs.find((item) => {
+      const data = item.data() || {};
+      return (
+        String(item.id || '') === requestedId
+        || String(data.id || '') === requestedId
+        || String(data.displayClientId || '') === requestedId
+      );
+    });
+
+    if (dependentDoc) {
+      const dependentData = { id: dependentDoc.id, ...dependentDoc.data() };
+      if (!isReadableIdentityRecord(dependentData)) {
+        return { ok: false, error: 'Identity record is archived or deleted.', entity: null, parent: null };
+      }
+      const parentId = String(dependentData.parentId || requestedClientId || '').trim();
+      const parentSnap = parentId
+        ? await getDoc(doc(db, 'tenants', tenantId, 'clients', parentId))
+        : null;
+      const parentData = parentSnap?.exists() ? { id: parentSnap.id, ...parentSnap.data() } : null;
+      return buildResolvedIdentityPayload({
+        tenantId,
+        entity: dependentData,
+        parent: isReadableIdentityRecord(parentData) ? parentData : null,
+        isDependent: true,
+      });
+    }
+
+    return { ok: false, error: 'Identity record not found.', entity: null, parent: null };
+  } catch (error) {
+    const message = toSafeError(error);
+    console.warn(`[backendStore] identity resolve failed tenants/${tenantId}: ${message}`);
+    return { ok: false, error: message, entity: null, parent: null };
+  }
+};
+
 export const updateTenantClient = async (tenantId, clientId, payload) => {
   try {
     const rootRef = doc(db, 'tenants', tenantId, 'clients', clientId);

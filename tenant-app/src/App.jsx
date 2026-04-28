@@ -116,6 +116,8 @@ const App = () => {
                         element={<ModulePlaceholderPage title="Document Calendar" subtitle="Document calendar module placeholder." iconKey="documentCalendar" />}
                       />
                       <Route path="client-onboarding" element={<ClientsOnboardingPage />} />
+                      <Route path="client-management/:clientId/dependents/:dependentId" element={<DependentDetailsPage />} />
+                      <Route path="client-management/:clientId" element={<ClientDetailsPage />} />
                       <Route path="clients/:clientId/dependents/:dependentId" element={<DependentDetailsPage />} />
                       <Route path="clients/:clientId" element={<ClientDetailsPage />} />
                       <Route path="favorites" element={<FavoritesPage />} />

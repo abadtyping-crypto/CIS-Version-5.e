@@ -4,6 +4,7 @@ import PageShell from '../components/layout/PageShell';
 import { fetchTenantClients, fetchTenantTransactions } from '../lib/backendStore';
 import { useTenant } from '../context/useTenant';
 import CurrencyValue from '../components/common/CurrencyValue';
+import IdentityCardSelector from '../components/common/IdentityCardSelector';
 
 const toDateLabel = (value) => {
   if (!value) return '-';
@@ -184,16 +185,18 @@ const ClientDetailsPage = () => {
           ) : (
             <div className="mt-2 space-y-2">
               {dependents.map((dep) => (
-                <Link
+                <IdentityCardSelector
                   key={dep.id}
-                  to={`/t/${tenantId}/clients/${clientId}/dependents/${dep.id}`}
-                  className="block rounded-xl border border-[var(--c-border)] bg-[var(--c-panel)] px-3 py-2 hover:border-[var(--c-accent)] hover:shadow-sm"
-                >
-                  <p className="text-xs font-bold text-[var(--c-text)]">{dep.fullName || dep.tradeName || dep.displayClientId}</p>
-                  <p className="text-[10px] text-[var(--c-muted)]">
-                    {dep.displayClientId} | {dep.relationship || 'Dependent'}
-                  </p>
-                </Link>
+                  entity={dep}
+                  tenantId={tenantId}
+                  clientId={clientId}
+                  dependentId={dep.id}
+                  isDependent
+                  parentClientName={client.tradeName || client.fullName || ''}
+                  parentClientId={client.displayClientId || client.id || clientId}
+                  size="sm"
+                  className="bg-[var(--c-panel)]"
+                />
               ))}
             </div>
           )}

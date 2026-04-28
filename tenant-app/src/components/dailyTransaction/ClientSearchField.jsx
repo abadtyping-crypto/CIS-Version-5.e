@@ -6,6 +6,7 @@ import { resolveClientTypeIcon } from '../../lib/clientIcons';
 import CurrencyValue from '../common/CurrencyValue';
 import QuickAddClientModal from './QuickAddClientModal';
 import InputActionField from '../common/InputActionField';
+import IdentityCardSelector from '../common/IdentityCardSelector';
 import { getCachedSystemAssetsSnapshot, getSystemAssets } from '../../lib/systemAssetsCache';
 
 /**
@@ -149,7 +150,7 @@ const ClientSearchField = ({ onSelect, selectedId, placeholder = 'Search Client.
             </div>
 
             {isOpen && (
-                <div className="absolute left-0 right-0 z-[100] mt-2 overflow-hidden rounded-2xl border border-[var(--c-border)] bg-[var(--c-surface)] shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+                <div className="absolute left-0 right-0 z-[100] mt-2 overflow-visible rounded-2xl border border-[var(--c-border)] bg-[var(--c-surface)] shadow-2xl animate-in fade-in zoom-in-95 duration-200">
                     <div className="border-b border-[var(--c-border)] bg-[var(--c-panel)] p-2">
                         <InputActionField
                             autoFocus
@@ -183,35 +184,36 @@ const ClientSearchField = ({ onSelect, selectedId, placeholder = 'Search Client.
                                     </div>
                                 ) : (
                                     <>
-                                        {filtered.map((item) => (
-                                            <button
-                                                key={item.id}
-                                                type="button"
-                                                onClick={() => handleSelect(item)}
-                                                className={`flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-[var(--c-accent)]/5 ${selectedId === item.id ? 'bg-[var(--c-accent)]/10' : ''
-                                                    }`}
-                                            >
-                                                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl bg-[var(--c-panel)] text-[var(--c-muted)]">
-                                                    {getClientIcon(item)}
+                                        {filtered.map((item) => {
+                                            const isDependent = String(item.type || '').toLowerCase() === 'dependent';
+                                            return (
+                                                <div key={item.id} className="px-2 py-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <IdentityCardSelector
+                                                            entity={item}
+                                                            tenantId={tenantId}
+                                                            clientId={isDependent ? item.parentId : item.id}
+                                                            dependentId={isDependent ? item.id : ''}
+                                                            isDependent={isDependent}
+                                                            mode="button"
+                                                            onSelect={handleSelect}
+                                                            size="sm"
+                                                            imageOverride={getClientIcon(item)}
+                                                            className={`min-w-0 flex-1 ${selectedId === item.id ? 'border-[var(--c-accent)] bg-[var(--c-accent)]/10' : ''}`}
+                                                            tooltipClassName="left-0"
+                                                        />
+                                                        <div className="w-20 shrink-0 text-right">
+                                                            <p className={`text-[10px] font-semibold ${getBalanceValue(item) < 0 ? 'text-rose-500' : 'text-emerald-600'}`}>
+                                                                <CurrencyValue value={getBalanceValue(item)} iconSize="h-2.5 w-2.5" />
+                                                            </p>
+                                                        </div>
+                                                        {selectedId === item.id && (
+                                                            <div className="h-2 w-2 shrink-0 rounded-full bg-[var(--c-accent)]" />
+                                                        )}
+                                                    </div>
                                                 </div>
-                                                <div className="min-w-0 flex-1">
-                                                    <p className="truncate text-sm font-semibold text-[var(--c-text)]">
-                                                        {item.fullName || item.tradeName}
-                                                    </p>
-                                                    <p className="text-[10px] font-bold uppercase text-[var(--c-muted)]">
-                                                        {item.displayClientId} • {item.type} {item.relationship ? `(${item.relationship})` : ''}
-                                                    </p>
-                                                </div>
-                                                <div className="text-right">
-                                                    <p className={`text-[10px] font-semibold ${getBalanceValue(item) < 0 ? 'text-rose-500' : 'text-emerald-600'}`}>
-                                                        <CurrencyValue value={getBalanceValue(item)} iconSize="h-2.5 w-2.5" />
-                                                    </p>
-                                                </div>
-                                                {selectedId === item.id && (
-                                                    <div className="h-2 w-2 rounded-full bg-[var(--c-accent)]" />
-                                                )}
-                                            </button>
-                                        ))}
+                                            );
+                                        })}
                                         <div className="border-t border-[var(--c-border)] mt-2 px-2 py-2">
                                             <button
                                                 type="button"

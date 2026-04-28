@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Edit3, RefreshCcw, Save, Search, Trash2, X } from 'lucide-react';
-import { Link } from 'react-router-dom';
 import CreatedByIdentityCard from '../common/CreatedByIdentityCard';
+import IdentityCardSelector from '../common/IdentityCardSelector';
 import {
   deleteTenantClientCascade,
   fetchTenantClients,
@@ -142,13 +142,6 @@ const ClientLiveListSection = ({ tenantId, user, refreshKey = 0, onEdit }) => {
     return () => document.body.classList.remove('hide-desktop-footer');
   }, [editingRow]);
 
-  const getTypeLabel = (item) => {
-    const type = String(item.type || '').toLowerCase();
-    if (type === 'company') return 'Company';
-    if (type === 'individual') return 'Individual';
-    return 'Dependent';
-  };
-
   const getCompanyVisualIcon = (item) => {
     const emirateIcon = getEmirateIcon(item.registeredEmirate || item.poBoxEmirate, systemAssets);
     return emirateIcon || resolveSystemIcon(systemAssets, 'icon_main_company', '/company.png');
@@ -229,7 +222,6 @@ const ClientLiveListSection = ({ tenantId, user, refreshKey = 0, onEdit }) => {
       return;
     }
 
-    const rawType = String(item?.type || '').toLowerCase();
     const idType = String(item?.identificationMethod || item?.idType || '').trim()
       || (item?.emiratesId ? 'emirates_id' : (item?.passportNumber ? 'passport' : 'emirates_id'));
     const idNumber = String(
@@ -451,36 +443,27 @@ const ClientLiveListSection = ({ tenantId, user, refreshKey = 0, onEdit }) => {
         ) : null}
         {!isLoading ? pageRows.map((item) => {
           const creator = getCreator(item);
-          const typeLabel = getTypeLabel(item);
-          const nameLabel = item.tradeName || item.fullName || item.displayClientId || item.id;
           const badge = getEntryBadge(item);
           const isDependent = String(item.type || '').toLowerCase() === 'dependent';
-          const targetPath = isDependent && item.parentId
-            ? `/t/${tenantId}/clients/${item.parentId}/dependents/${item.id}`
-            : `/t/${tenantId}/clients/${item.id}`;
 
           return (
             <article key={`card-${item.id}`} className="rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] p-3 shadow-sm">
-              <div className="flex items-start gap-3">
-                <img src={getTypeIcon(item)} alt={typeLabel} className="h-10 w-10 shrink-0 rounded-xl object-cover" />
-                <div className="min-w-0 flex-1">
-                  <Link
-                    to={targetPath}
-                    className="block text-sm font-semibold leading-5 text-[var(--c-text)] hover:text-[var(--c-accent)] hover:underline"
-                  >
-                    {nameLabel}
-                  </Link>
-                  <div className="mt-1 flex flex-wrap items-center gap-2">
-                    <span className={`inline-flex items-center gap-1 rounded-lg border px-2 py-0.5 text-[11px] font-semibold leading-5 ${badge.className}`}>
-                      <img src={badge.icon} alt={badge.label} className="h-3.5 w-3.5 rounded object-contain" />
-                      {badge.label}
-                    </span>
-                    <span className="inline-flex items-center gap-1 rounded-lg border border-[var(--c-border)] bg-[var(--c-panel)] px-2 py-0.5 text-[11px] font-bold leading-5 text-[var(--c-accent)]">
-                      {item.displayClientId || item.id}
-                    </span>
-                    {badge.meta ? <span className="text-xs text-[var(--c-muted)]">{badge.meta}</span> : null}
-                  </div>
-                </div>
+              <IdentityCardSelector
+                entity={item}
+                tenantId={tenantId}
+                clientId={isDependent ? item.parentId : item.id}
+                dependentId={isDependent ? item.id : ''}
+                isDependent={isDependent}
+                imageUrl={getTypeIcon(item)}
+                className="border-transparent bg-[var(--c-panel)]"
+                tooltipClassName="left-0"
+              />
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <span className={`inline-flex items-center gap-1 rounded-lg border px-2 py-0.5 text-[11px] font-semibold leading-5 ${badge.className}`}>
+                  <img src={badge.icon} alt={badge.label} className="h-3.5 w-3.5 rounded object-contain" />
+                  {badge.label}
+                </span>
+                {badge.meta ? <span className="text-xs text-[var(--c-muted)]">{badge.meta}</span> : null}
               </div>
               <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
                 <CreatedByIdentityCard
@@ -546,32 +529,30 @@ const ClientLiveListSection = ({ tenantId, user, refreshKey = 0, onEdit }) => {
             {!isLoading
               ? pageRows.map((item) => {
                 const creator = getCreator(item);
-                const typeLabel = getTypeLabel(item);
-                const nameLabel = item.tradeName || item.fullName || item.displayClientId || item.id;
                 const badge = getEntryBadge(item);
                 const isDependent = String(item.type || '').toLowerCase() === 'dependent';
-                const targetPath = isDependent && item.parentId
-                  ? `/t/${tenantId}/clients/${item.parentId}/dependents/${item.id}`
-                  : `/t/${tenantId}/clients/${item.id}`;
                 return (
                   <tr key={item.id} className="border-t border-[var(--c-border)] align-top transition hover:bg-[color:color-mix(in_srgb,var(--c-panel)_38%,transparent)]">
                     <td className="px-3 py-3">
-                      <div className="flex items-center gap-3">
-                        <img src={getTypeIcon(item)} alt={typeLabel} className="h-8.5 w-8.5 shrink-0 rounded-xl object-cover" />
-                        <div className="min-w-0">
-                          <Link
-                            to={targetPath}
-                            className="block font-semibold leading-5 text-[var(--c-text)] hover:text-[var(--c-accent)] hover:underline"
-                          >
-                            {nameLabel}
-                          </Link>
-                          <div className="mt-1 flex flex-wrap items-center gap-2">
-                            <span className={`inline-flex items-center gap-1 rounded-lg border px-2 py-0.5 text-[11px] font-semibold leading-5 ${badge.className}`}>
-                              <img src={badge.icon} alt={badge.label} className="h-3.5 w-3.5 rounded object-contain" />
-                              {badge.label}
-                            </span>
-                            {badge.meta ? <span className="text-xs text-[var(--c-muted)]">{badge.meta}</span> : null}
-                          </div>
+                      <div className="space-y-2">
+                        <IdentityCardSelector
+                          entity={item}
+                          tenantId={tenantId}
+                          clientId={isDependent ? item.parentId : item.id}
+                          dependentId={isDependent ? item.id : ''}
+                          isDependent={isDependent}
+                          imageUrl={getTypeIcon(item)}
+                          size="sm"
+                          className="border-transparent bg-transparent shadow-none hover:bg-[var(--c-panel)]"
+                          contentClassName="p-0"
+                          tooltipClassName="left-0"
+                        />
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className={`inline-flex items-center gap-1 rounded-lg border px-2 py-0.5 text-[11px] font-semibold leading-5 ${badge.className}`}>
+                            <img src={badge.icon} alt={badge.label} className="h-3.5 w-3.5 rounded object-contain" />
+                            {badge.label}
+                          </span>
+                          {badge.meta ? <span className="text-xs text-[var(--c-muted)]">{badge.meta}</span> : null}
                         </div>
                       </div>
                     </td>

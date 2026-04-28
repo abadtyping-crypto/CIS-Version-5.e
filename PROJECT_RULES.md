@@ -253,3 +253,16 @@
 - **Logo Display Standard**: Uploaded logos are square 512x512 assets and must be displayed in square containers with `aspect-square` and `object-cover` unless the specific task is document/PDF rendering where `object-contain` is explicitly needed. Logo selection rows should use the shared left-image-cover pattern: the image fills the left square of the option/card with no extra inner frame.
 - **Raw HTML Exception**: Raw `<input>`, `<select>`, or `<textarea>` is allowed only for tiny local controls where no shared tool exists yet (for example a range slider, color picker, hidden file input, or internal search field). Even then, it must visually match the universal sizing, border, radius, focus, and theme-token rules.
 - **Enforcement**: Any agent editing or creating a new page MUST first check `tenant-app/src/components/common/*` and reuse the matching component. New shared field components belong in `src/components/common`, not inside page files, when the pattern will appear more than once.
+
+## 24) Client / Dependent Identity Display Rule (Strict)
+
+- **Single Component Source**: Every repeated Client or Dependent identity display MUST use `IdentityCardSelector` from `tenant-app/src/components/common/IdentityCardSelector.jsx`. Do not hand-roll separate image/name/ID rows in pages, tables, selectors, or detail panels.
+- **ID Resolver Basement**: When a page only has `tenantId` plus a Client ID, Dependent ID, or display ID, it must rely on `resolveTenantIdentity` / `IdentityCardSelector` ID resolution instead of duplicating Firestore lookup logic locally.
+- **Standard Layout**: Identity rows must follow the same structure: left square image/logo area using `aspect-square` + `object-cover`, primary identity line for name/trade name/full name, and secondary identity line for Client ID / Dependent ID / Trade License / Emirates ID as available.
+- **Routing Standard**: Detail navigation must support these primary routes:
+  - Client: `/t/:tenantId/client-management/:clientId`
+  - Dependent: `/t/:tenantId/client-management/:clientId/dependents/:dependentId`
+  Existing legacy `/clients/...` aliases may remain for backward compatibility, but new identity links should prefer `client-management`.
+- **Dependent Context**: Dependent rows must clearly show parent context when available using `Under: Parent Name (Parent ID)`.
+- **Quick Info**: Hover/focus identity overlays should use the shared `QuickInfoTooltip` behavior and must hide missing optional fields instead of showing placeholder blanks.
+- **Copy Actions**: License/ID, mobile, and email values shown inside the quick info overlay must include compact copy-to-clipboard controls.

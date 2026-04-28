@@ -300,8 +300,7 @@ const normalizeLogoLibrary = (branding) => {
     }))
     .filter((slot) => slot.slotId && slot.url);
   const fallbackLogoUrl = String(
-    branding?.activeLogoUrl
-    || branding?.logoUrl
+    branding?.logoUrl
     || branding?.iconUrl
     || branding?.brandLogoUrl
     || branding?.companyLogoUrl
@@ -845,7 +844,6 @@ export const generateTenantPdf = async ({
       || docLogoSlot?.url
       || headerLogoSlot?.url
       || String(template.logoUrl || '').trim()
-      || String(branding.activeLogoUrl || '').trim()
       || String(branding.logoUrl || '').trim()
       || String(branding.iconUrl || '').trim()
       || String(branding.brandLogoUrl || '').trim()

@@ -4,6 +4,7 @@ import PageShell from '../components/layout/PageShell';
 import { useTenant } from '../context/useTenant';
 import { fetchTenantClients, fetchTenantTransactions } from '../lib/backendStore';
 import CurrencyValue from '../components/common/CurrencyValue';
+import IdentityCardSelector from '../components/common/IdentityCardSelector';
 
 const toDateLabel = (value) => {
   if (!value) return '-';
@@ -140,12 +141,13 @@ const DependentDetailsPage = () => {
           </article>
           <article className="rounded-2xl border border-[var(--c-border)] bg-[var(--c-surface)] p-4">
             <p className="text-[11px] uppercase tracking-wider text-[var(--c-muted)]">Parent</p>
-            <Link
-              to={`/t/${tenantId}/clients/${clientId}`}
-              className="mt-2 inline-flex items-center gap-2 text-sm font-bold text-[var(--c-text)] hover:text-[var(--c-accent)]"
-            >
-              {parent?.tradeName || parent?.fullName || parent?.displayClientId || clientId}
-            </Link>
+            <IdentityCardSelector
+              entity={parent || {}}
+              tenantId={tenantId}
+              clientId={clientId}
+              size="sm"
+              className="mt-2 border-transparent bg-[var(--c-panel)]"
+            />
           </article>
           <article className="rounded-2xl border border-[var(--c-border)] bg-[var(--c-surface)] p-4">
             <p className="text-[11px] uppercase tracking-wider text-[var(--c-muted)]">Transactions</p>

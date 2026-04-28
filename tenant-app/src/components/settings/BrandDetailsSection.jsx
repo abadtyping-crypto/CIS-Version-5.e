@@ -146,7 +146,6 @@ const BrandDetailsSection = () => {
     bankBranch: '',
     bankDetails: [createEmptyBankDetail()],
     locationPin: '',
-    isLogoLibraryEnabled: true,
     facebookUrl: '',
     instagramUrl: '',
     twitterUrl: '',
@@ -174,7 +173,6 @@ const BrandDetailsSection = () => {
   const [visibleSlotsCount, setVisibleSlotsCount] = useState(1);
   const [logoErrors, setLogoErrors] = useState({});
   const [logoUploading, setLogoUploading] = useState({});
-  const [activeLogoSlotId, setActiveLogoSlotId] = useState('logo_1');
   const [activeLogoEditorSlotId, setActiveLogoEditorSlotId] = useState('');
   const [logoRawUrl, setLogoRawUrl] = useState('');
   const [logoSourceUrl, setLogoSourceUrl] = useState('');
@@ -260,7 +258,6 @@ const BrandDetailsSection = () => {
         linkedinUrl: toLower(data.linkedinUrl || ''),
         tiktokUrl: toLower(data.tiktokUrl || ''),
         whatsappUrl: toLower(data.whatsappUrl || ''),
-        isLogoLibraryEnabled: data.isLogoLibraryEnabled !== false,
       }));
 
       const incomingSocials = [];
@@ -296,9 +293,6 @@ const BrandDetailsSection = () => {
         return acc;
       }, {});
       setLogoUsage(sanitizedUsage);
-      
-      const incomingActiveSlot = String(data.activeLogoSlotId || 'logo_1');
-      setActiveLogoSlotId(incomingActiveSlot);
 
       // Calculate how many slots should be visible (at least 1, up to the highest slot with data)
       let maxActiveIndex = 0;
@@ -468,14 +462,8 @@ const BrandDetailsSection = () => {
     if (!String(slot?.name || '').trim()) {
       setErrors((prev) => ({
         ...prev,
-        [`logoName_${slotId}`]: 'Please add the logo name before browsing.',
+        [`logoName_${slotId}`]: 'Please add the logo name before you browse it.',
       }));
-      setFocusError({
-        type: 'error',
-        title: 'Please add the logo name first.',
-        message: 'Name this logo slot before selecting media. This keeps the logo library organized before the upload starts.',
-        detail: 'Enter the logo name in the Logo Library card, then click Browse again.',
-      });
       return;
     }
     setActiveLogoEditorSlotId(slotId);
@@ -589,10 +577,10 @@ const BrandDetailsSection = () => {
         };
       })
       .filter((slot) => slot.name || slot.url);
-    const activeLogoSlotIds = new Set(normalizedLogoLibrary.map((slot) => slot.slotId));
+    const availableLogoSlotIds = new Set(normalizedLogoLibrary.map((slot) => slot.slotId));
     const normalizedLogoUsage = LOGO_FUNCTIONS.reduce((acc, item) => {
       const candidate = String(logoUsage[item.key] || '').trim();
-      if (activeLogoSlotIds.has(candidate)) acc[item.key] = candidate;
+      if (availableLogoSlotIds.has(candidate)) acc[item.key] = candidate;
       return acc;
     }, {});
 
@@ -624,11 +612,8 @@ const BrandDetailsSection = () => {
       linkedinUrl: toLower(form.linkedinUrl),
       tiktokUrl: toLower(form.tiktokUrl),
       whatsappUrl: toLower(form.whatsappUrl),
-      isLogoLibraryEnabled: form.isLogoLibraryEnabled === true,
       logoLibrary: normalizedLogoLibrary,
       logoUsage: normalizedLogoUsage,
-      activeLogoSlotId,
-      activeLogoUrl: normalizedLogoLibrary.find(s => s.slotId === activeLogoSlotId)?.url || normalizedLogoLibrary[0]?.url || ''
     };
 
     const payload = {
@@ -663,9 +648,6 @@ const BrandDetailsSection = () => {
     if (normalized.whatsappUrl) payload.whatsappUrl = normalized.whatsappUrl;
     if (normalized.logoLibrary.length) payload.logoLibrary = normalized.logoLibrary;
     if (Object.keys(normalized.logoUsage).length) payload.logoUsage = normalized.logoUsage;
-    if (normalized.activeLogoSlotId) payload.activeLogoSlotId = normalized.activeLogoSlotId;
-    if (normalized.activeLogoUrl) payload.activeLogoUrl = normalized.activeLogoUrl;
-    payload.isLogoLibraryEnabled = normalized.isLogoLibraryEnabled;
 
     const sanitizedPayload = cleanPayload(payload);
     sanitizedPayload.updatedBy = user.uid;
@@ -700,6 +682,9 @@ const BrandDetailsSection = () => {
       'primaryAddress',
       'secondaryAddress',
       'email1',
+      'activeLogoSlotId',
+      'activeLogoUrl',
+      'isLogoLibraryEnabled',
     ].forEach((key) => {
       if (!(key in payload)) payload[key] = deleteField();
     });
@@ -908,14 +893,10 @@ const BrandDetailsSection = () => {
 
           <div className="space-y-8 xl:sticky xl:top-4">
             <LogoLibrarySection
-            form={form}
             errors={errors}
-            updateField={updateField}
             visibleLogoSlots={visibleLogoSlots}
             logoErrors={logoErrors}
             logoUploading={logoUploading}
-            activeLogoSlotId={activeLogoSlotId}
-            setActiveLogoSlotId={setActiveLogoSlotId}
             openLogoEditor={openLogoEditor}
             removeLogoSlot={removeLogoSlot}
             updateLogoSlot={updateLogoSlot}
